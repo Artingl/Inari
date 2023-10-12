@@ -1,0 +1,56 @@
+0 Notes:
+   1. For some reason, timers that are driven using APIC have incorrect timings (PIT and APIC Timer) in QEMU.
+      However, when I tried to boot my kernel on using virtd (it also uses QEMU), VMWare and VirtualBox, no
+      incorrect timings were seen.
+
+
+1 Introduction:
+   This file explains how the Inari loading (boot) process is held.
+   At first, the multiboot2 bootloader loads the Inari into memory
+   and passes control to it (the bootloader/asm/bootloader.asm file), then following will happen:
+      1. Assembly code passes control to the bootloader C code in order to enable paging.
+      2. Kernel is mapped to 3GB. Also other necessary stuff will be mapped.
+      2. The bootloader jumps to the kernel just mapped.
+      
+
+   These following things will happen after enabling paging and jumping to the kernel code:
+      1. Initialize the memory by setting up PMM and VMM.
+      2. Initialize the screen driver using
+         either VGA text mode or VBE.
+      3. The CPU driver is Initialized.
+         This process will gather CPU info (cpu vendor, cpu brand, features, etc.).
+         After this the cpu driver will initialize other important parts of the system:
+               3.1. ACPI driver (see 3 "Loading the ACPI") in order to get more info about the system.
+               3.2. Either APIC or PIC will be brought up (see 2 "Initializing CPU and Interrupts"), as well as all existing
+                     CPU cores with it (if APIC).
+      4. After initializing interrupts by either APIC or PIC, we will load IRQ drivers (PS2, ATA, etc.)
+      5. ...
+
+2 Initializing CPU and Interrupts
+   The CPU initialization process consists of several phases
+      1. Detect what is the vendor of the CPU (either intel or amd, others not supported);
+         Get the cpu brand (model).
+      2. Check CPU feature flags (the CPU must at least support FPU (0 bit in EDX)).
+      3. Initialize interrupts:
+         3.1. Check if we want to use APIC or PIC. For APIC => ACPI must be available,
+              and MADT table found. Bit 9 in EDX feature flags must be set. Otherwise PIC
+         
+         Suitable for PIC:
+            3.2. Clear up IDT table and load it.
+            3.3. Set up the PIC (clear offsets, set masks, etc.)
+            3.3. Load IRQs
+            3.4. Initialize the PIT
+         
+         Suitable for APIC:
+            3.2. Clear up the IDT table and load it.
+            3.3. Initialize the Local APIC
+            3.3. Initialize the IO/APIC
+            3.4. Initialize the APIC Timer
+            3.5. Remap IRQs
+
+3 Loading the ACPI:
+   The ACPI process is going to be separated to different parts:
+      1. Early boot. This involves parsing simple tables (FADT, MADT/APIC, MCFG, HPET, ...) and lets you do things
+         like start other CPUs, find timers, etc.
+      2. Late boot. This is about using AML to take over things like power management and handle dynamic devices
+         resources (e.g. hot-plug PCI where details can't be put into a table during boot/when the device isn't plugged in yet).
