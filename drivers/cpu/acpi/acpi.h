@@ -18,19 +18,19 @@
  */
 #define ACPI_ITERATE(idx, ptr, statement)                                           \
     {                                                                               \
-        struct XSDP *sdp = cpu_acpi_sdp();                                     \
-        struct XSDT *root_sdt = cpu_acpi_root_sdt();                           \
+        struct XSDP *sdp = cpu_acpi_sdp();                                          \
+        struct XSDT *root_sdt = cpu_acpi_root_sdt();                                \
         size_t idx, len = (root_sdt->header.length - sizeof(struct SDT)) /          \
                           (sdp->revision == 2 ? 8 : 4);                             \
         struct SDT *ptr;                                                            \
         for (idx = 0; idx < len; idx++)                                             \
         {                                                                           \
             struct SDT *ptr;                                                        \
-            kident(ptr, PAGE_SIZE, KERN_PAGE_RW);                                   \
             if (sdp->revision == 2)                                                 \
                 ptr = (struct SDT *)(root_sdt->sdt_pointers[idx]);                  \
             else                                                                    \
                 ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]); \
+            kident(ptr, PAGE_SIZE, KERN_PAGE_RW);                                   \
             statement                                                               \
         }                                                                           \
     }

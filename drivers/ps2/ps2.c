@@ -34,12 +34,12 @@ interrupt_handler_t __ps2_handler(struct regs32 *regs)
     if (c >= 0x81)
     {
         // release key
-        sys_drv_kb_update_state(__ps2_key_map[c - 0x80], false);
+        drv_kb_update_state(__ps2_key_map[c - 0x80], false);
     }
     else
     {
         // press key
-        sys_drv_kb_update_state(__ps2_key_map[c], true);
+        drv_kb_update_state(__ps2_key_map[c], true);
     }
 
     // send ACK to the keyboard

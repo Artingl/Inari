@@ -139,7 +139,7 @@
 #define KB_MENU               348
 //
 
-bool sys_drv_kb_pressed(uint16_t key);
-void sys_drv_kb_init();
+bool drv_kb_pressed(uint16_t key);
+void sys_kb_init();
 
-void sys_drv_kb_update_state(size_t offset, bool state);
+void drv_kb_update_state(size_t offset, bool state);

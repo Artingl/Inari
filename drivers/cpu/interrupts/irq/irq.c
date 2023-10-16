@@ -9,6 +9,8 @@
 
 #include <kernel/include/C/string.h>
 
+size_t spurious_interrupts = 0;
+
 extern void _irq0();
 extern void _irq1();
 extern void _irq2();
@@ -44,6 +46,8 @@ void cpu_irq_init()
     cpu_idt_install((unsigned)_irq13, 45, 0x08, 0x8e);
     cpu_idt_install((unsigned)_irq14, 46, 0x08, 0x8e);
     cpu_idt_install((unsigned)_irq15, 47, 0x08, 0x8e);
+
+    spurious_interrupts = 0;
 }
 
 void cpu_irq_apic_remap()
@@ -53,11 +57,22 @@ void cpu_irq_apic_remap()
     cpu_io_apic_map(cpu_acpi_remap_irq(IRQ_PS2), 0x20 + IRQ_PS2);
 }
 
+size_t cpu_irq_spurious_count()
+{
+    return spurious_interrupts;
+}
+
 void cpu_irq_acknowledge(uint8_t irq_no)
 {
+    if (irq_no == 7)
+    {
+        spurious_interrupts++;
+        return;
+    }
+
     if (irq_no >= 12)
-        __outb(0xA0, 0x20);
-    __outb(0x20, 0x20);
+        __outb(PIC2_COMMAND, 0x20);
+    __outb(PIC1_COMMAND, 0x20);
 }
 
 void cpu_irq_mask(unsigned char irq_line)

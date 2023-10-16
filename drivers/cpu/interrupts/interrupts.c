@@ -16,15 +16,14 @@
 
 void cpu_interrupts_init()
 {
+    __asm__ volatile("cli");
     extern uint8_t __cpu_count;
 
-    // fill IDT with zeros
     cpu_idt_init();
     
     // initialize exceptions and IRQs
     cpu_int_excp_init();
     cpu_irq_init();
-
 #ifdef CONFIG_CPU_NOAPIC
     printk(KERN_NOTICE "Using PIC only because CONFIG_CPU_NOAPIC option was set during compilation.");
     __cpu_count = 1;
@@ -96,7 +95,7 @@ extern struct int_subscriber subscribed_interrupts[256][32];
 uintptr_t __isr_handler(struct regs32 *regs)
 {
     int32_t i;
-    uintptr_t result;
+    uintptr_t result = NULL;
     __asm__ volatile("cli");
 
     // send events to subscribed functions
@@ -123,7 +122,7 @@ uintptr_t __isr_handler(struct regs32 *regs)
         cpu_lapic_out(LAPIC_EOI, 0x0);
     }
 
+end:
     __asm__ volatile("sti");
-
     return result;
 }

@@ -44,7 +44,7 @@ BOOTL void _bootloader_C(multiboot_info_t *multiboot)
 
     lower_vga_print(MESSAGES_POOL[MSG_FILLING]);
 
-    // Allocate all page tables, so we'd not need to make own page table allocator for the kernel
+    // Allocate all page tables, so we'd not need to make page table allocator for the kernel
     for (i = 0; i < 1024; i++)
     {
         // core_directory.tablesPhys[i] = PAGE_RW;

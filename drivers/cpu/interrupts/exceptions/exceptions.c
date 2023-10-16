@@ -1,5 +1,7 @@
 #include <kernel/kernel.h>
+#include <kernel/include/C/string.h>
 
+#include <drivers/cpu/interrupts/irq/irq.h>
 #include <drivers/cpu/interrupts/exceptions/exceptions.h>
 #include <drivers/cpu/interrupts/idt/idt.h>
 
@@ -31,20 +33,75 @@ void cpu_int_excp_init()
     cpu_idt_install((unsigned)_excp30, SECURITY_EXCEPTION, 0x08, 0x8e);
 }
 
+static inline void byte2str(char *buffer, uint8_t num)
+{
+    do
+    {
+        unsigned long temp;
+
+        temp = (unsigned long)num % 16;
+        buffer--;
+        if (temp < 10)
+            *buffer = temp + '0';
+        else
+            *buffer = temp - 10 + 'a';
+        num = (unsigned long)num / 16;
+    } while (num != 0);
+}
+
+void _invalid_opcode_exception_handler(struct regs32 *regs)
+{
+    uint8_t *i;
+    size_t buffer_offset = 0;
+    uint8_t offs = 0;
+    char buffer[51];
+
+    printk(KERN_DEBUG "The eIP at which the exception occurred: %p", (unsigned long)regs->eip);
+    printk(KERN_DEBUG "64 bytes of memory dump from eIP-16:");
+
+    memcpy(&buffer[0], "0x00: 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00\0", 51);
+    for (i = (uint8_t *)regs->eip-16; i < regs->eip + 64; i++)
+    {
+        byte2str(&buffer[10 + buffer_offset * 5], *i);
+
+        offs++;
+        buffer_offset++;
+
+        if (buffer_offset % 9 == 0)
+        {
+            printk(KERN_DEBUG "\t%s", buffer);
+            buffer_offset = 0;
+            byte2str(&buffer[4], offs);
+        }
+    }
+}
+
 extern void kernel_loop();
 
 uintptr_t cpu_int_excp_handle(struct regs32 *regs)
 {
-    printk("CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
-    printk("\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
-    printk("\tEDI = 0x%x, ESI = 0x%x, EBP = 0x%x", regs->edi, regs->esi, regs->ebp);
-    printk("\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);
-    printk("\tECX = 0x%x, EAX = 0x%x, INT = 0x%x", regs->ecx, regs->eax, regs->int_no);
-    printk("\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
-    printk("\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
+    printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
+    printk(KERN_ERR "\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
+    printk(KERN_ERR "\tEDI = 0x%x, ESI = 0x%x, EBP = 0x%x", regs->edi, regs->esi, regs->ebp);
+    printk(KERN_ERR "\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);
+    printk(KERN_ERR "\tECX = 0x%x, EAX = 0x%x, INT = 0x%x", regs->ecx, regs->eax, regs->int_no);
+    printk(KERN_ERR "\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
+    printk(KERN_ERR "\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
+    printk(KERN_ERR "");
+    // printk("\tTotal spurious interrupts 0x%x", cpu_irq_spurious_count());
+
+    switch (regs->int_no)
+    {
+    case INVALID_OPCODE_EXCEPTION:
+        _invalid_opcode_exception_handler(regs);
+        break;
+
+    default:
+        break;
+    }
 
     // if (regs->int_no == PAGE_FAULT_EXCEPTION)
     //     return &kernel_loop;
 
-    panic("^^^^^^^^^");    
+    panic("-------------");
 }

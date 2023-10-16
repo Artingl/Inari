@@ -1,4 +1,5 @@
 #include <kernel/kernel.h>
+#include <kernel/include/C/typedefs.h>
 
 #include <drivers/memory/memory.h>
 #include <drivers/memory/vmm.h>

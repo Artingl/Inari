@@ -7,23 +7,23 @@
 
 bool __keyboard_state[0xfff];
 
-void sys_drv_kb_init()
+void sys_kb_init()
 {
     memset(&__keyboard_state[0], 0, sizeof(__keyboard_state));
 }
 
-void sys_drv_kb_update_state(size_t offset, bool state)
+void drv_kb_update_state(size_t offset, bool state)
 {
     __keyboard_state[offset] = state;
 
     if (state)
     {
-        sys_console_printc((char)offset);
-        sys_console_flush();
+        console_printc((char)offset);
+        console_flush();
     }
 }
 
-bool sys_drv_kb_pressed(uint16_t key)
+bool drv_kb_pressed(uint16_t key)
 {
     return __keyboard_state[key];
 }

@@ -27,13 +27,13 @@ struct console {
 
 };
 
-void sys_console_enable_heap();
-void sys_console_update_video();
-void sys_console_init();
+void console_enable_heap();
+void console_update_video();
+void console_init();
 
-void sys_console_use(struct console *console);
-void sys_console_render();
-void sys_console_flush();
+void console_use(struct console *console);
+void console_render();
+void console_flush();
 
-int sys_console_print(const char *msg);
-int sys_console_printc(char c);
+int console_print(const char *msg);
+int console_printc(char c);

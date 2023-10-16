@@ -1,11 +1,14 @@
-cflags = -std=c99 -O2 --include "../config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387
+cflags = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387
+
+CC = $(HOME)/opt/cross/bin/i386-elf-gcc
+LD = $(HOME)/opt/cross/bin/i386-elf-ld
 
 bootloader_source := $(shell find bootloader/ -name *.c)
 bootloader_objects := $(patsubst bootloader/%.c, build/bootloader/%.o, $(bootloader_source))
 
 $(bootloader_objects): build/bootloader/%.o : bootloader/%.c
 	mkdir -p $(dir $@) && \
-	gcc -fno-pie $(cflags) $(patsubst build/bootloader/%.o, bootloader/%.c, $@) -o $@
+	$(CC) -fno-pie $(cflags) $(patsubst build/bootloader/%.o, bootloader/%.c, $@) -o $@
 
 build_asm_bootloader:
 	mkdir -p build/bootloader/asm && \
@@ -17,14 +20,14 @@ drivers_objects := $(patsubst drivers/%.c, build/drivers/%.o, $(drivers_source))
 
 $(drivers_objects): build/drivers/%.o : drivers/%.c
 	mkdir -p $(dir $@) && \
-	gcc $(cflags) $(patsubst build/drivers/%.o, drivers/%.c, $@) -o $@
+	$(CC) $(cflags) $(patsubst build/drivers/%.o, drivers/%.c, $@) -o $@
 
 kernel_source := $(shell find kernel/ -name *.c)
 kernel_objects := $(patsubst kernel/%.c, build/kernel/%.o, $(kernel_source))
 
 $(kernel_objects): build/kernel/%.o : kernel/%.c
 	mkdir -p $(dir $@) && \
-	gcc $(cflags) $(patsubst build/kernel/%.o, kernel/%.c, $@) -o $@
+	$(CC) $(cflags) $(patsubst build/kernel/%.o, kernel/%.c, $@) -o $@
 
 clean:
 	-rm -rf build && \
@@ -42,7 +45,7 @@ run_embeded: build_kernel
 
 build_kernel: build_asm_bootloader $(bootloader_objects) $(drivers_objects) $(kernel_objects)
 	$(MAKE) -C liballoc compile && \
-	ld -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/realmode.o $(bootloader_objects) \
+	$(LD) -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/realmode.o $(bootloader_objects) \
 								  liballoc/liballoc.o $(drivers_objects) $(kernel_objects) -o build/Inari && \
 	cp build/Inari target/grub/kernel && \
 	sleep 1.1 && \

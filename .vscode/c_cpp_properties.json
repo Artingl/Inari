@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}"
+            ],
+            "defines": [],
+            "compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc",
+            "cStandard": "c99",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerArgs": [
+                "-std=c99 -O2 --include \"config.h\" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387"
+            ]
+        }
+    ],
+    "version": 4
+}

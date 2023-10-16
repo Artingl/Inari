@@ -1,3 +1,7 @@
+#pragma GCC optimize("O3")
+#pragma GCC optimize("unroll-loops")
+
+
 #include <kernel/kernel.h>
 #include <kernel/include/C/string.h>
 
@@ -36,19 +40,6 @@ int vbe_init(struct kern_video_vbe *__vbe)
     {
         __font_map[font.index[i]] = i * 16;
     }
-
-    // vbe_set_at('A', 0x07, 4 * VBE_WIDTH_CHARS + 20);
-
-    // vbe_print_at("Hello fucking world хуй", 0x07, 0);
-    // __asm__ volatile("hlt");
-
-    // for (size_t i  = 0; i < 0xffff; i++)
-    // {
-    //     if (font.bitmap[i] == __X_X_XX)
-    //     {
-    //         printk("-- %d", i);
-    //     }
-    // }
 
     return VBE_SUCCESS;
 }

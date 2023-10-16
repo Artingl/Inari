@@ -13,3 +13,4 @@ void cpu_irq_init();
 void cpu_irq_apic_remap();
 void cpu_irq_acknowledge(uint8_t irq_no);
 void cpu_irq_mask(unsigned char irq_line);
+size_t cpu_irq_spurious_count();

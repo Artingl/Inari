@@ -10,6 +10,7 @@
 #include <drivers/serial/serial.h>
 
 #include <kernel/sys/console/console.h>
+#include <kernel/sys/vfs/vfs.h>
 #include <kernel/sys/sys.h>
 
 #include <kernel/include/C/math.h>
@@ -27,19 +28,19 @@ void kmain(struct kernel_payload *__payload)
 {
     memcpy(&payload, __payload, sizeof(struct kernel_payload));
 
-    sys_console_init();
+    console_init();
     memory_init();
     memory_info();
-    sys_console_enable_heap();
+    console_enable_heap();
     video_init();
 
-    printk(KERN_INFO "Inari kernel (x86_64, %s)", payload.bootloader);
+    printk(KERN_INFO "Inari kernel (x86, %s)", payload.bootloader);
     printk(KERN_INFO "Kernel cmdline: %s", payload.cmdline);
     printk(KERN_INFO "Kernel virtual start: %p", &_kernel_start);
     printk(KERN_INFO "Kernel virtual end: %p", &_kernel_end);
 
     cpu_init();
-    sys_drv_init();
+    sys_init();
 
     // small memory check
     printk(KERN_DEBUG "=============== MEM TEST ===============");
@@ -51,15 +52,17 @@ void kmain(struct kernel_payload *__payload)
     memory_info();
     printk(KERN_DEBUG "===============   DONE   ===============");
 
-    printk("Русский язык тест в коносле УРА УРА УРА BIOHAZARD RUSSIAN DETECTED ☢☢☢");
+    printk("Русский язык в консоли");
 
-    // initialize disks and fs
-    // ata_pio_init();
+    // initialize disk drivers
+    ata_pio_init();
 
-    __setup_virtualization();
+
+    vfs_init();
+
+    // __setup_virtualization();
 
     kernel_loop();
-
     panic("kmain_high end.");
 }
 
@@ -67,8 +70,8 @@ void kernel_loop()
 {
     while (1)
     {
-        printk("SLEEP");
-        cpu_sleep(1000000);
+        // printk("SLEEP");
+        // cpu_sleep(1000000);
     }
 }
 

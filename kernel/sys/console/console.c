@@ -15,7 +15,7 @@ int __has_serial = 0;
 
 void __printc(char c);
 
-void sys_console_init()
+void console_init()
 {
     memset(&console, 0, sizeof(struct console));
 
@@ -23,7 +23,7 @@ void sys_console_init()
     __has_serial = serial_init(CONSOLE_SERIAL_PORT, CONSOLE_SERIAL_BAUD) == SERIAL_SUCCESS;
 }
 
-void sys_console_enable_heap()
+void console_enable_heap()
 {
     if (!__heap_allocated)
     {
@@ -37,7 +37,7 @@ void sys_console_enable_heap()
     }
 }
 
-void sys_console_update_video()
+void console_update_video()
 {
     if (!__heap_allocated)
     {
@@ -79,10 +79,10 @@ void sys_console_update_video()
 
     kfree(old_buffer);
     kfree(old_line_states);
-    sys_console_flush();
+    console_flush();
 }
 
-int sys_console_print(const char *msg)
+int console_print(const char *msg)
 {
     char c;
     int i = 0;
@@ -96,22 +96,22 @@ int sys_console_print(const char *msg)
     }
 
     if (__must_rerender)
-        sys_console_render();
+        console_render();
     return i;
 }
 
-int sys_console_printc(char c)
+int console_printc(char c)
 {
     __printc(c);
 
     if (__must_rerender)
-        sys_console_render();
+        console_render();
     return 1;
 }
 
-void sys_console_render()
+void console_render()
 {
-    sys_console_flush();
+    console_flush();
 #if 0
     size_t i, offset;
 
@@ -134,7 +134,7 @@ void sys_console_render()
 #endif
 }
 
-void sys_console_flush()
+void console_flush()
 {
     size_t i, offset;
 

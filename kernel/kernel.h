@@ -28,7 +28,7 @@ int __pr_wrapper(size_t line, const char *file, const char *func, const char *fm
 
 void panic(const char *message, ...);
 
-// get the bootloader uptime (in MS)
+// get the kernel uptime (in MS)
 double kernel_uptime();
 
 struct kernel_mmap_entry
@@ -44,7 +44,7 @@ struct kernel_mmap_entry
 
 struct kernel_payload
 {
-    struct page_directory *core_directory; // core directory that is currently using in paging
+    struct page_directory *core_directory; // core directory that is currently in use
 
     const char *bootloader; // name of the bootloader
     const char *cmdline;    // kernel command line arguments

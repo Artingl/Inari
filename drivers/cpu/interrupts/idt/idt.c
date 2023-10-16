@@ -32,7 +32,7 @@ void cpu_idt_init_memory()
 
     extern struct int_subscriber subscribed_interrupts[256][32];
 
-    memset(&idt, 0, sizeof(struct IDT) * 256);
+    memset(&idt, 0, sizeof(idt));
     memset(&subscribed_interrupts, 0, sizeof(subscribed_interrupts));
 }
 

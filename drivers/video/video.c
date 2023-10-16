@@ -32,7 +32,7 @@ void video_init()
 
 end:
     video_clear();
-    sys_console_update_video();
+    console_update_video();
 }
 
 void video_setmode(uint8_t mode, uint32_t width, uint32_t height)

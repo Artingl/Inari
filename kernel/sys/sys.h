@@ -1,4 +1,4 @@
 #pragma once
 
 
-void sys_drv_init();
+void sys_init();

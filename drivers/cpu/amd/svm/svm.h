@@ -257,10 +257,10 @@ void cpu_svm_cleanup(struct SVM *svm);
 
 static void cpu_svm_vmrun(uintptr_t vmcb)
 {
-    __asm__ volatile("vmrun %0" ::"r"(vmcb));
+    // __asm__ volatile("vmrun %0" ::"r"(vmcb));
 }
 
 static void cpu_svm_vmexit(uintptr_t vmcb)
 {
-    __asm__ volatile("vmexit");
+    // __asm__ volatile("vmexit");
 }

@@ -12,7 +12,7 @@
 
 int __pr_wrapper_handler(char c, void **)
 {
-    sys_console_printc(c);
+    console_printc(c);
 }
 
 // helper function for the "__pl_wrapper", to print formatted messages to the console
@@ -61,7 +61,7 @@ int __pr_wrapper(size_t line, const char *file, const char *func, const char *fm
 
     // the message --------------
     c += do_printkn(fmt + shift, args, &__pr_wrapper_handler, NULL);
-    c += sys_console_printc('\n');
+    c += console_printc('\n');
     // --------------------------
 
     va_end(args);
@@ -84,7 +84,7 @@ void panic(const char *message, ...)
     do_printkn(message, args, &__pr_wrapper_handler, NULL);
 
     // print the NL character so the screen would update
-    sys_console_printc('\n');
+    console_printc('\n');
     va_end(args);
 
     cpu_shutdown();
