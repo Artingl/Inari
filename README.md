@@ -4,10 +4,11 @@ Simple kernel written for x86 architecture (with potential support for x86-64).
 ## TODO
  - [ ] Complete ATA PIO driver.
  - [ ] FAT32 driver.
+ - [ ] VFS and Disks subsystem implementation.
  - [ ] Improve memory allocation (VMM mainly).
  - [ ] Maybe userland someday?
- - [ ] Maybe after some decades implement our own bootloader without the need to use multiboot (or maybe rewrite lower kernel bootloader at least, because it sooo messy right now).
- - [ ] Fix some BUGs with APIC (does not start up for some reason).
+ - [ ] Maybe some decades later implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it sooo messy right now).
+ - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
  - [ ] Bring up all physical processors.
 
 ## Building
