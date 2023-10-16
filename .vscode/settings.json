@@ -20,7 +20,12 @@
         "memory.h": "c",
         "console.h": "c",
         "sys.h": "c",
-        "vfs.h": "c"
+        "vfs.h": "c",
+        "disks.h": "c",
+        "ata_pio.h": "c",
+        "devfs.h": "c",
+        "kernel.h": "c",
+        "string.h": "c"
     },
     "cSpell.language": "en,ru"
 }

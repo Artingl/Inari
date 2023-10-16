@@ -74,6 +74,7 @@ enum {
     ATA_DRIVE_NOT_FOUND = 1,
     ATA_NOT_ATA_DRIVE = 2,
     ATA_ERROR = 3,
+    ATA_NO_DRIVES_FOUND = 4,
 };
 
 #define ATA_DRIVE_ID(drive_id, controller) (drive_id == ATA_MASTER_DRIVE ? 0 : 1 + (controller * 2))
@@ -89,3 +90,6 @@ struct ata_pio_drive
 int ata_pio_init();
 int ata_pio_identify(uint8_t drive);
 int ata_pio_read28(struct ata_pio_drive *drive, uint32_t sector, uint8_t count, uint16_t *buffer);
+int ata_pio_write28(struct ata_pio_drive *drive, uint32_t sector, uint8_t count, uint16_t *buffer);
+
+struct ata_pio_drive const *ata_pio_drives();

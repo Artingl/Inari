@@ -10,6 +10,8 @@
 #include <drivers/serial/serial.h>
 
 #include <kernel/sys/console/console.h>
+#include <kernel/sys/devfs/devfs.h>
+#include <kernel/sys/disks/disks.h>
 #include <kernel/sys/vfs/vfs.h>
 #include <kernel/sys/sys.h>
 
@@ -22,10 +24,13 @@ extern void *_kernel_start;
 extern void *_kernel_end;
 
 void __setup_virtualization();
-void kernel_loop();
 
 void kmain(struct kernel_payload *__payload)
 {
+    const char *mount_point;
+    struct devfs_node *block_device;
+    struct disk *disk;
+
     memcpy(&payload, __payload, sizeof(struct kernel_payload));
 
     console_init();
@@ -43,36 +48,42 @@ void kmain(struct kernel_payload *__payload)
     sys_init();
 
     // small memory check
-    printk(KERN_DEBUG "=============== MEM TEST ===============");
+    printk(KERN_INFO "=============== MEM TEST ===============");
     char *data = kmalloc(1024 * 1024 * 512);
-    printk(KERN_DEBUG "kmalloc: %p (phys: %p)", data, vmm_get_phys(vmm_current_directory(), data));
+    printk(KERN_INFO "kmalloc: %p (phys: %p)", data, vmm_get_phys(vmm_current_directory(), data));
 
     memory_info();
     kfree(data);
     memory_info();
-    printk(KERN_DEBUG "===============   DONE   ===============");
+    printk(KERN_INFO "===============   DONE   ===============");
+    printk(KERN_INFO "Русский язык в консоли");
 
-    printk("Русский язык в консоли");
+    kernel_assert(devfs_init() == DEVFS_SUCCESS);
+    kernel_assert(vfs_init() == VFS_SUCCESS);
 
-    // initialize disk drivers
-    ata_pio_init();
+    // parse cmdline to initialize the kernel itself
+    kernel_parse_cmdline();
 
+    // mount the root
+    mount_point = kernel_root_mount_point();
+    if (mount_point == NULL)
+        panic("kernel: unspecified mount point.");
+    
+    block_device = devfs_get_node(mount_point);
+    if (block_device == NULL)
+        panic("kernel: block device '%s' not found.", mount_point);    
 
-    vfs_init();
+    disk = alloc_disk(block_device);
+    kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS);
+
+    // try to read from the disk device
+    uint8_t buffer[SECTOR_SIZE];
+    disk_read(disk, 0, 1, &buffer);
+
+    printk(KERN_DEBUG "disk: 0x%x", buffer[0]);
 
     // __setup_virtualization();
-
-    kernel_loop();
     panic("kmain_high end.");
-}
-
-void kernel_loop()
-{
-    while (1)
-    {
-        // printk("SLEEP");
-        // cpu_sleep(1000000);
-    }
 }
 
 void __setup_virtualization()

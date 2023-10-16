@@ -20,29 +20,34 @@ int ata_pio_init()
 
     if (master_res != ATA_SUCCESS && slave_res != ATA_SUCCESS)
     {
-        printk(KERN_WARNING "ATA PIO: Unable to find master (status = %d) and slave drives (status = %d).",
+        printk(KERN_DEBUG "ATA PIO: Unable to find master (status = %d) and slave drives (status = %d).",
                master_res, slave_res);
-        return 1;
+        return ATA_NO_DRIVES_FOUND;
     }
     else if (master_res != ATA_SUCCESS)
     {
-        printk(KERN_NOTICE "ATA PIO: Master drive not found.");
+        printk(KERN_DEBUG "ATA PIO: Master drive not found.");
     }
     else if (slave_res != ATA_SUCCESS)
     {
-        printk(KERN_NOTICE "ATA PIO: Slave drive not found.");
+        printk(KERN_DEBUG "ATA PIO: Slave drive not found.");
     }
     else
     {
-        printk(KERN_INFO "ATA PIO: Master and slave drivers were found.");
+        printk(KERN_DEBUG "ATA PIO: Master and slave drivers were found.");
     }
 
-    uint8_t buffer[512];
-    memset(&buffer[0], 0, 512);
-    ata_pio_read28(&drives[ATA_DRIVE_ID(ATA_MASTER_DRIVE, 0x00)], 0, 1, (uint16_t *)&buffer[0]);
-    printk("%p %p %p", (unsigned long)buffer[0], (unsigned long)buffer[1], (unsigned long)buffer[2]);
+    // uint8_t buffer[512];
+    // memset(&buffer[0], 0, 512);
+    // ata_pio_read28(&drives[ATA_DRIVE_ID(ATA_MASTER_DRIVE, 0x00)], 0, 1, (uint16_t *)&buffer[0]);
+    // printk("%p %p %p", (unsigned long)buffer[0], (unsigned long)buffer[1], (unsigned long)buffer[2]);
 
-    return 0;
+    return ATA_SUCCESS;
+}
+
+struct ata_pio_drive const *ata_pio_drives()
+{
+    return &drives[0];
 }
 
 int ata_pio_identify(uint8_t drive_id)
@@ -104,7 +109,8 @@ int ata_pio_identify(uint8_t drive_id)
         return ATA_ERROR;
     }
 
-    __insw(ATA_PRIMARY_IO(ATA_DATA), (uint16_t*)&drive->payload[0], 256);
+    __insw(ATA_PRIMARY_IO(ATA_DATA), (uint16_t *)&drive->payload[0], 256);
+    drive->present = true;
 
     return ATA_SUCCESS;
 }
@@ -141,10 +147,16 @@ int ata_pio_read28(struct ata_pio_drive *drive, uint32_t sector, uint8_t count, 
         __insw(ATA_PRIMARY_IO(ATA_DATA), &buffer[i * 256], 256);
 
         // 400ns delay
-        // TODO: We need to implement proper IRQ as said above
+        // TODO: We need to implement IRQ as said above
         cpu_sleep(400);
     }
 
+    return ATA_SUCCESS;
+}
+
+
+int ata_pio_write28(struct ata_pio_drive *drive, uint32_t sector, uint8_t count, uint16_t *buffer)
+{
     return ATA_SUCCESS;
 }
 
