@@ -1,6 +1,6 @@
 #include <kernel/kernel.h>
 
-#include <drivers/ata/ata_pio.h>
+#include <drivers/fs/fat/fat32.h>
 
 #include <drivers/video/video.h>
 #include <drivers/memory/memory.h>
@@ -76,11 +76,7 @@ void kmain(struct kernel_payload *__payload)
     disk = alloc_disk(block_device);
     kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS);
 
-    // try to read from the disk device
-    uint8_t buffer[SECTOR_SIZE];
-    disk_read(disk, 0, 1, &buffer);
-
-    printk(KERN_DEBUG "disk: 0x%x", buffer[0]);
+    struct fat32 *fat = fat32_make(block_device);
 
     // __setup_virtualization();
     panic("kmain_high end.");

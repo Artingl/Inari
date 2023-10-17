@@ -25,7 +25,11 @@
         "ata_pio.h": "c",
         "devfs.h": "c",
         "kernel.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "cpu.h": "c",
+        "stdlib.h": "c",
+        "math.h": "c"
     },
-    "cSpell.language": "en,ru"
+    "cSpell.language": "en,ru",
+    "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"
 }

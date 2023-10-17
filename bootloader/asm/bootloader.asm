@@ -21,11 +21,12 @@ section .bootloader.text
 %include "bootloader/asm/video/vga.asm"
 
 global _lower_kernel_asm_entry
-global _lower_update_stack
+global _lower_update_stack_and_jump
 
 extern _pass_higher_kernel
 extern _bootloader_end
 extern _bootloader_C
+extern jump_to_kernel
 
 _lower_kernel_asm_entry:
     lgdt [gdt_descriptor]
@@ -48,10 +49,9 @@ _lower_kernel_asm_entry:
     call _bootloader_C
     hlt
 
-_lower_update_stack:
-    pop eax
+_lower_update_stack_and_jump:
     mov esp, _higher_stack_bottom
-    jmp eax
+    call jump_to_kernel
 
 
 section .bootloader.bss

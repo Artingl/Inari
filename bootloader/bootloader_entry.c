@@ -28,7 +28,7 @@ extern void *_higher_stack_bottom;
 
 struct page_directory core_directory __attribute__((aligned(4096), section(".bootloader.rodata")));
 
-extern void _lower_update_stack();
+extern void _lower_update_stack_and_jump();
 
 BOOTL int lower_initialize_vbe(struct vbe_block_info *vbe_block, struct vbe_mode *vbe_mode);
 BOOTL void jump_to_kernel();
@@ -73,8 +73,7 @@ BOOTL void _bootloader_C(multiboot_info_t *multiboot)
     bl_debug(MESSAGES_POOL[MSG_PASS_CONTROL]);
 
     // update stack pointer for the higher kernel and call function to jump to it
-    _lower_update_stack();
-    jump_to_kernel();
+    _lower_update_stack_and_jump();
 }
 
 BOOTL void jump_to_kernel()

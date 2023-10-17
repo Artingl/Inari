@@ -13,18 +13,20 @@ enum
 
 struct gendisk
 {
+    uint32_t id;
+
     struct devfs_node *block_device;
 };
 
 int disk_write(
     struct gendisk *disk,
-    uint32_t sector,
-    uint32_t nsectors,
+    uint64_t sector,
+    uint64_t nsectors,
     uint8_t *buffer);
 int disk_read(
     struct gendisk *disk,
-    uint32_t sector,
-    uint32_t nsectors,
+    uint64_t sector,
+    uint64_t nsectors,
     uint8_t *buffer);
 
 struct gendisk *alloc_disk(struct devfs_node *block_device);

@@ -11,6 +11,7 @@ Simple kernel written for x86 architecture (with potential support for x86-64).
  - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
  - [ ] Bring up all physical processors.
  - [ ] Locking mechanisms.
+ - [ ] Rewrite kernel's "std" lib at kernel/include/C/...
 
 ## Building
 After running this command you'll get boot.iso file in the root folder (kernel ELF binary is located at build/Inari):

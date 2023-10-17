@@ -2,37 +2,58 @@
 
 #include <kernel/include/C/typedefs.h>
 
-enum
+// max path length for the devfs (including NULL)
+#define DEVFS_PATH_MAX 256
+
+enum DEVFS_STATUS
 {
     DEVFS_SUCCESS = 0,
     DEVFS_UNSPECIFIED_ERROR = 1,
     DEVFS_INVALID_DRIVER = 2,
     DEVFS_DRIVER_ERROR = 3,
+    DEVFS_OUT_OF_BOUNDS = 4,
 };
 
-enum
+enum DEVFS_NODE_TYPES
 {
     DEVFS_NODE_BLOCK_DEVICE = 0,
     DEVFS_NODE_CHAR_DEVICE = 1,
     DEVFS_NODE_PIPE = 2,
 
-    DEVFS_NODES_MAX,
+    DEVFS_NODES_COUNT,
 };
 
-enum
+enum DEVFS_NODE_DRIVERS
 {
     DEVFS_DRIVER_ATA = 0,
 };
 
+struct devfs_disk_block_device
+{
+    uint64_t start_lba;
+    uint64_t end_lba;
+    uint64_t total_sectors;
+};
+
 struct devfs_node
 {
-    char path[256];
+    char path[DEVFS_PATH_MAX];
 
     uint32_t type;        // type of the node
     uint32_t driver_type; // type of the driver that this node uses (can be ignored in some cases)
 
     // pointer to some driver structure (depends on the type and sometimes driver_type)
     void *driver;
+
+    // parent node of this node (if no parent nodes, then should be set to NULL)
+    struct devfs_node *parent;
+
+    // block device specific metadata
+    union
+    {
+        struct devfs_disk_block_device disk;
+        // ...
+    } metadata;
 };
 
 struct devfs_nodes
@@ -47,12 +68,18 @@ int devfs_init();
 int devfs_parse_disks();
 int devfs_parse_cpu();
 int devfs_parse_pci();
-// The reference format of the path that's going to be made:
-//    For disks, all '*' signs will be replaced with the alphabetical index of the node in list (e.g. /dev/sd* can be /dev/sda, /dev/sdb ... /dev/sdaa, etc.)
-//    For other types of devices, the '*' will be replaced with the numerical index of the node in the list (e.g. /dev/cpu/core* can be /dev/cpu/core0, /dev/cpu/core1 ... /dev/cpu/core8, etc.)
-//
-// Note: The '*' sign also will identify the end of the reference, so no any other data after it would be parsed.
-const char *devfs_make_path(uint32_t type, size_t index, const char *reference);
+
+enum
+{
+    DEVFS_ALPHABETIC_INDEX = 0,
+    DEVFS_NUMERIC_INDEX = 1,
+};
+
+size_t devfs_make_path(
+    uint32_t index_type,
+    size_t index,
+    const char *reference,
+    char *result);
 
 // NULL result for both of them means that nothing was found.
 struct devfs_node *devfs_get_node(const char *path);
@@ -67,12 +94,24 @@ enum
 int devfs_block_call_driver(
     struct devfs_node *block_device,
     uint8_t operation,
-    uint32_t offset,
-    uint32_t n,
+    uint64_t offset,
+    uint64_t n,
     uint8_t *buffer);
 
-int devfs_block_write(struct devfs_node *block_device, uint32_t offset, uint32_t n, uint8_t *buffer);
-int devfs_block_read(struct devfs_node *block_device, uint32_t offset, uint32_t n, uint8_t *buffer);
+int devfs_block_write(struct devfs_node *block_device,
+                      uint64_t offset,
+                      uint64_t n,
+                      uint8_t *buffer);
+int devfs_block_read(struct devfs_node *block_device,
+                     uint64_t offset,
+                     uint64_t n,
+                     uint8_t *buffer);
 
+void devfs_block_find_partitions(size_t block_id);
 void devfs_remove_node(uint32_t node_type, size_t node_index);
-size_t devfs_add_node(uint32_t node_type, struct devfs_node *node, const char *path);
+
+size_t devfs_add_node(
+    uint32_t node_type,
+    struct devfs_node *node,
+    uint32_t path_type,
+    const char *path);

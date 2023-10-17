@@ -38,7 +38,7 @@ run_debug_virtd: build_kernel
 	virsh --connect qemu:///session reset vm1
 
 run_debug: build_kernel
-	qemu-system-x86_64 -smp 2 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -boot d -cdrom boot.iso -drive file=dummy_disk1.img,format=raw -device VGA
+	qemu-system-x86_64 -smp 2 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
 run_embeded: build_kernel
 	sudo cp target/grub/kernel /var/www/html/

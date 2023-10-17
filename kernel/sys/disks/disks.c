@@ -11,8 +11,8 @@ struct gendisk *alloc_disk(struct devfs_node *block_device)
 }
 
 int disk_write(struct gendisk *disk,
-                uint32_t sector,
-                uint32_t nsectors,
+                uint64_t sector,
+                uint64_t nsectors,
                 uint8_t *buffer)
 {
     if (devfs_block_write(disk->block_device, sector, nsectors, buffer) == DEVFS_SUCCESS)
@@ -24,8 +24,8 @@ int disk_write(struct gendisk *disk,
 }
 
 int disk_read(struct gendisk *disk,
-               uint32_t sector,
-               uint32_t nsectors,
+               uint64_t sector,
+               uint64_t nsectors,
                uint8_t *buffer)
 {
     if (devfs_block_read(disk->block_device, sector, nsectors, buffer) == DEVFS_SUCCESS)

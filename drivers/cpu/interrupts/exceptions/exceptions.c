@@ -92,6 +92,7 @@ uintptr_t cpu_int_excp_handle(struct regs32 *regs)
 
     switch (regs->int_no)
     {
+    // case PAGE_FAULT_EXCEPTION:
     case INVALID_OPCODE_EXCEPTION:
         _invalid_opcode_exception_handler(regs);
         break;

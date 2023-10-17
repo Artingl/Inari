@@ -153,7 +153,7 @@ void __parse_cmdline_cmd(const char *command, const char *argument)
             panic("cmdline: Usage of the \"root\" command is not possible without an argument.");
         }
 
-        // mount root
+        // set the mount root
         memcpy(&mount_point[0], &argument[0], strlen(argument)+1);
     }
 }

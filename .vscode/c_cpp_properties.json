@@ -6,9 +6,7 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}"
             ],
-            "defines": [
-            ],
-            "compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc",
+            "defines": [],
             "cStandard": "c99",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64",
