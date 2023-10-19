@@ -28,7 +28,9 @@
         "string.h": "c",
         "cpu.h": "c",
         "stdlib.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "fs.h": "c",
+        "device_wrapper.h": "c"
     },
     "cSpell.language": "en,ru",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"

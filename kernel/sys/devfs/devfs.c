@@ -8,6 +8,7 @@
 #include <drivers/disks/gpt/gpt.h>
 #include <drivers/disks/mbr/mbr.h>
 #include <drivers/disks/ata/ata_pio.h>
+#include <drivers/disks/device_wrapper.h>
 
 struct devfs_nodes nodes[DEVFS_NODES_COUNT];
 
@@ -94,7 +95,13 @@ void devfs_block_find_partitions(size_t block_id)
     memcpy(&child_path[0], block->path, DEVFS_PATH_MAX);
     child_path[strlen(block->path)] = '*';
 
-    if (gpt_read(block, &gpt) == GPT_SUCCESS)
+    struct driver_disk block_dev_wrapper = driver_disk_wrap(
+        block,
+        (driver_disk_io)&devfs_block_read,
+        (driver_disk_io)&devfs_block_write
+    );
+
+    if (gpt_read(block_dev_wrapper, &gpt) == GPT_SUCCESS)
     {
         // We found GPT on the disk, allocate partitions for in in devfs
         for (i = 0; i < GPT_MAX_PARTITIONS; i++)
@@ -107,6 +114,8 @@ void devfs_block_find_partitions(size_t block_id)
                 new_child_block.metadata.disk.start_lba = partition->starting_lba;
                 new_child_block.metadata.disk.end_lba = partition->ending_lba;
                 new_child_block.metadata.disk.total_sectors = partition->ending_lba - partition->starting_lba;
+
+                // TODO: devfs will assign incorrect node IDs for children, because it is based on the global nodes counter, rather then children counter in the node
 
                 // add the child node
                 child_block_id = devfs_add_node(
@@ -196,8 +205,6 @@ struct devfs_node *devfs_get_node(const char *path)
         for (j = 0; j < nodes_list->count; j++)
         {
             struct devfs_node *node = &nodes_list->nodes[j];
-
-            printk(" -- '%s' == '%s'", node->path, path);
 
             if (strcmp(node->path, path) == 0)
             {

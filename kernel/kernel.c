@@ -29,7 +29,7 @@ void kmain(struct kernel_payload *__payload)
 {
     const char *mount_point;
     struct devfs_node *block_device;
-    struct disk *disk;
+    struct gendisk *disk;
 
     memcpy(&payload, __payload, sizeof(struct kernel_payload));
 
@@ -76,7 +76,8 @@ void kmain(struct kernel_payload *__payload)
     disk = alloc_disk(block_device);
     kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS);
 
-    struct fat32 *fat = fat32_make(block_device);
+    struct fat32 fat;
+    fat32_make(&fat, disk->driver_wrapper);
 
     // __setup_virtualization();
     panic("kmain_high end.");

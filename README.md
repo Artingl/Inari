@@ -7,7 +7,7 @@ Simple kernel written for x86 architecture (with potential support for x86-64).
  - [ ] VFS and Disks subsystem implementation.
  - [ ] Improve memory allocation (VMM mainly).
  - [ ] Maybe userland someday?
- - [ ] Maybe some decades later implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it sooo messy right now).
+ - [ ] Maybe some decades later implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it's sooo messy right now).
  - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
  - [ ] Bring up all physical processors.
  - [ ] Locking mechanisms.

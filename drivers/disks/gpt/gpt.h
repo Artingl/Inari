@@ -2,9 +2,7 @@
 
 #include <kernel/include/C/typedefs.h>
 
-// TODO: I don't like that filesystems/GPT/MBR drivers would be directly accessing the block device.
-//       Implement different way of doing it.
-#include <kernel/sys/devfs/devfs.h>
+#include <drivers/disks/device_wrapper.h>
 
 #define GPT_MAX_PARTITIONS 128
 
@@ -64,11 +62,6 @@ struct gpt_info
     struct gpt_partition_entry partitions[GPT_MAX_PARTITIONS];
 };
 
-int gpt_read(struct devfs_node *block_device, struct gpt_info *gpt);
+int gpt_read(struct driver_disk disk, struct gpt_info *gpt);
 int gpt_check_entry(struct gpt_partition_entry *entry);
 int gpt_validate(struct gpt_info *gpt);
-
-struct gpt_partition_entry *gpt_read_partition(
-    struct devfs_node *block_device,
-    size_t partition,
-    struct gpt_info *gpt);

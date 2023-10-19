@@ -3,19 +3,19 @@
 
 #include <drivers/disks/gpt/gpt.h>
 
-int gpt_read(struct devfs_node *block_device, struct gpt_info *gpt)
+int gpt_read(struct driver_disk disk, struct gpt_info *gpt)
 {
-    uint8_t buffer[512];
+    uint8_t buffer[SECTOR_SIZE];
     size_t i, j, lba = 0;
     int r;
     struct gpt_partition_entry *entries;
 
     // read PMBR and copy from buffer
-    devfs_block_read(block_device, 0, 1, &buffer[0]);
+    disk.read_handler(disk.device, 0, 1, &buffer[0]);
     memcpy(&gpt->pmbr, buffer, sizeof(struct gpt_pmbr));
 
     // read PTH and copy from buffer
-    devfs_block_read(block_device, 1, 1, &buffer[0]);
+    disk.read_handler(disk.device, 1, 1, &buffer[0]);
     memcpy(&gpt->pth, buffer, sizeof(struct gpt_pth));
 
     // validate GPT
@@ -30,14 +30,14 @@ int gpt_read(struct devfs_node *block_device, struct gpt_info *gpt)
             sizeof(struct gpt_partition_entry) * (GPT_MAX_PARTITIONS - gpt->pth.number_of_partitions));
     }
 
-    // // parse all partition entries in array
+    // parse all partition entries in array
     lba = gpt->pth.starting_lba_of_guid_array;
     for (i = 0; i < gpt->pth.number_of_partitions; i++)
     {
-        devfs_block_read(block_device, lba, 1, &buffer[0]);
+        disk.read_handler(disk.device, lba, 1, &buffer[0]);
         entries = (struct gpt_partition_entry *)&buffer[0];
 
-        for (j = 0; j < 512 / gpt->pth.size_of_array_entry; j++)
+        for (j = 0; j < SECTOR_SIZE / gpt->pth.size_of_array_entry; j++)
         {
             memcpy(&gpt->partitions[i], &entries[j], sizeof(struct gpt_partition_entry));
             if (++i >= GPT_MAX_PARTITIONS)

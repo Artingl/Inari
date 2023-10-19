@@ -2,9 +2,8 @@
 
 #include <kernel/include/C/typedefs.h>
 
-// TODO: I don't like that filesystems/GPT/MBR drivers would be directly accessing the block device.
-//       Implement different way of doing it.
-#include <kernel/sys/devfs/devfs.h>
+#include <drivers/disks/device_wrapper.h>
+#include <drivers/fs/fs.h>
 
 struct fat32_bpb
 {
@@ -54,15 +53,71 @@ struct fat32_fsinfo
     uint32_t trail_signature;
 } __attribute__((packed));
 
+#define FAT32_READ_ONLY 0x01
+#define FAT32_HIDDEN 0x02
+#define FAT32_SYSTEM 0x04
+#define FAT32_VOLUME_ID 0x08
+#define FAT32_DIRECTORY 0x10
+#define FAT32_ARCHIVE 0x20
+#define FAT32_LFN (FAT32_READ_ONLY | FAT32_HIDDEN | FAT32_SYSTEM | FAT32_VOLUME_ID)
+
+struct fat32_file
+{
+    uint8_t name[11];
+    uint8_t attributes;
+    uint8_t reserved;
+    uint8_t time_tenths;
+    uint16_t creation_time;
+    uint16_t creation_date;
+    uint16_t last_access_date;
+    uint16_t high_cluster_number;
+    uint16_t last_mod_time;
+    uint16_t last_mod_date;
+    uint16_t low_custer_number;
+    uint32_t file_size;
+} __attribute__((packed));
+
+struct fat32_lfn
+{
+    uint8_t order;
+    uint8_t first_chars[10];
+    uint8_t attribute;
+    uint8_t entry_type;
+    uint8_t checksum;
+    uint8_t second_chars[12];
+    uint16_t zero;
+    uint8_t third_chars[4];
+} __attribute__((packed));
+
+union fat32_entry
+{
+    uint8_t type;
+
+    struct fat32_lfn lfn;
+
+    uint8_t __[32];
+} __attribute__((packed));
+
 struct fat32
 {
     // the target disk
-    struct devfs_node *block_device;
+    struct driver_disk disk_device;
 
     struct fat32_bpb bpb;
     struct fat32_ebr ebr;
     struct fat32_fsinfo fsinfo;
 };
 
-struct fat32 *fat32_make(struct devfs_node *block_device);
+enum FAT32_STATUS
+{
+    FAT32_SUCCESS = 0,
+    FAT32_NOT_FAT = 1, // not a fat partition
+
+    FAT32_EMPTY = 2,
+};
+
+int fat32_make(struct fat32 *fat, struct driver_disk disk);
 void fat32_cleanup(struct fat32 *fat);
+
+int fat32_parse_dir(struct fat32 *fat, uint32_t cluster);
+void fat32_long_name(struct fat32 *fat, char *buffer);

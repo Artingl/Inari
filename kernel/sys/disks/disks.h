@@ -3,7 +3,7 @@
 #include <kernel/include/C/typedefs.h>
 #include <kernel/sys/devfs/devfs.h>
 
-#define SECTOR_SIZE 512
+#include <drivers/disks/device_wrapper.h>
 
 enum
 {
@@ -16,6 +16,7 @@ struct gendisk
     uint32_t id;
 
     struct devfs_node *block_device;
+    struct driver_disk driver_wrapper;
 };
 
 int disk_write(

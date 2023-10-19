@@ -7,6 +7,11 @@ struct gendisk *alloc_disk(struct devfs_node *block_device)
 {
     struct gendisk *disk = kmalloc(sizeof(struct gendisk));
     disk->block_device = block_device;
+    disk->driver_wrapper = driver_disk_wrap(
+        disk->block_device,
+        (driver_disk_io)&devfs_block_read,
+        (driver_disk_io)&devfs_block_write
+    );
     return disk;
 }
 

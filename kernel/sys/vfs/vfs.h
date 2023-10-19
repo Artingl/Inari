@@ -9,4 +9,4 @@ enum
 };
 
 int vfs_init();
-int vfs_mount_root();
+int vfs_mount_root(struct gendisk *disk);
