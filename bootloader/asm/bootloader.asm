@@ -1,5 +1,5 @@
 bits 32
-section .bootloader.data
+section .lo_data
     dd 0x1BADB002   ; Magic number
     dd 0x07         ; Flags
     dd - (0x1BADB002 + 0x07) ; Checksum
@@ -15,20 +15,22 @@ section .bootloader.data
     dd 32	    ; depth
 
 
-section .bootloader.text
 
+section .lo_gdt
 %include "bootloader/asm/cpu/gdt.asm"
+
+section .lo_text
 %include "bootloader/asm/video/vga.asm"
 
-global _lower_kernel_asm_entry
-global _lower_update_stack_and_jump
+global lo_kernel_asm_entry
+global lo_update_stack_and_jump
+global lo_stack_bottom
 
-extern _pass_higher_kernel
-extern _bootloader_end
-extern _bootloader_C
+extern _lo_end_marker
+extern lo_kmain
 extern jump_to_kernel
 
-_lower_kernel_asm_entry:
+lo_kernel_asm_entry:
     lgdt [gdt_descriptor]
     jmp CODE_SEG:.setcs                       ;; Set CS to our 32-bit code selector
     .setcs:
@@ -38,7 +40,7 @@ _lower_kernel_asm_entry:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    mov esp, stack_bottom                     ;; set stack pointer
+    mov esp, lo_stack_bottom                     ;; set stack pointer
     cli                                       ;; Disable interrupts
 
     ;; multiboot struct must be inside the ebx register
@@ -46,63 +48,56 @@ _lower_kernel_asm_entry:
     push ebx
     
     call init_vga
-    call _bootloader_C
+    call lo_kmain
     hlt
 
-_lower_update_stack_and_jump:
-    mov esp, _higher_stack_bottom
+lo_update_stack_and_jump:
+    mov esp, hi_stack_bottom
     call jump_to_kernel
 
 
-section .bootloader.bss
+section .lo_bss
 global _lower_multiboot_info_struct
     _lower_multiboot_info_struct: dq 0
 
 
-global _lower_early_heap_top
-    _lower_early_heap_top: dq 0
-global _lower_early_heap
-    _lower_early_heap: dq 0
-global _lower_early_heap_end
-    _lower_early_heap_end: dq 0
+global lo_early_heap_top
+    lo_early_heap_top: dq 0
+global lo_early_heap
+    lo_early_heap: dq 0
+global lo_early_heap_end
+    lo_early_heap_end: dq 0
 
-global _LOWER_MESSAGE_DEBUG
-    _LOWER_MESSAGE_DEBUG: db "Debug!", 10, 0
-global _LOWER_MESSAGE_FILLING
-    _LOWER_MESSAGE_FILLING: db "Filling core directory...", 0
-global _LOWER_MESSAGE_DONE
-    _LOWER_MESSAGE_DONE: db " done!", 10, 0
-global _LOWER_MESSAGE_IDENTIFY
-    _LOWER_MESSAGE_IDENTIFY: db "Identifying all necessary addresses to core directory...", 0
-global _LOWER_MESSAGE_NO_MMAPS
-    _LOWER_MESSAGE_NO_MMAPS: db "No memory mappings were found in the multiboot structure!", 10, 0
-global _LOWER_MESSAGE_DIR_DEBUG
-    _LOWER_MESSAGE_DIR_DEBUG: db "Core directory info: base = %p, tablePhys = %p", 10, 0
-global _LOWER_MESSAGE_HALT
-    _LOWER_MESSAGE_HALT: db "System is going to be halted NOW.", 10, 0
-global _LOWER_MESSAGE_PASS_CONTROL
-    _LOWER_MESSAGE_PASS_CONTROL: db "Paging enabled! Passing control to the higher kernel...", 10, 0
+global LO_MESSAGE_DEBUG
+    LO_MESSAGE_DEBUG: db "Debug!", 10, 0
+global LO_MESSAGE_FILLING
+    LO_MESSAGE_FILLING: db "Filling core directory...", 0
+global LO_MESSAGE_DONE
+    LO_MESSAGE_DONE: db " done!", 10, 0
+global LO_MESSAGE_IDENTIFY
+    LO_MESSAGE_IDENTIFY: db "Identifying all necessary addresses to core directory...", 0
+global LO_MESSAGE_NO_MMAPS
+    LO_MESSAGE_NO_MMAPS: db "No memory mappings were found in the multiboot structure!", 10, 0
+global LO_MESSAGE_DIR_DEBUG
+    LO_MESSAGE_DIR_DEBUG: db "Core directory info: base = %p, tablePhys = %p", 10, 0
+global LO_MESSAGE_HALT
+    LO_MESSAGE_HALT: db "System is going to be halted NOW.", 10, 0
+global LO_MESSAGE_PASS_CONTROL
+    LO_MESSAGE_PASS_CONTROL: db "Paging enabled! Passing control to the higher kernel...", 10, 0
 
     resb 0xffff
-    stack_bottom:
-
+    lo_stack_bottom:
 
 ;; higher bootloader part
 section .text
-
-global __cpu_idt_load
-extern idt_descriptor
-__cpu_idt_load:
-	lidt [idt_descriptor]
-	ret
-
 %include "bootloader/asm/cpu/idt.asm"
 
-global _higher_stack_top
-global _higher_stack_bottom
+global hi_stack_top
+global hi_stack_bottom
 
 section .bss
-    _higher_stack_top:
+    hi_stack_top:
 	resb 0x100000 ;; 1MB of stack
-    _higher_stack_bottom:
+                  ;; TODO: allocate kernel stack on the heap later, so we don't waste memory here
+    hi_stack_bottom:
 

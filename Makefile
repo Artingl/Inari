@@ -13,6 +13,7 @@ $(bootloader_objects): build/bootloader/%.o : bootloader/%.c
 build_asm_bootloader:
 	mkdir -p build/bootloader/asm && \
 	nasm -f elf32 bootloader/asm/bootloader.asm -o build/bootloader/asm/bootloader.o && \
+	nasm -f elf32 bootloader/asm/cpu/smp.asm -o build/bootloader/asm/smp.o && \
 	nasm -f elf32 bootloader/asm/cpu/realmode.asm -o build/bootloader/asm/realmode.o
 
 drivers_source := $(shell find drivers/ -name *.c)
@@ -38,15 +39,17 @@ run_debug_virtd: build_kernel
 	virsh --connect qemu:///session reset vm1
 
 run_debug: build_kernel
-	qemu-system-x86_64 -enable-kvm -smp 2 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
+	qemu-system-x86_64 -smp 4 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
+
+run_debug_serial: build_kernel
+	qemu-system-x86_64 -smp 4 -m 4G -serial stdio -no-shutdown -no-reboot -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
 run_embeded: build_kernel
 	sudo cp target/grub/kernel /var/www/html/
 
 build_kernel: build_asm_bootloader $(bootloader_objects) $(drivers_objects) $(kernel_objects)
 	$(MAKE) -C liballoc compile && \
-	$(LD) -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/realmode.o $(bootloader_objects) \
+	$(LD) -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/smp.o build/bootloader/asm/realmode.o $(bootloader_objects) \
 								  liballoc/liballoc.o $(drivers_objects) $(kernel_objects) -o build/Inari && \
 	cp build/Inari target/grub/kernel && \
-	sleep 1.1 && \
 	grub-mkrescue -o boot.iso target/grub

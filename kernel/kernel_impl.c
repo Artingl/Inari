@@ -1,4 +1,5 @@
 #include <kernel/kernel.h>
+#include <kernel/lock/spinlock.h>
 
 #include <drivers/video/video.h>
 #include <drivers/cpu/cpu.h>
@@ -9,6 +10,13 @@
 #include <kernel/include/C/string.h>
 
 #include <stdarg.h>
+
+spinlock_t kernel_spinlock = {0};
+
+void kernel_impl()
+{
+    spinlock_create(&kernel_spinlock);
+}
 
 int __pr_wrapper_handler(char c, void **)
 {
@@ -27,15 +35,19 @@ int __pr_wrapper_helper(const char *fmt, ...)
     return c;
 }
 
+uint32_t kernel_rand()
+{
+    static uint32_t seed = 777;
+    seed = seed * 1664525 + 1013904223;
+    return seed >> 24;
+}
+
 int __pr_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...)
 {
+    // spinlock_acquire(&kernel_spinlock);
     int c = 0, shift = 0;
     char *prefix = NULL;
-
-#ifdef CONFIG_NODEBUG
-    if (fmt[0] == KERN_DEBUG[0])
-        return 0;
-#endif
+    struct cpu_core *core = cpu_current_core();
 
     // extract the prefix from the fmt
     switch (fmt[0])
@@ -72,6 +84,9 @@ int __pr_wrapper(size_t line, const char *file, const char *func, const char *fm
     }
     case '5':
     {
+#ifdef CONFIG_NODEBUG
+        return 0;
+#endif
         shift++;
         prefix = "DEBUG";
         break;
@@ -90,38 +105,27 @@ int __pr_wrapper(size_t line, const char *file, const char *func, const char *fm
 
     va_list args;
     va_start(args, fmt);
+
     // print formatted message to the console
-
-    // prefix --------------
-    if (fmt[0] == '6')
-    { // different output for "TODO" prefix
-        c += __pr_wrapper_helper("TODO{%f, %s:%d} :: ", kernel_uptime(), func, line);
-    }
-    else
-    {
-        c += __pr_wrapper_helper("[%f] %s :: ", kernel_uptime(), prefix);
-    }
-    // ----------------------
-
-    // the message --------------
+    c += __pr_wrapper_helper("[  %f] CPU#%d/%s :: ", kernel_uptime(), core->core_id, prefix);
     c += do_printkn(fmt + shift, args, &__pr_wrapper_handler, NULL);
     c += console_printc('\n');
-    // --------------------------
 
     va_end(args);
-
+    // spinlock_release(&kernel_spinlock);
     return c;
 }
 
-extern double __timer_ticks;
+extern double cpu_timer_ticks;
 
 double kernel_uptime()
 {
-    return __timer_ticks / 1000.0f; // / __cpu_timer_freq();
+    return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
 }
 
 void panic(const char *message, ...)
 {
+    // spinlock_acquire(&kernel_spinlock);
     va_list args;
     va_start(args, message);
     __pr_wrapper_helper("[%f] PANIC :: ", kernel_uptime());
@@ -132,6 +136,7 @@ void panic(const char *message, ...)
     va_end(args);
 
     cpu_shutdown();
+    // spinlock_release(&kernel_spinlock);
 }
 
 char mount_point[256];

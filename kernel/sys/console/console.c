@@ -5,7 +5,6 @@
 #include <kernel/include/C/string.h>
 
 #include <drivers/video/video.h>
-#include <drivers/video/font.h>
 
 struct console console;
 
@@ -27,59 +26,14 @@ void console_enable_heap()
 {
     if (!__heap_allocated)
     {
-        console.buffer_width = video_text_width();
-        console.buffer_height = video_text_height();
+        console.buffer_width = CONSOLE_WIDTH;
+        console.buffer_height = CONSOLE_HEIGHT;
         console.buffer = kcalloc(sizeof(uint32_t), console.buffer_width * console.buffer_height);
         console.lines_state = kcalloc(sizeof(uint32_t), console.buffer_height);
         memset(console.buffer, 0, console.buffer_width * console.buffer_height * sizeof(uint32_t));
         memset(console.lines_state, 0, console.buffer_height * sizeof(uint32_t));
         __heap_allocated = true;
     }
-}
-
-void console_update_video()
-{
-    if (!__heap_allocated)
-    {
-        printk(KERN_WARNING "CONSOLE: buffer is not heap allocated.");
-        return;
-    }
-
-    size_t i;
-    uint32_t *old_buffer = console.buffer;
-    uint32_t *old_line_states = console.lines_state;
-    uint32_t old_width = console.buffer_width,
-             old_height = console.buffer_height;
-    uint8_t new_width = video_text_width();
-    uint8_t new_height = video_text_height();
-
-    uint32_t *new_buffer = kcalloc(sizeof(uint32_t), new_width * new_height);
-    uint32_t *line_states = kcalloc(sizeof(uint32_t), new_height);
-    if (new_buffer == NULL || line_states == NULL)
-    {
-        kfree(new_buffer);
-        kfree(line_states);
-        printk(KERN_WARNING "CONSOLE: Unable to reallocate memory for kernel console.");
-        return;
-    }
-    memset(new_buffer, 0, new_width * new_height * sizeof(uint32_t));
-    memset(line_states, 0, new_height * sizeof(uint32_t));
-
-    // copy lines to new buffer
-    for (i = 0; i < new_height && i < old_height; i++)
-    {
-        memcpy(
-            &new_buffer[i * new_width], &old_buffer[i * old_width], min(new_width, old_width) * 4);
-    }
-
-    console.lines_state = line_states;
-    console.buffer = new_buffer;
-    console.buffer_width = new_width;
-    console.buffer_height = new_height;
-
-    kfree(old_buffer);
-    kfree(old_line_states);
-    console_flush();
 }
 
 int console_print(const char *msg)
@@ -136,14 +90,6 @@ void console_render()
 
 void console_flush()
 {
-    size_t i, offset;
-
-    // print to the screen only if we allocated the buffer on heap
-    if (__heap_allocated)
-    {
-        video_text_render(console.buffer, console.buffer_width, console.buffer_height);
-        __must_rerender = false;
-    }
 }
 
 void __printc(char c)

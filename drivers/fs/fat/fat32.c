@@ -4,10 +4,13 @@
 #include <drivers/fs/fat/fat32.h>
 
 #define ENTRIES_PER_SECTOR (SECTOR_SIZE / sizeof(union fat32_entry))
-#define SECTOR(fat, cluster) ((((cluster)-2) * fat->bpb.sectors_per_cluster) + fat->bpb.reserved_sectors)
+#define SECTOR(fat, cluster) ((((cluster)-2) * fat->bpb.sectors_per_cluster) + fat->first_data_sector)
 
-int fat32_make(struct fat32 *fat, struct driver_disk disk)
+int fat32_load(struct fat32_info *fat, struct driver_disk disk)
 {
+    // Do not use FAT32 as for now
+    return FAT32_INVALID;
+
     uint8_t buffer[SECTOR_SIZE];
     fat->disk_device = disk;
 
@@ -23,9 +26,9 @@ int fat32_make(struct fat32 *fat, struct driver_disk disk)
     // validate signature of the EBR
     if (fat->ebr.signature != 0x28 && fat->ebr.signature != 0x29)
     {
-        printk(KERN_INFO "fat32: EBR invalid signature.");
+        printk(KERN_DEBUG "fat32: EBR invalid signature.");
         fat32_cleanup(fat);
-        return FAT32_NOT_FAT;
+        return FAT32_INVALID;
     }
 
     // read the fsinfo into buffer and copy to structure
@@ -40,18 +43,20 @@ int fat32_make(struct fat32 *fat, struct driver_disk disk)
         fat->fsinfo.signature != 0x61417272 ||
         fat->fsinfo.trail_signature != 0xAA550000)
     {
-        printk(KERN_INFO "fat32: fsinfo invalid signature.");
+        printk(KERN_DEBUG "fat32: fsinfo invalid signature.");
         fat32_cleanup(fat);
-        return FAT32_NOT_FAT;
+        return FAT32_INVALID;
     }
+
+    fat->first_data_sector = fat->bpb.reserved_sectors + (fat->bpb.fats_count * fat->bpb.total_sectors0);
 
     int r = fat32_parse_dir(fat, fat->ebr.root_cluster);
 
-    panic("result: %d", r);
+    panic("result[%d]: %d", SECTOR(fat, fat->ebr.root_cluster), r);
     return FAT32_SUCCESS;
 }
 
-int fat32_parse_dir(struct fat32 *fat, uint32_t cluster)
+int fat32_parse_dir(struct fat32_info *fat, uint32_t cluster)
 {
     union fat32_entry *entry, entries[ENTRIES_PER_SECTOR];
     uint32_t i = 0, sector_offset = 0;
@@ -81,7 +86,8 @@ int fat32_parse_dir(struct fat32 *fat, uint32_t cluster)
         }
 
         entry = &entries[i++];
-        printk(" -- %u: 0x%x %u %u", i, (unsigned long)entry->type, entries->__[11], entries->lfn.attribute);
+        printk(" -- %u: '%7s' 0x%x %u %u %u %u %u %u %u", i, &entries->__[1], (unsigned long)entry->type,
+            entries->__[8], entries->__[9], entries->__[10], entries->__[11], entries->__[12], entries->__[13], entries->__[14]);
 
         // check if the entry is unused
         if (entry->type == 0xE5)
@@ -98,11 +104,11 @@ int fat32_parse_dir(struct fat32 *fat, uint32_t cluster)
     return FAT32_SUCCESS;
 }
 
-void fat32_long_name(struct fat32 *fat, char *buffer)
+void fat32_long_name(struct fat32_info *fat, char *buffer)
 {
 }
 
-void fat32_cleanup(struct fat32 *fat)
+void fat32_cleanup(struct fat32_info *fat)
 {
     // TODO: save everything firstly
 }

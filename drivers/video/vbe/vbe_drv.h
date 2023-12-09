@@ -83,19 +83,12 @@ enum {
 };
 
 int vbe_init(struct kern_video_vbe *video);
-
-void vbe_clear();
-int vbe_print_at(uint32_t *message, uint8_t clr, size_t offset, size_t length);
-int vbe_set_at(char c, uint8_t clr, size_t offset);
-
-int vbe_text_width();
-int vbe_text_height();
 int vbe_width();
 int vbe_height();
 int vbe_bpp();
 
+void vbe_clear();
 void vbe_put_pixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b);
-void vbe_render_text_buffer(uint32_t *buffer, size_t width, size_t height);
 
 void *vbe_fb();
 size_t vbe_fb_size();

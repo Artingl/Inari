@@ -7,6 +7,9 @@
 
 #include <stdarg.h>
 
+#define serial_received(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 1)
+#define serial_is_transmit_empty(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 0x20)
+
 int serial_init(uint16_t port, uint32_t baud)
 {
     // disable interrupts
@@ -36,20 +39,11 @@ int serial_init(uint16_t port, uint32_t baud)
     return SERIAL_SUCCESS;
 }
 
-int serial_received(uint16_t port)
-{
-    return __inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 1;
-}
-
-int serial_is_transmit_empty(uint16_t port)
-{
-    return __inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 0x20;
-}
-
 uint8_t serial_read(uint16_t port)
 {
     while(serial_received(port) == 0);
-    return __inb(port);
+    uint8_t in = __inb(port);
+    return in;
 }
 
 void serial_putc(uint16_t port, uint8_t c)
@@ -61,6 +55,12 @@ void serial_putc(uint16_t port, uint8_t c)
 void __serial_printf_handler(char c, void **p)
 {
     serial_putc(**((uint16_t**)p), c);
+}
+
+void serial_write(uint16_t port, const char *ptr, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+        serial_putc(port, *(ptr++));
 }
 
 void serial_printf(uint16_t port, const char *fmt, ...)

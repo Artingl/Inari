@@ -17,7 +17,7 @@ void cpu_acpi_init()
 {
     size_t i;
 
-    if (!(cpu_features_edx() & CPU_FEATURE_EDX_ACPI))
+    if (!(cpu_feat_edx() & CPU_FEATURE_EDX_ACPI))
     {
         printk(KERN_NOTICE "ACPI is not supported!");
         return;
@@ -152,15 +152,16 @@ uint32_t cpu_acpi_remap_irq(uint32_t irq)
     return irq;
 }
 
-uint8_t cpu_acpi_load_madt(uintptr_t *lapic, uintptr_t *ioapic)
+extern uintptr_t cpu_ioapic;
+
+uint8_t cpu_acpi_load_madt(struct cpu_core *cores)
 {
+    kernel_assert(cores != NULL, "cores array is NULL");
+
     struct MADT_Entry *entry;
     size_t madts = 0;
     uint8_t physical_cpus = 0;
     uint8_t *i;
-
-    *lapic = NULL;
-    *ioapic = NULL;
 
     // iterate thru all SDTs to find MADT
     ACPI_ITERATE(idx, pointer, {
@@ -173,8 +174,6 @@ uint8_t cpu_acpi_load_madt(uintptr_t *lapic, uintptr_t *ioapic)
 
             if (!madt || !cpu_acpi_signature(madt, madt->header.length))
                 panic("Unable to find MADT record; or got invalid record (bad checksum)");
-
-            *lapic = madt->local_apic_address;
 
             // iterate thru all MADT entries to get all APICs on the system
             for (
@@ -189,6 +188,9 @@ uint8_t cpu_acpi_load_madt(uintptr_t *lapic, uintptr_t *ioapic)
                 {
                     struct LAPIC_MADT *lapic_table = (struct LAPIC_MADT *)(entry);
 
+                    cores[lapic_table->acpi_proc_id].lapic_id = lapic_table->apic_id;
+                    cores[lapic_table->acpi_proc_id].lapic_ptr = madt->local_apic_address;
+
                     physical_cpus++;
                     printk(KERN_DEBUG "Local APIC found[%d]", lapic_table->acpi_proc_id);
                 }
@@ -198,15 +200,14 @@ uint8_t cpu_acpi_load_madt(uintptr_t *lapic, uintptr_t *ioapic)
 
                     // todo: only one IO/APIC can be used right now.
                     //       If another one was found, panic
-                    if (*ioapic)
+                    if (cpu_ioapic)
                     {
                         printk(KERN_WARNING "Another IO/APIC was found, which is not supported (see the ACPI driver)");
                         goto next;
                     }
 
                     printk(KERN_DEBUG "IO/APIC found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
-
-                    *ioapic = io_apic_table->io_apic_address;
+                    cpu_ioapic = io_apic_table->io_apic_address;
                 }
                 else if (entry->entry_type == APIC_IO_INT_SRC_OVERRIDE)
                 {

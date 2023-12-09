@@ -5,6 +5,8 @@
 #include <kernel/include/C/math.h>
 #include <kernel/include/C/typedefs.h>
 
+#include <drivers/cpu/cpu.h>
+
 #define IA32_APIC_BASE_BSP              0x100 // Processor is a BSP
 
 #define LAPIC_ID                        0x0020  // Local APIC ID
@@ -36,10 +38,10 @@
 // #define LAPIC_BASE align(0xc000a000, PAGE_SIZE)
 
 // will return amount of physical cpus
-void cpu_lapic_init(uintptr_t lapic);
-void cpu_lapic_disable();
-void cpu_lapic_out(uint32_t addr, uint32_t value);
-void cpu_lapic_set_base(uintptr_t base);
+void cpu_lapic_init(struct cpu_core *core);
+void cpu_lapic_disable(struct cpu_core *core);
+void cpu_lapic_out(struct cpu_core *core, uint32_t addr, uint32_t value);
+void cpu_lapic_set_base(struct cpu_core *core, uintptr_t base);
 
-uint32_t cpu_lapic_in(uint32_t addr);
-uintptr_t cpu_lapic_get_base();
+uint32_t cpu_lapic_in(struct cpu_core *core, uint32_t addr);
+uintptr_t cpu_lapic_get_base(struct cpu_core *core);

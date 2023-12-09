@@ -1,4 +1,4 @@
-section .bootloader.text
+section .lo_text
 
 vga_clear_screen:
     push eax

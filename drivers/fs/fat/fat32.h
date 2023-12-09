@@ -3,7 +3,6 @@
 #include <kernel/include/C/typedefs.h>
 
 #include <drivers/disks/device_wrapper.h>
-#include <drivers/fs/fs.h>
 
 struct fat32_bpb
 {
@@ -98,7 +97,7 @@ union fat32_entry
     uint8_t __[32];
 } __attribute__((packed));
 
-struct fat32
+struct fat32_info
 {
     // the target disk
     struct driver_disk disk_device;
@@ -106,18 +105,21 @@ struct fat32
     struct fat32_bpb bpb;
     struct fat32_ebr ebr;
     struct fat32_fsinfo fsinfo;
+
+    uint32_t first_data_sector;
+    uint8_t read_only;
 };
 
 enum FAT32_STATUS
 {
     FAT32_SUCCESS = 0,
-    FAT32_NOT_FAT = 1, // not a fat partition
+    FAT32_INVALID = 1, // not a fat partition
 
     FAT32_EMPTY = 2,
 };
 
-int fat32_make(struct fat32 *fat, struct driver_disk disk);
-void fat32_cleanup(struct fat32 *fat);
+int fat32_load(struct fat32_info *fat, struct driver_disk disk);
+void fat32_cleanup(struct fat32_info *fat);
 
-int fat32_parse_dir(struct fat32 *fat, uint32_t cluster);
-void fat32_long_name(struct fat32 *fat, char *buffer);
+int fat32_parse_dir(struct fat32_info *fat, uint32_t cluster);
+void fat32_long_name(struct fat32_info *fat, char *buffer);

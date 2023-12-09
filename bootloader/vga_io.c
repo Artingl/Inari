@@ -12,7 +12,7 @@
 #define PR_FP 0x80
 #define PR_BUFLEN 32
 
-BOOTL int __lower_do_printkn(const char *fmt, va_list args, int (*fn)(char, void **), void *ptr)
+LKERN int __lower_do_printkn(const char *fmt, va_list args, int (*fn)(char, void **), void *ptr)
 {
 	unsigned flags, actual_wd, count, given_wd;
 	unsigned char *where, buf[PR_BUFLEN];

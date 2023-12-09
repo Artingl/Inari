@@ -30,7 +30,7 @@
 #define MULTIBOOT_HEADER_MAGIC                  0x1BADB002
 
 /* This should be in %eax. */
-#define MULTIBOOT_BOOTLOADER_MAGIC              0x2BADB002
+#define MULTIBOOT_LKERNOADER_MAGIC              0x2BADB002
 
 /* Alignment of multiboot modules. */
 #define MULTIBOOT_MOD_ALIGN                     0x00001000

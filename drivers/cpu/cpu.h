@@ -67,37 +67,61 @@ enum {
     CPU_FEATURE_EDX_PBE          = 1 << 31
 };
 
-enum {
-    CPU_INVALID_VENDOR = 0,
+struct cpu_idt_descriptor
+{
+    uint16_t size;
+    uint32_t base;
+} __attribute__((packed));
 
-    CPU_INTEL_VENDOR = 1,
-    CPU_AMD_VENDOR = 2,
+struct cpu_idt
+{
+    unsigned short base_low;
+    unsigned short sel;
+    unsigned char zero;
+    unsigned char flags;
+    unsigned short base_high;
+} __attribute__((packed));
+
+struct cpu_core {
+    uint8_t is_bsp;
+    uint8_t ints_loaded;
+
+    int32_t lapic_id; // -1 if PIC is used
+    uintptr_t lapic_ptr; // can be used if lapic_id is set
+
+    uint32_t core_id;
+
+    struct cpu_idt_descriptor idt_desc;
+    struct cpu_idt *idt;
 };
 
-static const char *CPU_VENDOR_NAMES[] = {
-    [ CPU_INTEL_VENDOR ] = "INTEL",
-    [ CPU_AMD_VENDOR ] = "AMD",
-    [ CPU_INVALID_VENDOR ] = "INVALID",
-};
-
-void cpu_init();
+void cpu_bsp_init();
+void cpu_init_core(int id);
 void cpu_shutdown();
-void cpu_check_features();
 
-/* Tells if we're using APIC instead of PIC.
- * If false then PIC is used.
- */
+void cpu_core_alloc(struct cpu_core *core);
+void cpu_core_cleanup(struct cpu_core *core);
+
+struct cpu_core *cpu_current_core();
+struct cpu_core *cpu_get_core(int id);
+
 bool cpu_using_apic();
-
+bool cpu_ints_initialized(struct cpu_core *core);
 
 void cpu_sleep(size_t us);
 
-uint32_t cpu_features_edx();
-uint32_t cpu_features_ecx();
+uint32_t cpu_cores_count();
+uint32_t cpu_feat_edx();
+uint32_t cpu_feat_ecx();
 
-const char *cpu_vendor();
-const char *cpu_model();
+const char *cpu_get_vendor();
+const char *cpu_get_model();
 
+uintptr_t cpu_ioapic_ptr();
+uint64_t cpu_timer_freq();
 
-uint64_t __cpu_timer_freq();
-uint32_t cpu_vendor_id();
+void cpu_smp_bringup(int cores_count);
+void cpu_smp_shutdown();
+
+void cpu_idt_init(struct cpu_core *core);
+void cpu_idt_install(struct cpu_core *core, unsigned long base, uint8_t num, uint16_t sel, uint8_t flags);

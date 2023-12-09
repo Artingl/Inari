@@ -3,18 +3,18 @@
 
 #include <bootloader/lower.h>
 
-extern void *_lower_early_heap_top;
-extern void *_lower_early_heap;
-extern void *_lower_early_heap_end;
+extern void *lo_early_heap_top;
+extern void *lo_early_heap;
+extern void *lo_early_heap_end;
 
 extern void *_kernel_phys_start;
 extern void *_kernel_phys_end;
 
-extern void *_bootloader_start;
-extern void *_bootloader_end;
+extern void *_lo_start_marker;
+extern void *_lo_end_marker;
 
 
-BOOTL void early_alloc_setup(multiboot_info_t *multiboot)
+LKERN void early_alloc_setup(multiboot_info_t *multiboot)
 {
     multiboot_memory_map_t *entry;
 
@@ -44,30 +44,30 @@ BOOTL void early_alloc_setup(multiboot_info_t *multiboot)
     // align the ptr by the page size
     ptr = align(ptr, PAGE_SIZE);
 
-    *(&_lower_early_heap_top) = (void*)ptr;
-    *(&_lower_early_heap) = (void *)ptr + PAGE_SIZE;
-    *(&_lower_early_heap_end) = (void *)(ln + ptr);
+    *(&lo_early_heap_top) = (void*)ptr;
+    *(&lo_early_heap) = (void *)ptr + PAGE_SIZE;
+    *(&lo_early_heap_end) = (void *)(ln + ptr);
 }
 
-BOOTL struct early_alloc_info early_alloc_info()
+LKERN struct early_alloc_info early_alloc_info()
 {
     return (struct early_alloc_info){
-        .heap_top = *(&_lower_early_heap_top),
-        .heap = *(&_lower_early_heap),
-        .heap_end = *(&_lower_early_heap_end),
+        .heap_top = *(&lo_early_heap_top),
+        .heap = *(&lo_early_heap),
+        .heap_end = *(&lo_early_heap_end),
     };
 }
 
-BOOTL void *early_alloc(size_t length)
+LKERN void *early_alloc(size_t length)
 {
     void *mem = NULL;
 
     do
     {
-        mem = *(&_lower_early_heap);
-        *(&_lower_early_heap) += align(length, PAGE_SIZE);
+        mem = *(&lo_early_heap);
+        *(&lo_early_heap) += align(length, PAGE_SIZE);
 
-        if (mem > &_kernel_phys_end && *(&_lower_early_heap) > &_kernel_phys_end)
+        if (mem > &_kernel_phys_end && *(&lo_early_heap) > &_kernel_phys_end)
             break;
     }
     while (true);

@@ -32,7 +32,6 @@ enum {
 
 int serial_init(uint16_t port, uint32_t baud);
 uint8_t serial_read(uint16_t port);
-int serial_received(uint16_t port);
-int serial_is_transmit_empty(uint16_t port);
+void serial_write(uint16_t port, const char *ptr, size_t len);
 void serial_putc(uint16_t port, uint8_t c);
 void serial_printf(uint16_t port, const char *fmt, ...);

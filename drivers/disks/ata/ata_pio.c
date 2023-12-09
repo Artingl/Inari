@@ -13,8 +13,8 @@ struct ata_pio_drive drives[4];
 
 int ata_pio_init()
 {
-    cpu_interrupts_subscribe(&__ata_pio_primary_irq, ATA_PRIMARY_IRQ);
-    cpu_interrupts_subscribe(&__ata_pio_secondary_irq, ATA_SECONDARY_IRQ);
+    // cpu_ints_subscribe(&__ata_pio_primary_irq, ATA_PRIMARY_IRQ);
+    // cpu_ints_subscribe(&__ata_pio_secondary_irq, ATA_SECONDARY_IRQ);
 
     int master_res = ata_pio_identify(ATA_MASTER_DRIVE);
     int slave_res = ata_pio_identify(ATA_SLAVE_DRIVE);

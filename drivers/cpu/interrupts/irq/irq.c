@@ -5,7 +5,6 @@
 #include <drivers/cpu/interrupts/apic/io_apic.h>
 #include <drivers/cpu/interrupts/apic/local_apic.h>
 #include <drivers/cpu/interrupts/irq/irq.h>
-#include <drivers/cpu/interrupts/idt/idt.h>
 
 #include <kernel/include/C/string.h>
 
@@ -28,24 +27,24 @@ extern void _irq13();
 extern void _irq14();
 extern void _irq15();
 
-void cpu_irq_init()
+void cpu_irq_init(struct cpu_core *core)
 {
-    cpu_idt_install((unsigned)_irq0, 32, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq1, 33, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq2, 34, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq3, 35, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq4, 36, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq5, 37, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq6, 38, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq7, 39, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq8, 40, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq9, 41, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq10, 42, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq11, 43, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq12, 44, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq13, 45, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq14, 46, 0x08, 0x8e);
-    cpu_idt_install((unsigned)_irq15, 47, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq0, 32, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq1, 33, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq2, 34, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq3, 35, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq4, 36, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq5, 37, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq6, 38, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq7, 39, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq8, 40, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq9, 41, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq10, 42, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq11, 43, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq12, 44, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq13, 45, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq14, 46, 0x08, 0x8e);
+    cpu_idt_install(core, (unsigned)_irq15, 47, 0x08, 0x8e);
 
     spurious_interrupts = 0;
 }

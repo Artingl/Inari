@@ -7,7 +7,9 @@
 
 #include <drivers/impl.h>
 
-typedef void(*interrupt_handler_t)(struct regs32*);
+extern struct cpu_core;
+
+typedef void(*interrupt_handler_t)(struct cpu_core *, struct regs32*);
 
 struct int_subscriber
 {
@@ -15,8 +17,9 @@ struct int_subscriber
 	interrupt_handler_t handler;
 };
 
-void cpu_interrupts_init();
-void cpu_interrupts_disable();
+void cpu_ints_init();
+void cpu_ints_core_init(struct cpu_core *core);
+void cpu_ints_core_disable(struct cpu_core *core);
 
-void cpu_interrupts_unsubscribe(uint8_t int_no, int32_t id);
-int32_t cpu_interrupts_subscribe(interrupt_handler_t handler, uint8_t int_no);
+void cpu_ints_sub(int int_no, interrupt_handler_t handler);
+void cpu_ints_unsub(interrupt_handler_t handler);

@@ -3,7 +3,6 @@
 #include <drivers/cpu/interrupts/apic/local_apic.h>
 #include <drivers/cpu/interrupts/apic/io_apic.h>
 #include <drivers/cpu/acpi/acpi.h>
-#include <drivers/cpu/interrupts/idt/idt.h>
 #include <drivers/cpu/interrupts/pic/pic.h>
 #include <drivers/cpu/interrupts/irq/irq.h>
 

@@ -2,7 +2,6 @@
 
 #include <drivers/cpu/interrupts/pic/pic.h>
 #include <drivers/cpu/interrupts/irq/irq.h>
-#include <drivers/cpu/interrupts/idt/idt.h>
 #include <drivers/cpu/timers/pit.h>
 #include <drivers/cpu/interrupts/exceptions/exceptions.h>
 #include <drivers/cpu/cpu.h>

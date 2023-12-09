@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/include/C/typedefs.h>
+#include <drivers/cpu/cpu.h>
 
 #define APIC_LOCAL_PROCESSOR 0
 #define APIC_IO 1
@@ -138,4 +139,4 @@ bool cpu_acpi_loaded();
 
 uint32_t cpu_acpi_remap_irq(uint32_t irq);
 
-uint8_t cpu_acpi_load_madt(uintptr_t *lapic, uintptr_t *ioapic);
+uint8_t cpu_acpi_load_madt(struct cpu_core *cores);

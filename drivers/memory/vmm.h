@@ -43,6 +43,11 @@ uintptr_t vmm_get_phys(
     struct page_directory *directory,
     void *virtual);
 
-void vmm_init();
 
+void vmm_init();
 size_t vmm_allocated_pages();
+
+extern struct cpu_core;
+extern struct regs32;
+
+int page_fault_handler(struct cpu_core *core, struct regs32 *r);

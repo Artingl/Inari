@@ -124,6 +124,10 @@ void devfs_block_find_partitions(size_t block_id)
             }
         }
     }
+    // TODO: MBR
+    else {
+
+    }
 }
 
 void devfs_remove_node(uint32_t node_type, size_t node_index)

@@ -1,5 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/include/C/typedefs.h>
+#include <kernel/lock/spinlock.h>
 
 #include <drivers/memory/memory.h>
 #include <drivers/memory/vmm.h>
@@ -13,10 +14,14 @@
 struct page_directory *current_directory;
 struct page_directory *kernel_directory;
 
+spinlock_t vmm_spinlock;
+
 size_t pages_usage = 0;
 
-interrupt_handler_t page_fault_handler(struct regs32 *r)
+int page_fault_handler(struct cpu_core *core, struct regs32 *r)
 {
+    spinlock_create(&vmm_spinlock);
+
     // extract virtual address where page fault occurred
     uintptr_t virtual_address;
     __asm__ volatile("mov %%cr2, %0"
@@ -74,9 +79,6 @@ void vmm_init()
                 pages_usage++;
         }
     }
-
-    // install page fault handler
-    cpu_interrupts_subscribe(&page_fault_handler, PAGE_FAULT_EXCEPTION);
 }
 
 struct page_directory *vmm_current_directory()
@@ -337,12 +339,12 @@ int vmm_free_pages(
 
 int liballoc_lock()
 {
-    return 0;
+    return spinlock_acquire(&vmm_spinlock);
 }
 
 int liballoc_unlock()
 {
-    return 0;
+    return spinlock_release(&vmm_spinlock);
 }
 
 void *liballoc_alloc(int p)

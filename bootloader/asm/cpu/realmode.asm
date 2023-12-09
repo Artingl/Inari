@@ -58,7 +58,7 @@ endstruc
 %define STACK16                                (INT32_BASE - regs16_t_size)
  
  
-section .bootloader.text
+section .lo_text
     int32: use32                               ; by Napalm
     _int32:
         cli                                    ; disable interrupts

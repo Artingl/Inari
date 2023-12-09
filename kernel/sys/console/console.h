@@ -4,6 +4,11 @@
 
 #include <drivers/serial/serial.h>
 
+#define IS_UNICODE(c) (((c) & 0xc0) == 0xc0)
+
+#define CONSOLE_WIDTH  80
+#define CONSOLE_HEIGHT 30
+
 #define CONSOLE_TAB_SIZE 4
 
 #define CONSOLE_SERIAL_BAUD 9600
@@ -28,7 +33,6 @@ struct console {
 };
 
 void console_enable_heap();
-void console_update_video();
 void console_init();
 
 void console_use(struct console *console);

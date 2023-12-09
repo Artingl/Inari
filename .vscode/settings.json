@@ -8,7 +8,8 @@
         "MADT",
         "multiboot",
         "printk",
-        "RSDP"
+        "RSDP",
+        "superblocks"
     ],
     "cSpell.enabled": true,
     "files.associations": {
@@ -30,8 +31,28 @@
         "stdlib.h": "c",
         "math.h": "c",
         "fs.h": "c",
-        "device_wrapper.h": "c"
+        "device_wrapper.h": "c",
+        "fat32.h": "c",
+        "liballoc.h": "c",
+        "ext2.h": "c",
+        "vbe_drv.h": "c",
+        "io.h": "c",
+        "acpi.h": "c",
+        "local_apic.h": "c",
+        "kernel_tests.h": "c",
+        "impl.h": "c",
+        "svm.h": "c",
+        "serial.h": "c",
+        "apic_timer.h": "c",
+        "io_apic.h": "c",
+        "interrupts.h": "c",
+        "pic.h": "c",
+        "video.h": "c",
+        "irq.h": "c",
+        "stdatomic.h": "c",
+        "spinlock.h": "c",
+        "exceptions.h": "c"
     },
-    "cSpell.language": "en,ru",
+    "cSpell.language": "en,ru,en-GB",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"
 }

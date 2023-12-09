@@ -5,21 +5,21 @@
 
 #include <stdarg.h>
 
-volatile __attribute__((section(".bootloader.rodata")))
+volatile __attribute__((section(".lo_rodata")))
 uint8_t lower_vga_x = 0,
         lower_vga_y = 0;
 
-BOOTL void lower_vga_init()
+LKERN void lower_vga_init()
 {
 }
 
-BOOTL void lower_vga_print(char *msg)
+LKERN void lower_vga_print(char *msg)
 {
     lower_vga_add(MESSAGES_POOL[MSG_PREFIX]);
     lower_vga_add(msg);
 }
 
-BOOTL void lower_vga_add(char *addr)
+LKERN void lower_vga_add(char *addr)
 {
     do
     {
@@ -27,7 +27,7 @@ BOOTL void lower_vga_add(char *addr)
     } while (*addr);
 }
 
-BOOTL void lower_vga_printc(char c)
+LKERN void lower_vga_printc(char c)
 {
 
     if (c == '\n' || lower_vga_x >= 80)
@@ -52,14 +52,14 @@ BOOTL void lower_vga_printc(char c)
     lower_vga_x++;
 }
 
-BOOTL int __lower_do_printkn(const char *fmt, va_list args, int (*fn)(char, void **), void *ptr);
+LKERN int __lower_do_printkn(const char *fmt, va_list args, int (*fn)(char, void **), void *ptr);
 
-BOOTL int __lower_vga_wh(char c, void **)
+LKERN int __lower_vga_wh(char c, void **)
 {
     lower_vga_printc(c);
 }
 
-BOOTL void __lower_vga_printf_wrapper(char *fmt, ...)
+LKERN void __lower_vga_printf_wrapper(char *fmt, ...)
 {
     lower_vga_add(MESSAGES_POOL[MSG_PREFIX]);
     

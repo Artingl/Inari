@@ -5,37 +5,36 @@
 
 #include <drivers/video/video.h>
 #include <drivers/video/vbe/vbe_drv.h>
-#include <drivers/video/vga/vga_drv.h>
 #include <drivers/impl.h>
 
 #include <bootloader/lower.h>
 
-extern void *_kernel_start;
-extern void *_kernel_end;
+extern void *_hi_start_marker;
+extern void *_hi_end_marker;
 
 extern void *_kernel_phys_start;
 extern void *_kernel_phys_end;
 
-extern void *_bootloader_start;
-extern void *_bootloader_end;
+extern void *_lo_start_marker;
+extern void *_lo_end_marker;
 
-extern void *_lower_early_heap_top;
-extern void *_lower_early_heap;
-extern void *_lower_early_heap_end;
+extern void *lo_early_heap_top;
+extern void *lo_early_heap;
+extern void *lo_early_heap_end;
 
-extern void *_higher_stack_top;
-extern void *_higher_stack_bottom;
+extern void *hi_stack_top;
+extern void *hi_stack_bottom;
 
-struct page_directory core_directory __attribute__((aligned(4096), section(".bootloader.rodata")));
+struct page_directory core_directory __attribute__((aligned(4096), section(".lo_rodata")));
 
-extern void _lower_update_stack_and_jump();
+extern void lo_update_stack_and_jump();
 
-BOOTL int lower_initialize_vbe(struct vbe_block_info *vbe_block, struct vbe_mode *vbe_mode);
-BOOTL void jump_to_kernel();
+LKERN int lower_initialize_vbe(struct vbe_block_info *vbe_block, struct vbe_mode *vbe_mode);
+LKERN void jump_to_kernel();
 
 extern multiboot_info_t *_lower_multiboot_info_struct;
 
-BOOTL void _bootloader_C(multiboot_info_t *multiboot)
+LKERN void lo_kmain(multiboot_info_t *multiboot)
 {
     size_t i;
 
@@ -55,12 +54,12 @@ BOOTL void _bootloader_C(multiboot_info_t *multiboot)
     lower_vga_print(MESSAGES_POOL[MSG_IDENTIFY]);
 
     // map all necessary addresses
-    paging_ident(0, (size_t)(&_bootloader_end), PAGE_RW);
-    paging_ident((void *)*(&_lower_early_heap_top), (size_t)*(&_lower_early_heap) + PAGE_SIZE * 32, PAGE_RW);
+    paging_ident(0, (size_t)(&_lo_end_marker), PAGE_RW);
+    paging_ident((void *)*(&lo_early_heap_top), (size_t)*(&lo_early_heap) + PAGE_SIZE * 32, PAGE_RW);
 
     // mmap higher kernel
     paging_mmap(
-        &_kernel_start,
+        &_hi_start_marker,
         &_kernel_phys_start,
         (size_t)(((uintptr_t)&_kernel_phys_end) - ((uintptr_t)&_kernel_phys_start)),
         PAGE_RW);
@@ -73,17 +72,14 @@ BOOTL void _bootloader_C(multiboot_info_t *multiboot)
     bl_debug(MESSAGES_POOL[MSG_PASS_CONTROL]);
 
     // update stack pointer for the higher kernel and call function to jump to it
-    _lower_update_stack_and_jump();
+    lo_update_stack_and_jump();
 }
 
-BOOTL void jump_to_kernel()
+LKERN void jump_to_kernel()
 {
     // Setup the payload to be passed to the higher kernel
-    struct kern_video_vbe vbe_service = {.framebuffer_back = NULL};
-    struct kern_video_vga vga_service = {
-        .base = 0xb8000,
-        .rows = 80,
-        .columns = 25,
+    struct kern_video_vbe vbe_service = {
+        .framebuffer_back = NULL
     };
 
     struct kernel_payload kernel_payload = {
@@ -93,8 +89,8 @@ BOOTL void jump_to_kernel()
         .cmdline = _lower_multiboot_info_struct->cmdline,
 
         .video_service = {
-            .mode = VIDEO_VGA_TEXT,
-            .info_structure = &vga_service,
+            .mode = VIDEO_VBE,
+            .info_structure = &vbe_service,
         },
 
         .mmap = (struct kernel_mmap_entry *)_lower_multiboot_info_struct->mmap_addr,
@@ -104,7 +100,7 @@ BOOTL void jump_to_kernel()
     // Initialize higher display resolution for the kernel
     if (lower_initialize_vbe(&vbe_service.vbe_block, &vbe_service.vbe_mode) == 0)
     {
-        kernel_payload.video_service.mode = VIDEO_VBE_TEXT;
+        kernel_payload.video_service.mode = VIDEO_VBE;
         kernel_payload.video_service.info_structure = &vbe_service;
     }
 
@@ -114,7 +110,7 @@ BOOTL void jump_to_kernel()
     __asm__ volatile("hlt");
 }
 
-BOOTL int lower_initialize_vbe(
+LKERN int lower_initialize_vbe(
     struct vbe_block_info *vbe_block, struct vbe_mode *mode)
 {
     if (_lower_multiboot_info_struct->flags & MULTIBOOT_INFO_VIDEO_INFO)
@@ -210,7 +206,7 @@ BOOTL int lower_initialize_vbe(
     return 0;
 }
 
-BOOTL void paging_mmap(void *offset, void *ptr, size_t size, uint32_t flags)
+LKERN void paging_mmap(void *offset, void *ptr, size_t size, uint32_t flags)
 {
     void *initial_addr = offset;
 
@@ -226,7 +222,7 @@ BOOTL void paging_mmap(void *offset, void *ptr, size_t size, uint32_t flags)
     }
 }
 
-BOOTL void paging_ident(void *ptr, size_t size, uint32_t flags)
+LKERN void paging_ident(void *ptr, size_t size, uint32_t flags)
 {
     void *initial_addr = ptr;
 
@@ -241,7 +237,7 @@ BOOTL void paging_ident(void *ptr, size_t size, uint32_t flags)
     }
 }
 
-BOOTL struct page_table *paging_get_table(unsigned long table)
+LKERN struct page_table *paging_get_table(unsigned long table)
 {
     if (!(core_directory.tablesPhys[table] & PAGE_PRESENT))
     {
@@ -254,7 +250,7 @@ BOOTL struct page_table *paging_get_table(unsigned long table)
     return core_directory.tables[table];
 }
 
-BOOTL void switch_page(struct page_directory *dir)
+LKERN void switch_page(struct page_directory *dir)
 {
     __asm__ volatile("mov %0, %%cr3" ::"r"(&dir->tablesPhys));
     uint32_t cr0;

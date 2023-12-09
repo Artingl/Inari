@@ -2,6 +2,7 @@
 
 #include <kernel/include/C/typedefs.h>
 
+#include <drivers/cpu/cpu.h>
 #include <drivers/memory/pmm.h>
 #include <drivers/video/video.h>
 
@@ -16,25 +17,22 @@
 
 #define INARI ...
 
+#define KERN_MAX_CORES 256
+#define KERN_STACK_SIZE 0x100000
+
 #define printk(message...) __pr_wrapper(__LINE__, __FILE__, __FUNCTION__, message)
-#define kernel_assert(cond) \
-    if (!(cond))            \
-    panic("Assertion failed in %s at line %d.", __FILE__, __LINE__)
+#define kernel_assert(cond, msg) \
+    do { if (!(cond))            \
+    panic("%s: in %s at line %d", msg, __FILE__, __LINE__); } while(0)
 
-extern void *_kernel_start;
+extern void *_hi_start_marker;
 
-#define KERN_PHYS(addr) ((uintptr_t)(addr) - (uintptr_t) & _kernel_start)
+#define KERN_PHYS(addr) ((uintptr_t)(addr) - (uintptr_t) & _hi_start_marker)
 
 // wrapper for log functions
 int __pr_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...);
 
 void panic(const char *message, ...);
-
-enum
-{
-    LOCK_LOCAL = 0,
-
-};
 
 // get the kernel uptime (in MS)
 double kernel_uptime();
@@ -66,6 +64,9 @@ struct kernel_payload
 const char *kernel_root_mount_point();
 void kernel_parse_cmdline();
 void kmain(struct kernel_payload *payload);
+void ap_kmain(struct cpu_core *core);
+
+uint32_t kernel_rand();
 
 // kernel configuration at startup (provided by the bootloader)
 struct kernel_payload const *kernel_configuration();

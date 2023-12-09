@@ -1,3 +1,5 @@
+global gdt_descriptor
+
 ; GDT - Global Descriptor Table
 gdt_start:
 gdt_null:   ; Entry 1: Null entry must be included first (error check)

@@ -77,8 +77,8 @@ void pmm_init()
 extern void *_kernel_phys_start;
 extern void *_kernel_phys_end;
 
-extern void *_bootloader_start;
-extern void *_bootloader_end;
+extern void *_lo_start_marker;
+extern void *_lo_end_marker;
 
 bool __pmm_check_overlap(uintptr_t addr, size_t *offset)
 {
@@ -86,8 +86,8 @@ bool __pmm_check_overlap(uintptr_t addr, size_t *offset)
     uintptr_t kernel_end = (uintptr_t)&_kernel_phys_end;
     uintptr_t kernel_length = kernel_end - kernel_start;
 
-    uintptr_t bootloader_start = (uintptr_t)&_bootloader_start;
-    uintptr_t bootloader_end = (uintptr_t)&_bootloader_end;
+    uintptr_t bootloader_start = (uintptr_t)&_lo_start_marker;
+    uintptr_t bootloader_end = (uintptr_t)&_lo_end_marker;
     uintptr_t bootloader_length = bootloader_end - bootloader_start;
 
     size_t highest_overlap = 0, overlap = 0;
@@ -120,13 +120,15 @@ bool __pmm_check_overlap(uintptr_t addr, size_t *offset)
         if (highest_overlap < overlap)
             highest_overlap = overlap;
     }
-    if (CHECK_OVERLAP(cpu_io_apic_get_base() - PAGE_SIZE, cpu_io_apic_get_base() + PAGE_SIZE * 2, addr) ||
-             CHECK_OVERLAP(cpu_lapic_get_base(), cpu_lapic_get_base() + PAGE_SIZE * 2, addr))
-    {
-        overlap = PAGE_SIZE * 3;
-        if (highest_overlap < overlap)
-            highest_overlap = overlap;
-    }
+
+    // TODO: check overlap on LAPIC and IO/APIC for all cores
+    // if (CHECK_OVERLAP(cpu_io_apic_get_base() - PAGE_SIZE, cpu_io_apic_get_base() + PAGE_SIZE * 2, addr) ||
+    //          CHECK_OVERLAP(cpu_lapic_get_base(), cpu_lapic_get_base() + PAGE_SIZE * 2, addr))
+    // {
+    //     overlap = PAGE_SIZE * 3;
+    //     if (highest_overlap < overlap)
+    //         highest_overlap = overlap;
+    // }
 
     if (highest_overlap != 0) {
         *offset = highest_overlap;

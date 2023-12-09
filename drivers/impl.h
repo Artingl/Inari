@@ -38,6 +38,11 @@
         __set_msr(IA32_MISC_ENABLE, lo1, hi);   \
     }
 
+#define __enable_int() __asm__ volatile("sti")
+#define __disable_int() __asm__ volatile("cli")
+#define __halt() __asm__ volatile("hlt")
+#define __load_idt(descriptor) __asm__ volatile("lidt %0" :: "m"(descriptor))
+
 #define __io_wait() __outb(0x80, 0)
 
 struct regs32

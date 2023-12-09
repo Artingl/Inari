@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drivers/cpu/cpu.h>
 #include <drivers/impl.h>
 
 extern void _excp0();
@@ -77,5 +78,5 @@ static const char *EXCEPTIONS_NAMES[] = {
     [ SECURITY_EXCEPTION ] = "SECURITY_EXCEPTION",
 };
 
-void cpu_int_excp_init();
-uintptr_t cpu_int_excp_handle(struct regs32 *regs);
+void cpu_exceptions_core_init(struct cpu_core *core);
+uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs);
