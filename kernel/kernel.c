@@ -49,11 +49,11 @@ void kmain(struct kernel_payload *__payload)
     printk(KERN_INFO "Kernel virtual start: %p", &_hi_start_marker);
     printk(KERN_INFO "Kernel virtual end: %p", &_hi_end_marker);
 
-    cpu_bsp_init();
-    sys_init();
-
     // Make some small kernel tests
     kernel_make_tests();
+
+    cpu_bsp_init();
+    sys_init();
 
     // initialize drivers
     ps2_init();
@@ -90,33 +90,39 @@ void kmain(struct kernel_payload *__payload)
 
     // printk("vfs: total mount points %d", vfs_mount_points());
 
+    memory_info();
+
     int seed = 0;
-    while (1)
-    {
-        for (size_t x = 0; x < 50 && x < 800; x++)
-            for (size_t y = 0; y < 50 && y < 600; y++)
-            {
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4)) = seed >> 24;
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 1) = seed >> 24;
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 2) = seed >> 24;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 3) = 255;
-            }
-    }
+    for (size_t x = 0; x < 50 && x < 800; x++)
+        for (size_t y = 0; y < 50 && y < 600; y++)
+        {
+            seed = seed * 1664525 + 1013904223;
+            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4)) = seed >> 24;
+            seed = seed * 1664525 + 1013904223;
+            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 1) = seed >> 24;
+            seed = seed * 1664525 + 1013904223;
+            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 2) = seed >> 24;
+            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 3) = 255;
+        }
+
+    printk("Rebooting in 2 sec");
+    cpu_sleep(2000 * 1000);
+    machine_reboot();
+
     panic("kmain_high end.");
 }
 
 void ap_kmain(struct cpu_core *core)
 {
-    // cpu_init_core(core);
+    // serial_putc(SERIAL_COM0, 'A');
+    printk(KERN_INFO "booting CPU#%d", core->core_id);
+    cpu_init_core(core->core_id);
 
     int seed = 0;
     while (1)
     {
-        for (size_t x = (core->lapic_id * 50); x < (core->lapic_id * 50) + 50 && x < 800; x++)
-            for (size_t y = (core->lapic_id * 50); y < (core->lapic_id * 50) + 50 && y < 600; y++)
+        for (size_t x = (core->core_id * 50); x < (core->core_id * 50) + 50 && x < 800; x++)
+            for (size_t y = (core->core_id * 50); y < (core->core_id * 50) + 50 && y < 600; y++)
             {
                 seed = seed * 1664525 + 1013904223;
                 *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4)) = seed >> 24;

@@ -48,7 +48,7 @@ uint8_t serial_read(uint16_t port)
 
 void serial_putc(uint16_t port, uint8_t c)
 {
-    while(serial_is_transmit_empty(port) == 0);
+    while (serial_is_transmit_empty(port) == 0);
     __outb(port, c);
 }
 

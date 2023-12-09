@@ -6,6 +6,7 @@
 #include <drivers/cpu/cpu.h>
 
 #include <kernel/include/C/typedefs.h>
+#include <kernel/include/C/math.h>
 #include <kernel/multiboot.h>
 
 #include <liballoc/liballoc.h>
@@ -18,7 +19,7 @@ void memory_init()
 
 void *kmalloc(size_t length)
 {
-    return kmalloc_real(length);
+    return kmalloc_real(align(length, PAGE_SIZE));
 }
 
 void kfree(void *ptr)

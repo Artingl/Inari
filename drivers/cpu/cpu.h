@@ -2,6 +2,8 @@
 
 #include <kernel/include/C/typedefs.h>
 
+#include <drivers/memory/vmm.h>
+
 enum {
     CPU_FEATURE_ECX_SSE3         = 1 << 0, 
     CPU_FEATURE_ECX_PCLMUL       = 1 << 1,
@@ -85,14 +87,18 @@ struct cpu_idt
 struct cpu_core {
     uint8_t is_bsp;
     uint8_t ints_loaded;
+    uint8_t enabled;
 
     int32_t lapic_id; // -1 if PIC is used
     uintptr_t lapic_ptr; // can be used if lapic_id is set
 
     uint32_t core_id;
+    void *stackptr;
 
     struct cpu_idt_descriptor idt_desc;
     struct cpu_idt *idt;
+
+    struct page_directory *pd;
 };
 
 void cpu_bsp_init();
@@ -103,7 +109,7 @@ void cpu_core_alloc(struct cpu_core *core);
 void cpu_core_cleanup(struct cpu_core *core);
 
 struct cpu_core *cpu_current_core();
-struct cpu_core *cpu_get_core(int id);
+struct cpu_core *cpu_get_core(uint32_t id);
 
 bool cpu_using_apic();
 bool cpu_ints_initialized(struct cpu_core *core);

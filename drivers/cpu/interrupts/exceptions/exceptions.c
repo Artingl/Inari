@@ -61,7 +61,7 @@ void _invalid_opcode_exception_handler(struct regs32 *regs)
     printk(KERN_DEBUG "64 bytes of memory dump from eIP-16:");
 
     memcpy(&buffer[0], "0x00: 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00\0", 51);
-    for (i = (uint8_t *)regs->eip-16; i < regs->eip + 64; i++)
+    for (i = (uint8_t *)regs->eip - 16; i < regs->eip + 64; i++)
     {
         byte2str(&buffer[10 + buffer_offset * 5], *i);
 
@@ -83,24 +83,40 @@ extern int page_fault_handler(struct cpu_core *core, struct regs32 *r);
 
 uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
 {
-    if (regs->int_no == PAGE_FAULT_EXCEPTION)
+    static int32_t counter = 0;
+
+    if (counter == 0)
     {
-        page_fault_handler(core, regs);
-        return 0;
+        counter++;
+
+        if (regs->int_no == PAGE_FAULT_EXCEPTION)
+        {
+            page_fault_handler(core, regs);
+            // return 0;
+        }
+
+        printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
+        printk(KERN_ERR "\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
+        printk(KERN_ERR "\tEDI = 0x%x, ESI = 0x%x, EBP = 0x%x", regs->edi, regs->esi, regs->ebp);
+        printk(KERN_ERR "\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);
+        printk(KERN_ERR "\tECX = 0x%x, EAX = 0x%x, INT = 0x%x", regs->ecx, regs->eax, regs->int_no);
+        printk(KERN_ERR "\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
+        printk(KERN_ERR "\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
+        printk(KERN_ERR "");
+        printk(KERN_ERR "\tEIP real: %p", (unsigned long)vmm_get_phys(vmm_current_directory(), regs->eip));
+        // printk("\tTotal spurious interrupts 0x%x", cpu_irq_spurious_count());
+
+        _invalid_opcode_exception_handler(regs);
+
+        panic("-------------");
+        counter--;
+    }
+    else {
+        printk(KERN_ERR "!!! NESTED EXCEPTION");
     }
 
-    printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
-    printk(KERN_ERR "\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
-    printk(KERN_ERR "\tEDI = 0x%x, ESI = 0x%x, EBP = 0x%x", regs->edi, regs->esi, regs->ebp);
-    printk(KERN_ERR "\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);
-    printk(KERN_ERR "\tECX = 0x%x, EAX = 0x%x, INT = 0x%x", regs->ecx, regs->eax, regs->int_no);
-    printk(KERN_ERR "\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
-    printk(KERN_ERR "\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
-    printk(KERN_ERR "");
-    printk(KERN_ERR "\tEIP real: %p", (unsigned long)vmm_get_phys(vmm_current_directory(), regs->eip));
-    // printk("\tTotal spurious interrupts 0x%x", cpu_irq_spurious_count());
-
-    _invalid_opcode_exception_handler(regs);
-
-    panic("-------------");
+    while (1)
+    {
+        __asm__ volatile("cli\nhlt");
+    }
 }

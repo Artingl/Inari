@@ -37,13 +37,15 @@ ap_protected:
 
     ;; reuse lower stack for the AP based on lapic id (64 bytes of stack for each AP)
     mov esp, lo_stack_bottom
-    ; mov eax, 64
-    ; imul eax, edi
-    ; add esp, eax
+    mov eax, 64
+    imul eax, edi
+    add esp, eax
+
+    cli
+    cld
 
     push edi
-    push (0x8000 + (ap_fail - ap_trampoline))
-    jmp 0x08:lo_cpu_smp_ap_init
+    call 0x08:lo_cpu_smp_ap_init
 
 ap_fail:
     ;; We should not get here...

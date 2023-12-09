@@ -50,7 +50,7 @@ struct kernel_mmap_entry
 
 struct kernel_payload
 {
-    struct page_directory *core_directory; // core directory that is currently in use
+    struct page_directory *core_directory;
 
     const char *bootloader; // name of the bootloader
     const char *cmdline;    // kernel command line arguments
@@ -74,6 +74,7 @@ struct kernel_payload const *kernel_configuration();
 #define KERN_PAGE_PRESENT (1 << 0)
 #define KERN_PAGE_RW (1 << 1)
 #define KERN_PAGE_USR (1 << 2)
+#define KERN_PAGE_DIRTY (1 << 5)
 
 #define KERN_TABLE_PRESENT (1 << 0)
 

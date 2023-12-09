@@ -40,7 +40,7 @@
 
 #define __enable_int() __asm__ volatile("sti")
 #define __disable_int() __asm__ volatile("cli")
-#define __halt() __asm__ volatile("hlt")
+#define __halt() do { __asm__ volatile("hlt"); } while (1)
 #define __load_idt(descriptor) __asm__ volatile("lidt %0" :: "m"(descriptor))
 
 #define __io_wait() __outb(0x80, 0)
@@ -66,81 +66,17 @@ struct regs16
 
 void int32(unsigned char intnum, struct regs32 *regs);
 
-static inline void __outb(uint16_t port, uint8_t val)
-{
-    __asm__ volatile("outb %0, %1"
-                 :
-                 : "a"(val), "Nd"(port));
-}
-
-static inline void __outw(uint16_t port, uint16_t val)
-{
-    __asm__ volatile("outw %w0, %w1"
-                     :
-                     : "a"(val), "Nd"(port));
-}
-
-static inline void __outsw(unsigned short int __port, const void *__addr,
-                                unsigned long int __count)
-{
-    __asm__ __volatile__("cld ; rep ; outsw"
-                         : "=S"(__addr), "=c"(__count)
-                         : "d"(__port), "0"(__addr), "1"(__count));
-}
-
-static inline void __insw(unsigned short int __port, void *__addr, unsigned long int __count)
-{
-    __asm__ __volatile__("cld ; rep ; insw"
-                         : "=D"(__addr), "=c"(__count)
-                         : "d"(__port), "0"(__addr), "1"(__count));
-}
-
-static inline uint8_t __inb(uint16_t port)
-{
-    uint8_t ret;
-    __asm__ volatile("inb %1, %0"
-                 : "=a"(ret)
-                 : "Nd"(port));
-    return ret;
-}
-
-static inline uint16_t __inw(uint16_t port)
-{
-    uint16_t data;
-    __asm__ volatile("inw %w1, %w0"
-                     : "=a"(data)
-                     : "Nd"(port));
-    return data;
-}
-
-static inline void __get_msr(uint32_t msr, uint32_t *lo, uint32_t *hi)
-{
-    __asm__ volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
-}
-
-static inline void __set_msr(uint32_t msr, uint32_t lo, uint32_t hi)
-{
-    __asm__ volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
-}
-
-static inline void __rdtsc(uint32_t *lo, uint32_t *hi)
-{
-    __asm__ volatile("rdtsc" : "=a"(*lo), "=d"(*hi));
-}
+void __outb(uint16_t port, uint8_t val);
+void __outw(uint16_t port, uint16_t val);
+void __outsw(unsigned short int __port, const void *__addr,
+                                unsigned long int __count);
+void __insw(unsigned short int __port, void *__addr, unsigned long int __count);
+uint8_t __inb(uint16_t port);
+uint16_t __inw(uint16_t port);
+void __get_msr(uint32_t msr, uint32_t *lo, uint32_t *hi);
+void __set_msr(uint32_t msr, uint32_t lo, uint32_t hi);
+void __rdtsc(uint32_t *lo, uint32_t *hi);
 
 // tells are interrupts enabled
-static inline bool __eint()
-{
-    unsigned long flags;
-    __asm__ volatile("pushf\n\t"
-                 "pop %0"
-                 : "=g"(flags));
-    return flags & (1 << 9);
-}
-
-static inline void __cpuid(uint32_t leah, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
-{
-    __asm__ volatile("cpuid"
-                     : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
-                     : "0"(leah));
-}
+bool __eint();
+void __cpuid(uint32_t leah, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);

@@ -44,7 +44,8 @@ uint32_t kernel_rand()
 
 int __pr_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...)
 {
-    // spinlock_acquire(&kernel_spinlock);
+
+    spinlock_acquire(&kernel_spinlock);
     int c = 0, shift = 0;
     char *prefix = NULL;
     struct cpu_core *core = cpu_current_core();
@@ -112,7 +113,7 @@ int __pr_wrapper(size_t line, const char *file, const char *func, const char *fm
     c += console_printc('\n');
 
     va_end(args);
-    // spinlock_release(&kernel_spinlock);
+    spinlock_release(&kernel_spinlock);
     return c;
 }
 
@@ -125,18 +126,19 @@ double kernel_uptime()
 
 void panic(const char *message, ...)
 {
-    // spinlock_acquire(&kernel_spinlock);
+    spinlock_acquire(&kernel_spinlock);
+    struct cpu_core *core = cpu_current_core();
     va_list args;
     va_start(args, message);
-    __pr_wrapper_helper("[%f] PANIC :: ", kernel_uptime());
+    __pr_wrapper_helper("[  %f] CPU#%d/PANIC :: ", kernel_uptime(), core->core_id);
     do_printkn(message, args, &__pr_wrapper_handler, NULL);
 
     // print the NL character so the screen would update
     console_printc('\n');
     va_end(args);
 
-    cpu_shutdown();
-    // spinlock_release(&kernel_spinlock);
+    machine_halt();
+    spinlock_release(&kernel_spinlock);
 }
 
 char mount_point[256];

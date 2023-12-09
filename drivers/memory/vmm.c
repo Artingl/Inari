@@ -1,18 +1,17 @@
 #include <kernel/kernel.h>
 #include <kernel/include/C/typedefs.h>
+#include <kernel/include/C/math.h>
 #include <kernel/lock/spinlock.h>
 
 #include <drivers/memory/memory.h>
 #include <drivers/memory/vmm.h>
 #include <drivers/memory/pmm.h>
 
+#include <drivers/cpu/cpu.h>
 #include <drivers/cpu/interrupts/exceptions/exceptions.h>
 #include <drivers/cpu/interrupts/interrupts.h>
 
 #include <liballoc/liballoc.h>
-
-struct page_directory *current_directory;
-struct page_directory *kernel_directory;
 
 spinlock_t vmm_spinlock;
 
@@ -47,43 +46,76 @@ int page_fault_handler(struct cpu_core *core, struct regs32 *r)
     // panic("...");
 }
 
-void *__vmm_alloc_page_table_memory()
-{
-    return (void *)pmm_alloc_frames(1);
-}
+struct page_directory *kernel_directory;
 
 void vmm_init()
 {
     size_t pdindex, ptindex;
-    struct page_directory *core_directory = kernel_configuration()->core_directory;
-
-    current_directory = core_directory;
-    kernel_directory = core_directory;
-
-    printk(KERN_DEBUG "Core directory phys: %p", core_directory);
-
-    // identify first 4MB of phys memory
-    vmm_identity(current_directory, 0x00, 0x400000, KERN_PAGE_RW);
-
+    kernel_directory = kernel_configuration()->core_directory;
+    
     // count used pages
     for (pdindex = 0; pdindex < 1024; pdindex++)
     {
-        struct page_table *table = vmm_get_table(current_directory, pdindex, false);
+        struct page_table *table = vmm_get_table(kernel_directory, pdindex);
 
-        if (table == NULL || (current_directory->tablesPhys[pdindex] & KERN_TABLE_PRESENT) != KERN_TABLE_PRESENT)
+        if (table == NULL || (kernel_directory->tablesPhys[pdindex] & KERN_TABLE_PRESENT) != KERN_TABLE_PRESENT)
             continue;
 
         for (ptindex = 0; ptindex < 1024; ptindex++)
         {
-            if (table->pages[ptindex] & KERN_PAGE_PRESENT)
+            if ((table->pages[ptindex] & KERN_PAGE_DIRTY) != KERN_PAGE_DIRTY)
                 pages_usage++;
         }
     }
 }
 
+void vmm_page_inval()
+{
+    __asm__ volatile(
+        "movl	%cr3,%eax\n"
+        "movl	%eax,%cr3\n");
+}
+
+struct page_directory *vmm_fork_directory()
+{
+    size_t pdindex, ptindex, i = 0;
+
+    // Allocate new directory in the VM
+    struct page_directory *fork = pmm_alloc_frames(PD_SIZE);
+
+    // Copy tables from the current directory
+    for (pdindex = 0; pdindex < 1024; pdindex++)
+    {
+        fork->tablesPhys[pdindex] = ((uintptr_t)&fork->tables[pdindex]) | 3;
+
+        struct page_table *fork_table = vmm_get_table(fork, pdindex);
+        struct page_table *table = vmm_get_table(kernel_directory, pdindex);
+
+        for (ptindex = 0; ptindex < 1024; ptindex++)
+        {
+            fork_table->pages[ptindex] = table->pages[ptindex];
+        }
+    }
+
+    return fork;
+}
+
+void vmm_deallocate_directory(struct page_directory *pd)
+{
+    if (pd == NULL)
+        return;
+    pmm_free_frames(pd, PD_SIZE);
+}
+
 struct page_directory *vmm_current_directory()
 {
-    return current_directory;
+    struct cpu_core *core = cpu_current_core();
+    if (!core->enabled)
+    {
+        return kernel_directory;
+    }
+
+    return core->pd;
 }
 
 uintptr_t vmm_get_phys(
@@ -93,7 +125,7 @@ uintptr_t vmm_get_phys(
     unsigned long pdindex = (unsigned long)virtual >> 22;
     unsigned long ptindex = (unsigned long)virtual >> 12 & 0x03FF;
 
-    struct page_table *table = vmm_get_table(directory, pdindex, false);
+    struct page_table *table = vmm_get_table(directory, pdindex);
 
     if (table == NULL || (directory->tablesPhys[pdindex] & KERN_TABLE_PRESENT) != KERN_TABLE_PRESENT)
         return NULL;
@@ -103,24 +135,24 @@ uintptr_t vmm_get_phys(
 
 void kident(void *addr, size_t length, uint32_t flags)
 {
-    if (!current_directory)
+    if (!vmm_current_directory())
     {
         // We does not have any directory set for some reason...
-        panic("VMM: not current directory set (is paging enabled?).");
+        panic("vmm: no current directory set (is paging enabled?).");
     }
 
-    vmm_identity(current_directory, addr, length, flags);
+    vmm_identity(vmm_current_directory(), addr, length, flags);
 }
 
 void kunident(void *addr, size_t length)
 {
-    if (!current_directory)
+    if (!vmm_current_directory())
     {
         // We does not have any directory set for some reason...
-        panic("VMM: not current directory set (is paging enabled?).");
+        panic("vmm: no current directory set (is paging enabled?).");
     }
 
-    vmm_unident(current_directory, addr, length);
+    vmm_unident(vmm_current_directory(), addr, length);
 }
 
 size_t vmm_allocated_pages()
@@ -134,13 +166,13 @@ int kmmap(
     size_t length,
     uint32_t flags)
 {
-    if (!current_directory)
+    if (!vmm_current_directory())
     {
         // We does not have any directory set for some reason...
-        panic("VMM: not current directory set (is paging enabled?).");
+        panic("vmm: no current directory set (is paging enabled?).");
     }
 
-    return vmm_kmmap(current_directory, virtual, real, length, flags);
+    return vmm_kmmap(vmm_current_directory(), virtual, real, length, flags);
 }
 
 int vmm_kmmap(
@@ -157,7 +189,7 @@ int vmm_kmmap(
         unsigned long pdindex = (unsigned long)virtual >> 22;
         unsigned long ptindex = (unsigned long)virtual >> 12 & 0x03FF;
 
-        struct page_table *table = vmm_get_table(directory, pdindex, true);
+        struct page_table *table = vmm_get_table(directory, pdindex);
 
         table->pages[ptindex] = ((unsigned long)real) | (flags & 0xFFF) | KERN_PAGE_PRESENT;
         real += PAGE_SIZE;
@@ -179,7 +211,7 @@ void vmm_identity(
         unsigned long pdindex = (unsigned long)addr >> 22;
         unsigned long ptindex = (unsigned long)addr >> 12 & 0x03FF;
 
-        struct page_table *table = vmm_get_table(directory, pdindex, true);
+        struct page_table *table = vmm_get_table(directory, pdindex);
 
         table->pages[ptindex] = ((unsigned long)addr) | (flags & 0xFFF) | KERN_PAGE_PRESENT;
     }
@@ -197,35 +229,15 @@ void vmm_unident(
         unsigned long pdindex = (unsigned long)addr >> 22;
         unsigned long ptindex = (unsigned long)addr >> 12 & 0x03FF;
 
-        struct page_table *table = vmm_get_table(directory, pdindex, false);
+        struct page_table *table = vmm_get_table(directory, pdindex);
 
         if (table != NULL)
             table->pages[ptindex] = KERN_PAGE_RW;
     }
 }
 
-struct page_table *vmm_get_table(
-    struct page_directory *directory,
-    unsigned long table,
-    bool allocate)
-{
-    if (!(directory->tablesPhys[table] & KERN_PAGE_PRESENT) && allocate)
-    {
-        // allocate new directory
-        directory->tables[table] = __vmm_alloc_page_table_memory(sizeof(struct page_table));
-        if (directory->tables[table] == NULL)
-            panic("VMM: got invalid address (NULL) for the table while allocating it.");
-
-        directory->tablesPhys[table] = ((uintptr_t)directory->tables[table]) | 3;
-    }
-
-    // the page table is already allocated, return it
-    return directory->tables[table];
-}
-
 void vmm_switch_directory(struct page_directory *dir)
 {
-    current_directory = dir;
     __asm__ volatile("mov %0, %%cr3" ::"r"(&dir->tablesPhys));
     uint32_t cr0;
     __asm__ volatile("mov %%cr0, %0"
@@ -236,10 +248,10 @@ void vmm_switch_directory(struct page_directory *dir)
 
 void *vmm_alloc_page(size_t npages)
 {
-    if (!current_directory)
+    if (!vmm_current_directory())
     {
         // We does not have any directory set for some reason...
-        panic("VMM: not current directory set (is paging enabled?).");
+        panic("vmm: no current directory set (is paging enabled?).");
     }
 
     size_t i, j, total_size = 0;
@@ -257,7 +269,7 @@ void *vmm_alloc_page(size_t npages)
     // find available pages to use
     for (i = 0; i < 1024; i++)
     {
-        struct page_table *table = vmm_get_table(current_directory, i, true);
+        struct page_table *table = vmm_get_table(vmm_current_directory(), i);
 
         for (j = 0; j < 1024; j++)
         {
@@ -266,14 +278,14 @@ void *vmm_alloc_page(size_t npages)
                 goto found_pages;
             }
 
-            if (!(table->pages[j] & KERN_PAGE_PRESENT))
+            if (table->pages[j] & KERN_PAGE_DIRTY)
             {
                 if (total_size == 0)
                 {
                     pdoffset = i;
                     ptoffset = j;
                 }
-                total_size += 1;
+                total_size++;
             }
             else
             {
@@ -295,7 +307,7 @@ found_pages:
 
     for (; (uintptr_t)frames < (uintptr_t)(initial_frames + (PAGE_SIZE * npages)); frames += PAGE_SIZE)
     {
-        struct page_table *table = vmm_get_table(current_directory, pdoffset, true);
+        struct page_table *table = vmm_get_table(vmm_current_directory(), pdoffset);
 
         table->pages[ptoffset++] = ((unsigned long)frames) | (KERN_PAGE_RW & 0xFFF) | KERN_PAGE_PRESENT;
 
@@ -318,13 +330,13 @@ int vmm_free_pages(
     int32_t pdindex = (unsigned long)frame >> 22;
     int32_t ptindex = (unsigned long)frame >> 12 & 0x03FF;
 
-    uintptr_t physical_addr = (void *)(vmm_get_table(current_directory, pdindex, false)->pages[ptindex] & ~0xFFF);
+    uintptr_t physical_addr = (void *)(vmm_get_table(vmm_current_directory(), pdindex)->pages[ptindex] & ~0xFFF);
 
     for (i = 0; i < npages; i++)
     {
-        struct page_table *table = vmm_get_table(current_directory, pdindex, false);
+        struct page_table *table = vmm_get_table(vmm_current_directory(), pdindex);
 
-        table->pages[ptindex++] = KERN_PAGE_RW;
+        table->pages[ptindex++] |= KERN_PAGE_DIRTY;
 
         if (ptindex >= 1024)
         {
@@ -332,6 +344,8 @@ int vmm_free_pages(
             pdindex++;
         }
     }
+
+    vmm_page_inval();
 
     pages_usage -= npages;
     return pmm_free_frames((uintptr_t)physical_addr, npages);

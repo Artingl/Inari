@@ -42,7 +42,7 @@ run_debug: build_kernel
 	qemu-system-x86_64 -smp 4 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
 run_debug_serial: build_kernel
-	qemu-system-x86_64 -smp 4 -m 4G -serial stdio -no-shutdown -no-reboot -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
+	qemu-system-x86_64 -smp 4 -m 4G -serial stdio -no-shutdown -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
 run_embeded: build_kernel
 	sudo cp target/grub/kernel /var/www/html/

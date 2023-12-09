@@ -31,12 +31,12 @@ void pmm_init()
     struct kernel_payload const *payload = kernel_configuration();
     struct kernel_mmap_entry *mmap;
 
-    printk(KERN_DEBUG "PMM: memory maps base = %p, len = %d", (unsigned int)payload->mmap, payload->mmap_length);
-    printk(KERN_DEBUG "PMM: page_frame_t base = %p, size = %x", (unsigned int)&frames_pool[0], (unsigned int)sizeof(frames_pool));
+    printk(KERN_DEBUG "pmm: memory maps base = %p, len = %d", (unsigned int)payload->mmap, payload->mmap_length);
+    printk(KERN_DEBUG "pmm: page_frame_t base = %p, size = %x", (unsigned int)&frames_pool[0], (unsigned int)sizeof(frames_pool));
 
     memset(&frames_pool[0], 0, sizeof(frames_pool));
 
-    printk("PMM: making frames");
+    printk("pmm: making frames");
     for (i = 0; i < payload->mmap_length; i++)
     {
         mmap = &payload->mmap[i];
@@ -58,9 +58,11 @@ void pmm_init()
             // check for overlaps
             if (__pmm_check_overlap(addr, &offset))
             {
-                printk(KERN_DEBUG "PMM: memory overlap: base = %p, size = %p, type = %p. Starting form offset %p",
+                printk(KERN_DEBUG "pmm: memory overlap: base = %p, size = %p, type = %p. Starting form offset %p",
                        (unsigned int)addr, (unsigned int)len, (unsigned int)mmap->type, (unsigned int)offset);
             }
+
+            offset = align(offset, PAGE_SIZE);
 
             // allocate frames for found available memory
             for (
@@ -90,6 +92,13 @@ bool __pmm_check_overlap(uintptr_t addr, size_t *offset)
     uintptr_t bootloader_end = (uintptr_t)&_lo_end_marker;
     uintptr_t bootloader_length = bootloader_end - bootloader_start;
 
+    if (addr < kernel_end)
+    {
+        *offset = kernel_end;
+        return true;
+    }
+
+#if 0
     size_t highest_overlap = 0, overlap = 0;
 
     // we need to get consumed memory by the bootloader,
@@ -136,6 +145,7 @@ bool __pmm_check_overlap(uintptr_t addr, size_t *offset)
     }
 
     return false;
+#endif
 }
 
 uintptr_t pmm_alloc_frames(size_t nframes)
@@ -144,7 +154,7 @@ uintptr_t pmm_alloc_frames(size_t nframes)
     if (frames_used + nframes >= frames_pool_size)
     {
         // no memory left
-        printk(KERN_WARNING "PMM: No physical memory left!");
+        panic("pmm: No physical memory left!");
         return (uintptr_t)NULL;
     }
 
@@ -168,7 +178,7 @@ uintptr_t pmm_alloc_frames(size_t nframes)
         }
     }
 
-    printk(KERN_WARNING "PMM: No available contiguous blocks were found (nframes = %d).", nframes);
+    panic(KERN_WARNING "pmm: No available contiguous blocks were found (nframes = %d).", nframes);
     return (uintptr_t)NULL;
 
 found_frames:
@@ -179,7 +189,7 @@ found_frames:
     }
 
     if (frames_pool[i].base == NULL)
-        panic("PMM: Found NULL frame known as available.");
+        panic("pmm: Found NULL frame known as available.");
 
     frames_used += nframes;
     return frames_pool[i].base;

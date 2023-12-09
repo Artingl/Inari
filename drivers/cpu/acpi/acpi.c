@@ -1,5 +1,6 @@
 #include <kernel/kernel.h>
 
+#include <drivers/impl.h>
 #include <drivers/cpu/acpi/acpi.h>
 #include <drivers/cpu/cpu.h>
 
@@ -103,7 +104,7 @@ struct XSDT *cpu_acpi_root_sdt()
         panic("ACPI not initalized!");
     return root_sdt;
 }
-bool cpu_acpi_shutdown()
+bool cpu_acpi_poweroff()
 {
     printk(KERN_WARNING "Shutdown ACPI feature is not implemented!");
     return false;
@@ -111,7 +112,22 @@ bool cpu_acpi_shutdown()
 
 bool cpu_acpi_reboot()
 {
-    printk(KERN_WARNING "Reboot ACPI feature is not implemented!");
+    // Call reset command
+    ACPI_ITERATE(idx, pointer, {
+        if (memcmp(pointer->signature, "FACP", 4) == 0)
+        {
+            struct FADT *fadt = (struct MADT *)pointer;
+
+            // try to output a byte
+            __outb(fadt->reset_reg.address, fadt->reset_value);
+
+            // try to make mmap call
+            uint8_t *reg = (uint8_t *)((uintptr_t)fadt->reset_reg.address);
+            *reg = fadt->reset_value;
+        }
+    })
+
+    printk(KERN_WARNING "Unable to call ACPI reset command");
     return false;
 }
 

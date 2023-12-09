@@ -32,9 +32,10 @@ char cpu_model[49];
 
 void cpu_bsp_init()
 {
-    memset(0, &cores, sizeof(cores));
-
     size_t i;
+    memset(0, &cores, sizeof(cores));
+    for (i = 0; i < KERN_MAX_CORES; i++)
+        cores[i].core_id = i;
 
     cpu_timer_ticks = 0;
     cpu_ioapic = NULL;
@@ -79,7 +80,6 @@ void cpu_bsp_init()
 
     if (!(cpu_features_edx & CPU_FEATURE_EDX_FPU))
         panic("CPU does not support FPU");
-    
 
     // initialize interrupts
     __disable_int();
@@ -91,18 +91,25 @@ void cpu_bsp_init()
     {
         cpu_count = cpu_acpi_load_madt(&cores);
     }
-    else {
+    else
+    {
         cores[0].lapic_id = -1;
         cpu_count = 1;
+        cpu_max_count = 1;
     }
 
 #ifdef CONFIG_CPU_NOAPIC
     cores[0].lapic_id = -1;
     cpu_count = 1;
+    cpu_max_count = 1;
 #endif
 
     if (cpu_count > KERN_MAX_CORES)
         panic("Reached maximum amount of CPU cores (KERN_MAX_CORES)");
+
+    // Allocate all necessary things for the cores
+    for (i = 0; i < cpu_count; i++)
+        cpu_core_alloc(&cores[i]);
 
     // Init BSP core
     cpu_init_core(0);
@@ -122,7 +129,7 @@ void cpu_bsp_init()
         // Init and IO/APIC and remap IRQs
         cpu_io_apic_init(cpu_ioapic_ptr());
         cpu_irq_apic_remap();
-        
+
         // Bringup all other CPU cores
         if (cpu_count > 1)
         {
@@ -150,6 +157,22 @@ void cpu_core_alloc(struct cpu_core *core)
     // Allocate IDT if it is null
     if (core->idt == NULL)
         core->idt = kmalloc(sizeof(struct cpu_idt) * 256);
+
+    // Set other flags and allocate page directory
+    if (core->core_id == 0)
+    {
+        extern void hi_stack_bottom();
+
+        core->stackptr = &hi_stack_bottom;
+        core->is_bsp = 1;
+    }
+    else
+    {
+        core->stackptr = kmalloc(KERN_STACK_SIZE);
+    }
+
+    core->pd = vmm_fork_directory();
+    core->enabled = 0;
 }
 
 void cpu_core_cleanup(struct cpu_core *core)
@@ -159,21 +182,29 @@ void cpu_core_cleanup(struct cpu_core *core)
     {
         kfree(core->idt);
     }
+
+    if (core->core_id != 0)
+    {
+        if (core->stackptr != NULL)
+            kfree(core->stackptr);
+    }
+
+    if (core->pd != NULL)
+        vmm_deallocate_directory(core->pd);
+        
+    core->enabled = 0;
 }
 
 void cpu_init_core(int id)
 {
     struct cpu_core *core = &cores[id];
-
-    cpu_core_alloc(core);
-
-    if (id == 0)
-        core->is_bsp = 1;
+    vmm_switch_directory(core->pd);
 
     // Initialize interrupts for the core
     cpu_ints_core_init(core);
 
     // ...
+    core->enabled = 1;
 }
 
 void cpu_idt_init(struct cpu_core *core)
@@ -212,18 +243,10 @@ void cpu_shutdown()
     }
 
     cpu_smp_shutdown();
-
-    // halt or reboot if possible
-    if (!cpu_acpi_reboot())
-    {
-        printk(KERN_NOTICE "The system is going to be halted NOW!");
-        __halt();
-    }
 }
 
 // we need to tell the compiler not to optimize the function, because then it will mess up while loop
-__attribute__((optimize("O0")))
-void cpu_sleep(size_t us)
+__attribute__((optimize("O0"))) void cpu_sleep(size_t us)
 {
     double start = kernel_uptime();
     double now = start;
@@ -237,10 +260,10 @@ struct cpu_core *cpu_current_core()
 {
     uint32_t _0, _1, ebx, _2;
     __cpuid(1, &_0, &ebx, &_1, &_2);
-    return cpu_get_core(ebx << 24);
+    return cpu_get_core(ebx >> 24);
 }
 
-struct cpu_core *cpu_get_core(int id)
+struct cpu_core *cpu_get_core(uint32_t id)
 {
     if (cpu_max_count <= id)
     {
@@ -259,10 +282,10 @@ uint32_t cpu_cores_count()
 
 bool cpu_using_apic()
 {
-    #ifdef CONFIG_CPU_NOAPIC
-        return 0;
-    #endif
-    
+#ifdef CONFIG_CPU_NOAPIC
+    return 0;
+#endif
+
     return cpu_features_edx & CPU_FEATURE_EDX_APIC && !cpu_pic_is_enabled();
 }
 

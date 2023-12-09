@@ -55,7 +55,6 @@ lo_update_stack_and_jump:
     mov esp, hi_stack_bottom
     call jump_to_kernel
 
-
 section .lo_bss
 global _lower_multiboot_info_struct
     _lower_multiboot_info_struct: dq 0

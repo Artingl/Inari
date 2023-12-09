@@ -36,7 +36,8 @@ extern multiboot_info_t *_lower_multiboot_info_struct;
 
 LKERN void lo_kmain(multiboot_info_t *multiboot)
 {
-    size_t i;
+    size_t i, j;
+    uintptr_t addr = 0;
 
     lower_vga_init();
     early_alloc_setup(multiboot);
@@ -44,10 +45,13 @@ LKERN void lo_kmain(multiboot_info_t *multiboot)
     lower_vga_print(MESSAGES_POOL[MSG_FILLING]);
 
     // Allocate all page tables, so we'd not need to make page table allocator for the kernel
-    for (i = 0; i < 1024; i++)
-    {
-        // core_directory.tablesPhys[i] = PAGE_RW;
-        paging_get_table(i);
+    for (i = 0; i < 1024; i++) {
+        core_directory.tablesPhys[i] = ((uintptr_t)&core_directory.tables[i]) | 3;
+
+        for (j = 0; j < 1024; j++) {
+            core_directory.tables[i].pages[j] = ((unsigned long)addr) | ((1 << 1) & 0xFFF) | (1 << 0) | (1 << 5);
+            addr += 0x1000;
+        }
     }
 
     lower_vga_add(MESSAGES_POOL[MSG_DONE]);
@@ -239,15 +243,15 @@ LKERN void paging_ident(void *ptr, size_t size, uint32_t flags)
 
 LKERN struct page_table *paging_get_table(unsigned long table)
 {
-    if (!(core_directory.tablesPhys[table] & PAGE_PRESENT))
-    {
-        // allocate new directory
-        core_directory.tables[table] = early_alloc(sizeof(struct page_table));
-        core_directory.tablesPhys[table] = ((uintptr_t)core_directory.tables[table]) | 3; // PRESENT, RW
-    }
+    // if (!(core_directory.tablesPhys[table] & PAGE_PRESENT))
+    // {
+    //     // allocate new directory
+    //     core_directory.tables[table] = early_alloc(sizeof(struct page_table));
+    //     core_directory.tablesPhys[table] = ((uintptr_t)core_directory.tables[table]) | 3; // PRESENT, RW
+    // }
 
     // the page table is already allocated, return it
-    return core_directory.tables[table];
+    return &core_directory.tables[table];
 }
 
 LKERN void switch_page(struct page_directory *dir)
