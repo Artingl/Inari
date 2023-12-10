@@ -36,7 +36,7 @@ void cpu_ints_core_init(struct cpu_core *core)
     else
     {
         cpu_lapic_init(core);
-        // cpu_atimer_init(core);
+        cpu_atimer_init(core);
     }
 #endif
 
@@ -95,9 +95,10 @@ void cpu_ints_unsub(interrupt_handler_t handler)
     }
 }
 
-uintptr_t __isr_handler(struct regs32 *regs)
+uintptr_t isr_handler(struct regs32 *regs)
 {
     uint32_t i;
+    void *ret;
     uintptr_t result = NULL;
     struct cpu_core *core = cpu_current_core();
 
@@ -108,7 +109,10 @@ uintptr_t __isr_handler(struct regs32 *regs)
     {
         if (interrupts_subs[i].occupied && regs->int_no == interrupts_subs[i].int_no)
         {
-            interrupts_subs[i].handler(core, regs);
+            if ((ret = interrupts_subs[i].handler(core, regs)) != NULL)
+            {
+                result = (uintptr_t)ret;
+            }
         }
     }
 

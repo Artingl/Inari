@@ -178,7 +178,7 @@ uintptr_t pmm_alloc_frames(size_t nframes)
         }
     }
 
-    panic(KERN_WARNING "pmm: No available contiguous blocks were found (nframes = %d).", nframes);
+    panic("pmm: No available contiguous blocks were found (nframes = %d).", nframes);
     return (uintptr_t)NULL;
 
 found_frames:

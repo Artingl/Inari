@@ -9,8 +9,7 @@ Simple kernel written for x86 architecture (with potential support for x86-64).
  - [ ] Maybe userland someday?
  - [ ] Maybe some decades later implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it's sooo messy right now).
  - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
- - [ ] Bring up all physical processors.
- - [ ] Locking mechanisms.
+ - [ ] We cannot run more than 3 APs.
  - [ ] Rewrite kernel's "std" lib at kernel/include/C/...
 
 ## Building

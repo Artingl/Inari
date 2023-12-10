@@ -9,7 +9,7 @@
 
 extern struct cpu_core;
 
-typedef void(*interrupt_handler_t)(struct cpu_core *, struct regs32*);
+typedef void*(*interrupt_handler_t)(struct cpu_core*, struct regs32*);
 
 struct int_subscriber
 {

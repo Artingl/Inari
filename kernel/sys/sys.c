@@ -8,4 +8,5 @@ void sys_init()
     printk(KERN_INFO "Initializing sys modules.");
 
     sys_kb_init();
+    // kernel_assert(devfs_init() == DEVFS_SUCCESS, "devfs init failed");
 }

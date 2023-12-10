@@ -111,11 +111,15 @@ void cpu_bsp_init()
     for (i = 0; i < cpu_count; i++)
         cpu_core_alloc(&cores[i]);
 
+    if (cpu_using_apic())
+    {
+        // Init and IO/APIC and remap IRQs
+        cpu_io_apic_init(cpu_ioapic_ptr());
+        cpu_irq_apic_remap();
+    }
+
     // Init BSP core
     cpu_init_core(0);
-
-    // TODO: initialize PIT anyway since we didn't implement apic timer yet
-    cpu_pit_init();
 
     // show features info
     if (cpu_features_edx & CPU_FEATURE_EDX_SSE2)
@@ -123,20 +127,12 @@ void cpu_bsp_init()
     if (cpu_features_edx & CPU_FEATURE_EDX_SSE)
         printk(KERN_DEBUG "CPU does support SSE");
 
-    // Check if we're using apic
-    if (cpu_using_apic())
+    // Bringup all other CPU cores if we're using apic
+    if (cpu_using_apic() && cpu_count > 1)
     {
-        // Init and IO/APIC and remap IRQs
-        cpu_io_apic_init(cpu_ioapic_ptr());
-        cpu_irq_apic_remap();
-
-        // Bringup all other CPU cores
-        if (cpu_count > 1)
-        {
-            cpu_max_count = cpu_count;
-            cpu_count = 1;
-            cpu_smp_bringup(cpu_max_count);
-        }
+        cpu_max_count = cpu_count;
+        cpu_count = 1;
+        cpu_smp_bringup(cpu_max_count);
     }
 
     // print info
@@ -191,7 +187,7 @@ void cpu_core_cleanup(struct cpu_core *core)
 
     if (core->pd != NULL)
         vmm_deallocate_directory(core->pd);
-        
+
     core->enabled = 0;
 }
 

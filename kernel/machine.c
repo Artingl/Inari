@@ -1,11 +1,13 @@
 #include <kernel/kernel.h>
 #include <kernel/machine.h>
+#include <kernel/scheduler/scheduler.h>
 
 #include <drivers/cpu/acpi/acpi.h>
 #include <drivers/cpu/cpu.h>
 
 void machine_reboot()
 {
+    scheduler_shutdown();
     cpu_shutdown();
 
     // try to reboot using ACPI
@@ -25,6 +27,7 @@ void machine_reboot()
 
 void machine_poweroff()
 {
+    scheduler_shutdown();
     cpu_shutdown();
 
     // try to poweroff using ACPI
@@ -38,7 +41,9 @@ void machine_poweroff()
 
 void machine_halt()
 {
+    scheduler_shutdown();
     cpu_shutdown();
+
     printk(KERN_NOTICE "The system is going to be halted NOW!");
     __halt();
 }

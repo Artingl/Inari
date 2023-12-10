@@ -59,6 +59,9 @@ struct regs16
     unsigned short gs, fs, es, ds, eflags;
 } __attribute__((packed));
 
+typedef struct regs32 regs32_t;
+typedef struct regs16 regs16_t;
+
 #define LNG_PTR(seg, off) ((seg << 4) | off)
 #define REAL_PTR(arr) LNG_PTR((arr)[1], (arr)[0])
 #define SEG(addr) ((((uint32_t)addr) >> 4) & 0xF000)

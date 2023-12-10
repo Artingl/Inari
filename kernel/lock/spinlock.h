@@ -9,6 +9,7 @@ typedef struct spinlock {
     uint32_t count;
 } spinlock_t;
 
-int spinlock_create(spinlock_t *lock);
+int spinlock_init(spinlock_t *lock);
 int spinlock_acquire(spinlock_t *lock);
+int spinlock_trylock(spinlock_t *lock);
 int spinlock_release(spinlock_t *lock);

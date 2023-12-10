@@ -20,7 +20,7 @@
 #define KERN_MAX_CORES 256
 #define KERN_STACK_SIZE 0x100000
 
-#define printk(message...) __pr_wrapper(__LINE__, __FILE__, __FUNCTION__, message)
+#define printk(message...) printk_wrapper(__LINE__, __FILE__, __FUNCTION__, message)
 #define kernel_assert(cond, msg) \
     do { if (!(cond))            \
     panic("%s: in %s at line %d", msg, __FILE__, __LINE__); } while(0)
@@ -30,7 +30,7 @@ extern void *_hi_start_marker;
 #define KERN_PHYS(addr) ((uintptr_t)(addr) - (uintptr_t) & _hi_start_marker)
 
 // wrapper for log functions
-int __pr_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...);
+int printk_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...);
 
 void panic(const char *message, ...);
 
@@ -65,8 +65,6 @@ const char *kernel_root_mount_point();
 void kernel_parse_cmdline();
 void kmain(struct kernel_payload *payload);
 void ap_kmain(struct cpu_core *core);
-
-uint32_t kernel_rand();
 
 // kernel configuration at startup (provided by the bootloader)
 struct kernel_payload const *kernel_configuration();

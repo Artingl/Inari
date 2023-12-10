@@ -76,11 +76,11 @@ void cpu_smp_bringup(int cores_count)
     do
     {
         initialized = 1;
-        for (i = 0; i < cpu_count; i++) {
+        for (i = 0; i < cores_count; i++) {
             if (cpu_get_core(i)->enabled)
                 initialized++;
         }
-    } while(initialized < cpu_count);
+    } while(initialized < cores_count);
 }
 
 // AP lower init function that should enable paging, initialize proper stack and jump to the main kernel at +3GB
@@ -105,8 +105,7 @@ void lo_cpu_smp_ap_init(uint32_t _, uint32_t lapic_id)
     while (ap_lock)
         ;
 
-    // Right now we share the same stack as other APs (32 bytes away from each other)
-    // so we need to change tge esp
+    // Right now we share the same stack as other APs (64 bytes away from each other) so we need to change the esp
     __asm__ volatile(
         "mov %0, %%esp\n"
         "call .new_stack\n"

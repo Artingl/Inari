@@ -11,6 +11,8 @@
 #include <drivers/serial/serial.h>
 #include <drivers/ps2/ps2.h>
 
+#include <kernel/scheduler/scheduler.h>
+#include <kernel/scheduler/thread.h>
 #include <kernel/sys/console/console.h>
 #include <kernel/sys/devfs/devfs.h>
 #include <kernel/sys/disks/disks.h>
@@ -26,8 +28,7 @@ __attribute__((section(".lo_text"))) struct kernel_payload payload;
 extern void *_hi_start_marker;
 extern void *_hi_end_marker;
 
-void kernel_impl();
-void __setup_virtualization();
+void kernel_scheduled(void*);
 
 void kmain(struct kernel_payload *__payload)
 {
@@ -37,7 +38,6 @@ void kmain(struct kernel_payload *__payload)
 
     memcpy(&payload, __payload, sizeof(struct kernel_payload));
 
-    kernel_impl();
     console_init();
     memory_init();
     memory_info();
@@ -53,89 +53,92 @@ void kmain(struct kernel_payload *__payload)
     kernel_make_tests();
 
     cpu_bsp_init();
+    scheduler_init();
     sys_init();
 
     // initialize drivers
     ps2_init();
 
-    // kernel_assert(devfs_init() == DEVFS_SUCCESS, "devfs init failed");
-
     // parse cmdline to initialize the kernel itself
-    // kernel_parse_cmdline();
+    kernel_parse_cmdline();
 
+#if 0
     // mount the root
-    // mount_point = kernel_root_mount_point();
-    // if (mount_point == NULL)
-    //     panic("kernel: unspecified mount point.");
+    mount_point = kernel_root_mount_point();
+    if (mount_point == NULL)
+        panic("kernel: unspecified mount point.");
 
-    // block_device = devfs_get_node(mount_point);
-    // if (block_device == NULL)
-    //     panic("kernel: block device '%s' not found.", mount_point);
+    block_device = devfs_get_node(mount_point);
+    if (block_device == NULL)
+        panic("kernel: block device '%s' not found.", mount_point);
 
-    // disk = alloc_disk(block_device);
-    // kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS, "vfs init failed");
+    disk = alloc_disk(block_device);
+    kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS, "vfs init failed");
 
-    // struct vfs_directory *dir = vfs_opendir("/");
-    // struct vfs_entry *entry;
+    struct vfs_directory *dir = vfs_opendir("/");
+    struct vfs_entry *entry;
 
-    // if (dir)
-    // {
-    //     while ((entry = vfs_readdir(dir)))
-    //     {
-    //         printk("%s", entry->entry_path);
-    //     }
+    if (dir)
+    {
+        while ((entry = vfs_readdir(dir)))
+        {
+            printk("%s", entry->entry_path);
+        }
 
-    //     vfs_closedir(dir);
-    // }
+        vfs_closedir(dir);
+    }
 
-    // printk("vfs: total mount points %d", vfs_mount_points());
+    printk("vfs: total mount points %d", vfs_mount_points());
+#endif
 
     memory_info();
 
-    int seed = 0;
-    for (size_t x = 0; x < 50 && x < 800; x++)
-        for (size_t y = 0; y < 50 && y < 600; y++)
-        {
-            seed = seed * 1664525 + 1013904223;
-            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4)) = seed >> 24;
-            seed = seed * 1664525 + 1013904223;
-            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 1) = seed >> 24;
-            seed = seed * 1664525 + 1013904223;
-            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 2) = seed >> 24;
-            *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 3) = 255;
-        }
+    thread_t th0;
+    thread_init(&th0, NULL, &kernel_scheduled);
+    thread_start(&th0);
 
-    printk("Rebooting in 2 sec");
-    cpu_sleep(2000 * 1000);
-    machine_reboot();
+    thread_t th1;
+    thread_init(&th1, NULL, &kernel_scheduled);
+    thread_start(&th1);
 
-    panic("kmain_high end.");
+    // Run scheduler for the core
+    scheduler_enter(cpu_current_core());
 }
 
 void ap_kmain(struct cpu_core *core)
 {
-    // serial_putc(SERIAL_COM0, 'A');
     printk(KERN_INFO "booting CPU#%d", core->core_id);
     cpu_init_core(core->core_id);
+    printk(KERN_INFO "CPU#%d is alive!", core->core_id);
 
-    int seed = 0;
-    while (1)
-    {
-        for (size_t x = (core->core_id * 50); x < (core->core_id * 50) + 50 && x < 800; x++)
-            for (size_t y = (core->core_id * 50); y < (core->core_id * 50) + 50 && y < 600; y++)
-            {
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4)) = seed >> 24;
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 1) = seed >> 24;
-                seed = seed * 1664525 + 1013904223;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 2) = seed >> 24;
-                *((uint8_t *)0xfd000000 + y * (800 * 4) + (x * 4) + 3) = 255;
-            }
-    }
+    // Run scheduler for the core
+    scheduler_enter(cpu_current_core());
 }
 
 struct kernel_payload const *kernel_configuration()
 {
     return &payload;
+}
+
+extern double cpu_timer_ticks;
+
+double kernel_uptime()
+{
+    return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
+}
+
+void kernel_scheduled(void*)
+{
+    // for (volatile size_t i = 0; i < 10; i++)
+    //     printk("%d", i);
+
+    thread_t *th = thread_self();
+
+    printk("Hello from scheduler %d!", th->tid);
+    
+    // thread_kill(th, 0);
+    volatile int f = 0;
+    while (1) {
+        f ++;
+    }
 }

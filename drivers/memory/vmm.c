@@ -19,7 +19,7 @@ size_t pages_usage = 0;
 
 int page_fault_handler(struct cpu_core *core, struct regs32 *r)
 {
-    spinlock_create(&vmm_spinlock);
+    spinlock_init(&vmm_spinlock);
 
     // extract virtual address where page fault occurred
     uintptr_t virtual_address;

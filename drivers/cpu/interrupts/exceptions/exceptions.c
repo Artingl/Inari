@@ -84,6 +84,16 @@ extern int page_fault_handler(struct cpu_core *core, struct regs32 *r);
 uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
 {
     static int32_t counter = 0;
+    printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
+
+    // if exception is not critical, just return
+    switch (regs->int_no)
+    {
+        case BREAKPOINT_EXCEPTION:
+            return;
+        case DEBUG_EXCEPTION:
+            return;
+    }
 
     if (counter == 0)
     {
@@ -95,7 +105,6 @@ uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
             // return 0;
         }
 
-        printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
         printk(KERN_ERR "\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
         printk(KERN_ERR "\tEDI = 0x%x, ESI = 0x%x, EBP = 0x%x", regs->edi, regs->esi, regs->ebp);
         printk(KERN_ERR "\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);

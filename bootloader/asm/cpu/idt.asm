@@ -141,101 +141,101 @@ _irq0:
 	cli
 	push byte 0
 	push byte 32
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq1
 _irq1:
 	cli
 	push byte 0
 	push byte 33
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq2
 _irq2:
 	cli
 	push byte 0
 	push byte 34
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq3
 _irq3:
 	cli
 	push byte 0
 	push byte 35
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq4
 _irq4:
 	cli
 	push byte 0
 	push byte 36
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq5
 _irq5:
 	cli
 	push byte 0
 	push byte 37
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq6
 _irq6:
 	cli
 	push byte 0
 	push byte 38
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq7
 _irq7:
 	cli
 	push byte 0
 	push byte 39
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq8
 _irq8:
 	cli
 	push byte 0
 	push byte 40
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq9
 _irq9:
 	cli
 	push byte 0
 	push byte 41
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq10
 _irq10:
 	cli
 	push byte 0
 	push byte 42
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq11
 _irq11:
 	cli
 	push byte 0
 	push byte 43
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq12
 _irq12:
 	cli
 	push byte 0
 	push byte 44
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq13
 _irq13:
 	cli
 	push byte 0
 	push byte 45
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq14
 _irq14:
 	cli
 	push byte 0
 	push byte 46
-	jmp idt_common_stub
+	jmp isr_excp_stub
 global _irq15
 _irq15:
 	cli
 	push byte 0
 	push byte 47
-	jmp idt_common_stub
+	jmp isr_excp_stub
 
 
-extern __isr_handler
-idt_common_stub:
+extern isr_handler
+isr_excp_stub:
 	pusha
 	push ds
 	push es
@@ -249,7 +249,7 @@ idt_common_stub:
 	mov eax, esp
 	push eax
 	; Call the C kernel hardware interrupt handler
-	mov eax, __isr_handler
+	mov eax, isr_handler
 	call eax
 	pop eax
 	pop gs
@@ -260,11 +260,9 @@ idt_common_stub:
 	add esp, 8
 	iret
 
-; extern __excp_test
+; extern 
 
-excp_return: dq 0
-
-extern __isr_handler
+extern isr_handler
 idt_excp_stub:
 	pusha
 	push ds
@@ -279,9 +277,8 @@ idt_excp_stub:
 	mov eax, esp
 	push eax
 	; Call the C kernel hardware interrupt handler
-	mov eax, __isr_handler
+	mov eax, isr_handler
 	call eax
-	mov dword [excp_return], eax
 	pop eax
 	pop gs
 	pop fs
@@ -289,8 +286,4 @@ idt_excp_stub:
 	pop ds
 	popa
 	add esp, 8
-
-	add esp, 4
-	push dword [excp_return]
-
 	iretd
