@@ -6,7 +6,7 @@
 
 #include <stdarg.h>
 
-spinlock_t prink_spinlock = {0};
+static volatile spinlock_t prink_spinlock = {0};
 
 int do_printf_handler(char c, void **)
 {

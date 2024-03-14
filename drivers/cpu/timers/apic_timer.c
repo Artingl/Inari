@@ -8,48 +8,43 @@
 #include <drivers/cpu/cpu.h>
 #include <drivers/impl.h>
 
-interrupt_handler_t __apic_timer_irq(struct regs32 *regs);
+interrupt_handler_t apic_timer_irq(struct cpu_core *core, struct regs32 *regs);
 
 void pit_early_prepare_sleep(size_t us);
 void pit_early_sleep_disable();
 void pit_early_sleep();
 
 extern double cpu_timer_ticks;
-uint32_t elapsed_ticks = 0;
 
 void cpu_atimer_init(struct cpu_core *core)
 {
-    if (core->core_id != 0)
-        return;
-
     // set divider
     cpu_lapic_out(core, LAPIC_TDCR, APIC_TIMER_DIV);
 
-    if (elapsed_ticks == 0)
-    {
-        // prepare sleep using PIT for 10ms to use it later
-        pit_early_prepare_sleep(10000);
+    // prepare sleep using PIT for 10ms to use it later
+    pit_early_prepare_sleep(10000);
 
-        // set initial counter for the APIC Timer (-1)
-        cpu_lapic_out(core, LAPIC_TICR, 0xFFFFFFFF);
+    // set initial counter for the APIC Timer (-1)
+    cpu_lapic_out(core, LAPIC_TICR, 0xFFFFFFFF);
 
-        // sleep for a bit, stop the timer and get elapsed ticks
-        pit_early_sleep();
-        cpu_lapic_out(core, LAPIC_TIMER, APIC_TIMER_DISABLE);
+    // sleep for a bit, stop the timer and get elapsed ticks
+    __enable_int();
+    pit_early_sleep();
+    __disable_int();
+    cpu_lapic_out(core, LAPIC_TIMER, APIC_TIMER_DISABLE);
 
-        elapsed_ticks = 0xFFFFFFFF - cpu_lapic_in(core, LAPIC_TCCR);
+    core->apic_timer_ticks = 0xFFFFFFFF - cpu_lapic_in(core, LAPIC_TCCR);
 
-        // disable PIT
-        pit_early_sleep_disable();
-    }
+    // disable PIT
+    pit_early_sleep_disable();
 
-    // start the time on IRQ 0 (32nd interrupt), set divider
+    printk(KERN_DEBUG "apic_timer#%d: 10ms elapsed ticks: %u", core->core_id, core->apic_timer_ticks);
+
+    // start the timer
+    cpu_ints_sub(INTERRUPT_TIMER, &apic_timer_irq);
     cpu_lapic_out(core, LAPIC_TIMER, INTERRUPT_TIMER | APIC_TIMER_TMR_PERIODIC);
     cpu_lapic_out(core, LAPIC_TDCR, APIC_TIMER_DIV);
-    cpu_lapic_out(core, LAPIC_TICR, (elapsed_ticks * 1000) / INTERRUPT_TIMER_SPEED);
-
-    // cpu_ints_subscribe_core(core, &__apic_timer_irq, INTERRUPT_TIMER);
-    printk(KERN_DEBUG "APIC Timer elapsed ticks in 10ms: %u", elapsed_ticks);
+    cpu_lapic_out(core, LAPIC_TICR, (core->apic_timer_ticks * 1000) / INTERRUPT_TIMER_SPEED);
 }
 
 void cpu_atimer_disable(struct cpu_core *core)
@@ -57,7 +52,8 @@ void cpu_atimer_disable(struct cpu_core *core)
     // todo
 }
 
-interrupt_handler_t __apic_timer_irq(struct regs32 *regs)
+interrupt_handler_t apic_timer_irq(struct cpu_core *core, struct regs32 *regs)
 {
-    cpu_timer_ticks++;
+    if (core->is_bsp)
+        cpu_timer_ticks++;
 }

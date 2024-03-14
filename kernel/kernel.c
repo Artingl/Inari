@@ -92,27 +92,25 @@ void kmain(struct kernel_payload *__payload)
 #endif
 
     memory_info();
+    printk("HELLO!\n");
 
-    thread_t th0;
-    thread_init(&th0, NULL, &kernel_scheduled);
-    thread_start(&th0);
+    // thread_t ths[128];
+    // for (size_t i = 0; i < 128; i++) {
+    //     thread_init(&ths[i], NULL, &kernel_scheduled);
+    //     // thread_start(&ths[i]);
+    // }
 
-    thread_t th1;
-    thread_init(&th1, NULL, &kernel_scheduled);
-    thread_start(&th1);
+    // // Run scheduler for the core
+    // scheduler_enter(cpu_current_core());
 
-    // Run scheduler for the core
-    scheduler_enter(cpu_current_core());
+    while (1) {}
 }
 
 void ap_kmain(struct cpu_core *core)
 {
-    printk(KERN_INFO "booting CPU#%d", core->core_id);
-    cpu_init_core(core->core_id);
-    printk(KERN_INFO "CPU#%d is alive!", core->core_id);
-
-    // Run scheduler for the core
-    scheduler_enter(cpu_current_core());
+    // scheduler_enter(core);
+    printk("HELLO!\n");
+    while (1) {}
 }
 
 struct kernel_payload const *kernel_configuration()
@@ -127,14 +125,21 @@ double kernel_uptime()
     return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
 }
 
-void kernel_scheduled(void*)
+volatile void kernel_scheduled(void*)
 {
     // for (volatile size_t i = 0; i < 10; i++)
     //     printk("%d", i);
 
     thread_t *th = thread_self();
 
-    printk("Hello from scheduler %d!", th->tid);
+    for (volatile size_t i = 0; i < 32; i++)
+    {}
+        // printk("Hello from thread %d!", th->tid);
+    printk("done %d", th->tid);
+
+    // for (volatile size_t i = 0; i < 0xffffff;i++);
+    // printk("done %d", th->tid);
+    // machine_reboot();
     
     // thread_kill(th, 0);
     volatile int f = 0;

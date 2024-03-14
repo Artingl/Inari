@@ -7,7 +7,8 @@
 
 interrupt_handler_t pit_irq(struct cpu_core *core, struct regs32 *regs);
 
-double divider;
+volatile double divider;
+volatile double irq_ticks;
 extern double cpu_timer_ticks;
 
 static inline void pit_send_cmd(uint8_t cmd)
@@ -41,6 +42,7 @@ static inline void pit_set_div(uint16_t div)
 void cpu_pit_init()
 {
     cpu_timer_ticks = 0;
+    irq_ticks = 0;
     cpu_ints_sub(INTERRUPT_TIMER, &pit_irq);
     pit_set_div(INTERRUPT_TIMER_SPEED);
 }
@@ -69,22 +71,18 @@ uint32_t cpu_pit_read()
 
 interrupt_handler_t pit_irq(struct cpu_core *core, struct regs32 *regs)
 {
-    // pit expects interrupts only from the BSP
     if (!core->is_bsp)
-        return;
-
-    cpu_timer_ticks++;
+        cpu_timer_ticks++;
+    irq_ticks++;
 }
 
 // we need to tell the compiler not to optimize these functions, because then it will mess up some of them
-double __pit_prepare_us;
-bool __pit_prepare_interrupts;
+volatile double pit_early_us;
 
 void __attribute__((optimize("O0"))) pit_early_prepare_sleep(size_t us)
 {
-    cpu_timer_ticks = 0;
-    __pit_prepare_interrupts = !__eint();
-    __pit_prepare_us = ((double)us) / 1000000.0f * INTERRUPT_TIMER_SPEED;
+    irq_ticks = 0;
+    pit_early_us = ((double)us) / 1000000.0f * INTERRUPT_TIMER_SPEED;
 
     cpu_ints_sub(INTERRUPT_TIMER, &pit_irq);
     pit_set_div(INTERRUPT_TIMER_SPEED);
@@ -92,19 +90,13 @@ void __attribute__((optimize("O0"))) pit_early_prepare_sleep(size_t us)
 
 void __attribute__((optimize("O0"))) pit_early_sleep_disable()
 {
-    if (__pit_prepare_interrupts)
-        __disable_int();
-
     cpu_pit_disable();
-    __pit_prepare_interrupts = false;
 }
 
 void __attribute__((optimize("O0"))) pit_early_sleep()
 {
-    if (__pit_prepare_interrupts)
-        __enable_int();
-    double start = cpu_timer_ticks;
+    volatile double start = cpu_timer_ticks;
     
-    while (start + __pit_prepare_us > cpu_timer_ticks)
+    while (start + pit_early_us > irq_ticks)
     {}
 }

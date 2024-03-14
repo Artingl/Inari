@@ -144,8 +144,6 @@ void cpu_bsp_init()
     printk(KERN_INFO "\tIs a VM: %s", (cpu_features_ecx & CPU_FEATURE_ECX_VMX ? "yes" : "no"));
     printk(KERN_INFO "\tfeatures (ecx): 0x%x", cpu_features_ecx);
     printk(KERN_INFO "\tfeatures (edx): 0x%x", cpu_features_edx);
-
-    __enable_int();
 }
 
 void cpu_core_alloc(struct cpu_core *core)
@@ -201,12 +199,14 @@ void cpu_init_core(int id)
 
     // ...
     core->enabled = 1;
+    __enable_int();
 }
 
 void cpu_idt_init(struct cpu_core *core)
 {
     core->idt_desc.size = (sizeof(struct cpu_idt) * 256) - 1;
     core->idt_desc.base = (uintptr_t)core->idt;
+    printk("IDT: %p", (unsigned long)core->idt);
     __load_idt(core->idt_desc);
 }
 

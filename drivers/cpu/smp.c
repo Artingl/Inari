@@ -98,7 +98,11 @@ void lo_cpu_smp_ap_init(uint32_t _, uint32_t lapic_id)
     cr0 |= 0x80000000;
     __asm__ volatile("mov %0, %%cr0" ::"r"(cr0));
 
+    printk(KERN_INFO "smp: booting CPU#%d", cpu_current_core()->core_id);
     printk(KERN_DEBUG "smp: stack=%p, pd=%p", (unsigned long)cpu_current_core()->stackptr, (unsigned long)cpu_current_core()->pd);
+
+    // Initialize the core
+    cpu_init_core(cpu_current_core()->core_id);
 
     ap_flag = 0;
     cpu_count++;

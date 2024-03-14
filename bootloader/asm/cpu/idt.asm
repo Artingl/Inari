@@ -258,6 +258,7 @@ isr_excp_stub:
 	pop ds
 	popa
 	add esp, 8
+	sti
 	iret
 
 ; extern 
@@ -286,4 +287,5 @@ idt_excp_stub:
 	pop ds
 	popa
 	add esp, 8
+	sti
 	iretd

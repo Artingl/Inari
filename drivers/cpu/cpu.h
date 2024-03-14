@@ -91,6 +91,7 @@ struct cpu_core {
 
     int32_t lapic_id; // -1 if PIC is used
     uintptr_t lapic_ptr; // can be used if lapic_id is set
+    uint32_t apic_timer_ticks;
 
     uint32_t core_id;
     void *stackptr;

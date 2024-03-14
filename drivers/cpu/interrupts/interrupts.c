@@ -1,5 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/include/C/string.h>
+#include <kernel/scheduler/scheduler.h>
 
 #include <drivers/impl.h>
 #include <drivers/cpu/cpu.h>
@@ -36,7 +37,10 @@ void cpu_ints_core_init(struct cpu_core *core)
     else
     {
         cpu_lapic_init(core);
+        if (core->is_bsp) {
         cpu_atimer_init(core);
+        cpu_pit_disable();
+        }
     }
 #endif
 
@@ -102,19 +106,8 @@ uintptr_t isr_handler(struct regs32 *regs)
     uintptr_t result = NULL;
     struct cpu_core *core = cpu_current_core();
 
-    __disable_int();
-
-    // send events to subscribed functions
-    for (i = 0; i < 256; i++)
-    {
-        if (interrupts_subs[i].occupied && regs->int_no == interrupts_subs[i].int_no)
-        {
-            if ((ret = interrupts_subs[i].handler(core, regs)) != NULL)
-            {
-                result = (uintptr_t)ret;
-            }
-        }
-    }
+    if (!core->is_bsp)
+        printk("!!! %d", regs->int_no);
 
     if (regs->int_no < 32)
     { // exceptions
@@ -131,6 +124,22 @@ uintptr_t isr_handler(struct regs32 *regs)
         cpu_lapic_out(core, LAPIC_EOI, 0x0);
     }
 
-    __enable_int();
+    // send events to subscribed functions
+    for (i = 0; i < 256; i++)
+    {
+        if (interrupts_subs[i].occupied && regs->int_no == interrupts_subs[i].int_no)
+        {
+            if ((ret = interrupts_subs[i].handler(core, regs)) != NULL)
+            {
+                result = (uintptr_t)ret;
+            }
+        }
+    }
+
+    // call scheduler if the interrupt is from the timer
+    if (regs->int_no == INTERRUPT_TIMER) {
+        scheduler_handler(core, regs);
+    }
+
     return result;
 }

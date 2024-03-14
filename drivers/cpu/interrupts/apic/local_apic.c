@@ -31,7 +31,7 @@ void cpu_lapic_init(struct cpu_core *core)
     cpu_lapic_set_base(core, core->lapic_ptr);
     cpu_lapic_out(core, LAPIC_SVR, 0x100 | 0xff);
 
-    printk(KERN_INFO "lapic: core %d ptr: %p", core->lapic_id, (unsigned long)core->lapic_ptr);
+    printk(KERN_DEBUG "lapic: core %d ptr: %p", core->lapic_id, (unsigned long)core->lapic_ptr);
 }
 
 uintptr_t cpu_lapic_get_base(struct cpu_core *core)

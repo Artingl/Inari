@@ -1,4 +1,4 @@
-cflags = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387
+cflags = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387 -Wno-return-mismatch -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-implicit-function-declaration
 
 CC = $(HOME)/opt/cross/bin/i386-elf-gcc
 LD = $(HOME)/opt/cross/bin/i386-elf-ld
@@ -14,7 +14,8 @@ build_asm_bootloader:
 	mkdir -p build/bootloader/asm && \
 	nasm -f elf32 bootloader/asm/bootloader.asm -o build/bootloader/asm/bootloader.o && \
 	nasm -f elf32 bootloader/asm/cpu/smp.asm -o build/bootloader/asm/smp.o && \
-	nasm -f elf32 bootloader/asm/cpu/realmode.asm -o build/bootloader/asm/realmode.o
+	nasm -f elf32 bootloader/asm/cpu/realmode.asm -o build/bootloader/asm/realmode.o && \
+	nasm -f elf32 bootloader/asm/cpu/scheduler.asm -o build/bootloader/asm/scheduler.o
 
 drivers_source := $(shell find drivers/ -name *.c)
 drivers_objects := $(patsubst drivers/%.c, build/drivers/%.o, $(drivers_source))
@@ -49,7 +50,7 @@ run_embeded: build_kernel
 
 build_kernel: build_asm_bootloader $(bootloader_objects) $(drivers_objects) $(kernel_objects)
 	$(MAKE) -C liballoc compile && \
-	$(LD) -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/smp.o build/bootloader/asm/realmode.o $(bootloader_objects) \
+	$(LD) -T inari.ld -m elf_i386 -n build/bootloader/asm/bootloader.o build/bootloader/asm/scheduler.o build/bootloader/asm/smp.o build/bootloader/asm/realmode.o $(bootloader_objects) \
 								  liballoc/liballoc.o $(drivers_objects) $(kernel_objects) -o build/Inari && \
 	cp build/Inari target/grub/kernel && \
 	grub-mkrescue -o boot.iso target/grub
