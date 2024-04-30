@@ -6,7 +6,7 @@
 #include <kernel/lock/spinlock.h>
 #include <kernel/scheduler/thread.h>
 
-extern struct scheduler_task;
+struct scheduler_task;
 
 struct scheduler {
     volatile bool alive;

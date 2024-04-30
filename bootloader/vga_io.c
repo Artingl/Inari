@@ -1,5 +1,6 @@
 #include <stdarg.h>
 
+#include <kernel/include/C/string.h>
 #include <bootloader/lower.h>
 
 #define PR_LJ 0x01

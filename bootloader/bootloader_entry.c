@@ -1,6 +1,7 @@
 #include <kernel/kernel.h>
 
 #include <kernel/include/C/typedefs.h>
+#include <kernel/include/C/string.h>
 #include <kernel/include/C/math.h>
 
 #include <drivers/video/video.h>
@@ -36,44 +37,48 @@ extern multiboot_info_t *_lower_multiboot_info_struct;
 
 LKERN void lo_kmain(multiboot_info_t *multiboot)
 {
-    size_t i, j;
+    size_t i = 0, j = 0;
     uintptr_t addr = 0;
 
     lower_vga_init();
     early_alloc_setup(multiboot);
 
-    lower_vga_print(MESSAGES_POOL[MSG_FILLING]);
+    lower_vga_print((char*)MESSAGES_POOL[MSG_FILLING]);
 
-    // Allocate all page tables, so we'd not need to make page table allocator for the kernel
+    // Initialize core directory and allocate page tables
+    for (i = 0; i < sizeof(core_directory); i++)
+    {
+        *(((uint8_t*)&core_directory) + i) = 0;
+    }
+
     for (i = 0; i < 1024; i++) {
         core_directory.tablesPhys[i] = ((uintptr_t)&core_directory.tables[i]) | 3;
-
         for (j = 0; j < 1024; j++) {
-            core_directory.tables[i].pages[j] = ((unsigned long)addr) | ((1 << 1) & 0xFFF) | (1 << 0) | (1 << 5);
-            addr += 0x1000;
+            core_directory.tables[i].pages[j] = ((unsigned long)addr) | (KERN_PAGE_RW & 0xFFF) | KERN_PAGE_PRESENT;
+            addr += PAGE_SIZE;
         }
     }
 
-    lower_vga_add(MESSAGES_POOL[MSG_DONE]);
-    lower_vga_print(MESSAGES_POOL[MSG_IDENTIFY]);
+
+    lower_vga_add((char*)MESSAGES_POOL[MSG_DONE]);
+    lower_vga_print((char*)MESSAGES_POOL[MSG_IDENTIFY]);
 
     // map all necessary addresses
-    paging_ident(0, (size_t)(&_lo_end_marker), PAGE_RW);
-    paging_ident((void *)*(&lo_early_heap_top), (size_t)*(&lo_early_heap) + PAGE_SIZE * 32, PAGE_RW);
+    paging_ident(0, (size_t)(&_lo_end_marker), KERN_PAGE_RW);
+    paging_ident((void *)*(&lo_early_heap_top), (size_t)*(&lo_early_heap) + PAGE_SIZE * 32, KERN_PAGE_RW);
 
     // mmap higher kernel
     paging_mmap(
         &_hi_start_marker,
         &_kernel_phys_start,
         (size_t)(((uintptr_t)&_kernel_phys_end) - ((uintptr_t)&_kernel_phys_start)),
-        PAGE_RW);
+        KERN_PAGE_RW);
 
-    lower_vga_add(MESSAGES_POOL[MSG_DONE]);
+    lower_vga_add((char*)MESSAGES_POOL[MSG_DONE]);
 
     // enable paging
     switch_page(&core_directory);
-
-    bl_debug(MESSAGES_POOL[MSG_PASS_CONTROL]);
+    bl_debug((char*)MESSAGES_POOL[MSG_PASS_CONTROL]);
 
     // update stack pointer for the higher kernel and call function to jump to it
     lo_update_stack_and_jump();
@@ -83,14 +88,14 @@ LKERN void jump_to_kernel()
 {
     // Setup the payload to be passed to the higher kernel
     struct kern_video_vbe vbe_service = {
-        .framebuffer_back = NULL
+        .framebuffer_back = (uint32_t)NULL
     };
 
     struct kernel_payload kernel_payload = {
         .core_directory = &core_directory,
 
-        .bootloader = _lower_multiboot_info_struct->boot_loader_name,
-        .cmdline = _lower_multiboot_info_struct->cmdline,
+        .bootloader = (char*)_lower_multiboot_info_struct->boot_loader_name,
+        .cmdline = (char*)_lower_multiboot_info_struct->cmdline,
 
         .video_service = {
             .mode = VIDEO_VBE,
@@ -111,7 +116,9 @@ LKERN void jump_to_kernel()
     // call the higher kernel
     kmain(&kernel_payload);
 
-    __asm__ volatile("hlt");
+    do {
+        __asm__ volatile("hlt");
+    } while (1);
 }
 
 LKERN int lower_initialize_vbe(
@@ -121,8 +128,8 @@ LKERN int lower_initialize_vbe(
     { // multiboot has set up VBE for us. no need to do this manually
         mode->mode_id = _lower_multiboot_info_struct->vbe_mode;
 
-        memcpy(vbe_block, _lower_multiboot_info_struct->vbe_control_info, sizeof(struct vbe_block_info));
-        memcpy(&mode->info, _lower_multiboot_info_struct->vbe_mode_info, sizeof(struct vbe_mode_info));
+        memcpy(vbe_block, (void*)_lower_multiboot_info_struct->vbe_control_info, sizeof(struct vbe_block_info));
+        memcpy(&mode->info, (void*)_lower_multiboot_info_struct->vbe_mode_info, sizeof(struct vbe_mode_info));
 
         return 0;
     }
@@ -135,7 +142,7 @@ LKERN int lower_initialize_vbe(
         struct regs16 r;
         r.ax = VBE_BIOS_INFO;
         r.es = 0x8000;
-        r.di = vbe_block;
+        r.di = (unsigned long)(uintptr_t)vbe_block;
         int32(0x10, &r);
 
         if (r.ax != 0x4f)
@@ -221,7 +228,7 @@ LKERN void paging_mmap(void *offset, void *ptr, size_t size, uint32_t flags)
 
         struct page_table *table = paging_get_table(pdindex);
 
-        table->pages[ptindex] = ((unsigned long)ptr) | (flags & 0xFFF) | PAGE_PRESENT;
+        table->pages[ptindex] = ((unsigned long)ptr) | (flags & 0xFFF) | KERN_PAGE_PRESENT | KERN_PAGE_USED;
         ptr += PAGE_SIZE;
     }
 }
@@ -237,7 +244,7 @@ LKERN void paging_ident(void *ptr, size_t size, uint32_t flags)
 
         struct page_table *table = paging_get_table(pdindex);
 
-        table->pages[ptindex] = ((unsigned long)ptr) | (flags & 0xFFF) | PAGE_PRESENT;
+        table->pages[ptindex] = ((unsigned long)ptr) | (flags & 0xFFF) | KERN_PAGE_PRESENT | KERN_PAGE_USED;
     }
 }
 

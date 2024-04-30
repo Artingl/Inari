@@ -1,4 +1,4 @@
-cflags = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387 -Wno-return-mismatch -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-implicit-function-declaration
+cflags = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387 -Werror -Wno-stringop-overflow
 
 CC = $(HOME)/opt/cross/bin/i386-elf-gcc
 LD = $(HOME)/opt/cross/bin/i386-elf-ld
@@ -36,17 +36,11 @@ clean:
 	$(MAKE) -C liballoc clean && \
 	mkdir build
 
-run_debug_virtd: build_kernel
-	virsh --connect qemu:///session reset vm1
+test: build_kernel
+	qemu-system-x86_64 -smp 4 -m 2G -monitor stdio -d int -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
-run_debug: build_kernel
-	qemu-system-x86_64 -smp 4 -m 4G -monitor stdio -d int -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
-
-run_debug_serial: build_kernel
-	qemu-system-x86_64 -smp 4 -m 4G -serial stdio -no-shutdown -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
-
-run_embeded: build_kernel
-	sudo cp target/grub/kernel /var/www/html/
+test_serial: build_kernel
+	qemu-system-x86_64 -smp 4 -m 2G -serial stdio -no-shutdown -no-reboot -boot d -cdrom boot.iso -drive file=dummy_gpt.img,format=raw -device VGA
 
 build_kernel: build_asm_bootloader $(bootloader_objects) $(drivers_objects) $(kernel_objects)
 	$(MAKE) -C liballoc compile && \

@@ -70,7 +70,7 @@ size_t devfs_add_node(
         path,
         &nodes_list->nodes[node_index].path[0]);
 
-    printk(KERN_INFO "devfs: added node '%s' with type %d at index %d",
+    printk("devfs: added node '%s' with type %d at index %d",
            nodes_list->nodes[node_index].path, node->driver_type, node_index);
 
     return node_index;
@@ -317,7 +317,7 @@ int devfs_parse_disks()
 
         for (i = 0; i < 4; i++)
         {
-            ata_drive = &ata_drives[i];
+            ata_drive = (struct ata_pio_drive*)&ata_drives[i];
 
             // the driver successfully initialized the drive
             if (ata_drive->present)

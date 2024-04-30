@@ -28,7 +28,7 @@
         {                                                                           \
             struct SDT *ptr;                                                        \
             if (sdp->revision == 2)                                                 \
-                ptr = (struct SDT *)(root_sdt->sdt_pointers[idx]);                  \
+                ptr = (struct SDT *)(uintptr_t)(root_sdt->sdt_pointers[idx]);       \
             else                                                                    \
                 ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]); \
             kident(ptr, PAGE_SIZE, KERN_PAGE_RW);                                   \

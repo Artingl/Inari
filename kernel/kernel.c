@@ -30,6 +30,15 @@ extern void *_hi_end_marker;
 
 void kernel_scheduled(void*);
 
+// !!! STACK DEBUG
+#define STACK() { \
+    register int espr __asm__("esp"); \
+    extern int hi_stack_bottom; \
+    uintptr_t l = vmm_get_phys(vmm_current_directory(), (void*)espr), u = (uintptr_t)(&hi_stack_bottom); \
+    printk("STACKDEBUG: %p %p, %p", (unsigned long)l, (unsigned long)u, (unsigned long)(u - l)); \
+    printk("HALT!!!"); \
+    __halt();}
+
 void kmain(struct kernel_payload *__payload)
 {
     const char *mount_point;
@@ -40,20 +49,24 @@ void kmain(struct kernel_payload *__payload)
 
     console_init();
     memory_init();
-    memory_info();
-    console_enable_heap();
-    video_init();
+    cpu_bsp_init();
 
-    printk(KERN_INFO "Inari kernel (x86, %s)", payload.bootloader);
-    printk(KERN_INFO "Kernel cmdline: %s", payload.cmdline);
-    printk(KERN_INFO "Kernel virtual start: %p", &_hi_start_marker);
-    printk(KERN_INFO "Kernel virtual end: %p", &_hi_end_marker);
+    // Initialize the debugger
+    kernel_initialize_gdb();
 
     // Make some small kernel tests
     kernel_make_tests();
 
-    cpu_bsp_init();
-    scheduler_init();
+    console_enable_heap();
+    video_init();
+
+    console_clear();
+    printk("Inari kernel (x86, %s)", payload.bootloader);
+    printk("Kernel cmdline: %s", payload.cmdline);
+    printk("Kernel virtual start: %p", &_hi_start_marker);
+    printk("Kernel virtual end: %p", &_hi_end_marker);
+
+    // scheduler_init();
     sys_init();
 
     // initialize drivers
@@ -61,6 +74,11 @@ void kmain(struct kernel_payload *__payload)
 
     // parse cmdline to initialize the kernel itself
     kernel_parse_cmdline();
+
+    while(1) {
+        printk("test");
+        cpu_sleep(1000 * 1000);
+    }
 
 #if 0
     // mount the root
@@ -91,8 +109,8 @@ void kmain(struct kernel_payload *__payload)
     printk("vfs: total mount points %d", vfs_mount_points());
 #endif
 
-    memory_info();
-    printk("HELLO!\n");
+    // memory_info();
+    // printk("HELLO!\n");
 
     // thread_t ths[128];
     // for (size_t i = 0; i < 128; i++) {
@@ -103,7 +121,7 @@ void kmain(struct kernel_payload *__payload)
     // // Run scheduler for the core
     // scheduler_enter(cpu_current_core());
 
-    while (1) {}
+    // while (1) {}
 }
 
 void ap_kmain(struct cpu_core *core)
@@ -125,7 +143,7 @@ double kernel_uptime()
     return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
 }
 
-volatile void kernel_scheduled(void*)
+void kernel_scheduled(void*)
 {
     // for (volatile size_t i = 0; i < 10; i++)
     //     printk("%d", i);

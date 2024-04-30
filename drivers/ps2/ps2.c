@@ -18,16 +18,16 @@ uint16_t __ps2_key_map[] = {
     KB_KP_4, KB_KP_5, KB_KP_6, KB_KP_ADD, KB_KP_1, KB_KP_2, KB_KP_3, KB_KP_0, KB_KP_DECIMAL,
     0, 0, 0, KB_F11, KB_F12, 0, 0, 0, 0};
 
-interrupt_handler_t ps2_handler(struct regs32 *regs);
+void ps2_handler(struct cpu_core *core, struct regs32 *regs);
 
 void ps2_init()
 {
     // uncomment line in the IRQ APIC remap
-    printk(KERN_INFO "Loading PS2 driver");
+    printk("ps2: subscribing IRQs");
     cpu_ints_sub(INTERRUPT_PS2, &ps2_handler);
 }
 
-interrupt_handler_t ps2_handler(struct regs32 *regs)
+void ps2_handler(struct cpu_core *core, struct regs32 *regs)
 {
     uint8_t c = __inb(PS2_PORT);
 

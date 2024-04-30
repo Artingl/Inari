@@ -52,15 +52,16 @@ void serial_putc(uint16_t port, uint8_t c)
     __outb(port, c);
 }
 
-void __serial_printf_handler(char c, void **p)
-{
-    serial_putc(**((uint16_t**)p), c);
-}
-
 void serial_write(uint16_t port, const char *ptr, size_t len)
 {
     for (size_t i = 0; i < len; i++)
         serial_putc(port, *(ptr++));
+}
+
+int __serial_printf_handler(char c, void **p)
+{
+    serial_putc(**((uint16_t**)p), c);
+    return 0;
 }
 
 void serial_printf(uint16_t port, const char *fmt, ...)

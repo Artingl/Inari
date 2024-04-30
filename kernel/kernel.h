@@ -6,13 +6,8 @@
 #include <drivers/memory/pmm.h>
 #include <drivers/video/video.h>
 
-#define KERN_CRIT "0"
-#define KERN_ERR "1"
-#define KERN_WARNING "2"
-#define KERN_NOTICE "3"
-#define KERN_INFO "4"
-#define KERN_DEBUG "5"
-#define KERN_TODO "6"
+#define KERN_ERR "0"
+#define KERN_WARNING "1"
 #define KERN_DEFAULT ""
 
 #define INARI ...
@@ -74,6 +69,9 @@ struct kernel_payload const *kernel_configuration();
 #define KERN_PAGE_USR (1 << 2)
 #define KERN_PAGE_DIRTY (1 << 5)
 
+// CUSTOM BIT
+#define KERN_PAGE_USED (1 << 10)
+
 #define KERN_TABLE_PRESENT (1 << 0)
 
 #define PAGE_SIZE 0x1000
@@ -97,3 +95,5 @@ void *kmalloc(size_t length);
 void kfree(void *ptr);
 void *krealloc(void *ptr, size_t size);
 void *kcalloc(size_t n, size_t size);
+
+int kernel_initialize_gdb();

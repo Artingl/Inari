@@ -29,16 +29,17 @@ interrupt_handler_t scheduler_handler(struct cpu_core *core, struct regs32 *regs
 
 void scheduler_init()
 {
+    printk("scheduler: initializing");
     running_tasks = 0;
     task_idx = 0;
 
-    memset(0, &scheds[0], sizeof(scheds));
-    spinlock_init(&sched_spinlock);
+    // memset(0, &scheds[0], sizeof(scheds));
+    // spinlock_init(&sched_spinlock);
 }
 
 void scheduler_shutdown()
 {
-    memset(0, &scheds[0], sizeof(scheds));
+    memset((void*)&scheds[0], 0, sizeof(scheds));
     scheduler_state = 0;
 }
 
@@ -51,7 +52,7 @@ void scheduler_switch(struct cpu_core *core, struct regs32 *regs)
 {
     if (!core->is_bsp)
     {
-        regs->eip = &scheduler_sleep;
+        regs->eip = (uint32_t)&scheduler_sleep;
         return;
     }
 
@@ -136,7 +137,7 @@ typedef struct context {
     }
     else
     {
-        regs->eip = &scheduler_sleep;
+        regs->eip = (uint32_t)&scheduler_sleep;
     }
 }
 
@@ -147,7 +148,7 @@ struct scheduler_task *scheduler_current()
 
 void scheduler_enter(struct cpu_core *core)
 {
-    printk(KERN_INFO "sched: CPU#%d is now running", core->core_id);
+    printk("sched: CPU[%d] is now running", core->core_id);
     scheds[core->core_id].alive = true;
     while (scheds[core->core_id].alive)
     {
@@ -160,12 +161,12 @@ void scheduler_task_init(struct scheduler_task *task)
     if (task == NULL)
         return;
 
-    memset(0, &task->regs, sizeof(regs32_t));
+    memset((void*)&task->regs, 0, sizeof(regs32_t));
 
     // Allocate stack for the thread
     // TODO: do this dynamically
-    task->regs.esp = kmalloc(KERN_STACK_SIZE);
-    task->regs.eip = task->thread->entry;
+    task->regs.esp = (uint32_t)kmalloc(KERN_STACK_SIZE);
+    task->regs.eip = (uint32_t)task->thread->entry;
     task->regs.ds = 0x10;
     task->regs.es = 0x10;
     task->regs.fs = 0x10;
@@ -177,7 +178,7 @@ void scheduler_task_cleanup(struct scheduler_task *task)
     if (task == NULL)
         return;
 
-    kfree(task->regs.esp);
+    kfree((void*)task->regs.esp);
 }
 
 int scheduler_append(struct thread *thread)

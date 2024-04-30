@@ -52,25 +52,25 @@ static inline void byte2str(char *buffer, uint8_t num)
 
 void _invalid_opcode_exception_handler(struct regs32 *regs)
 {
-    uint8_t *i;
+    uintptr_t i;
     size_t buffer_offset = 0;
     uint8_t offs = 0;
     char buffer[51];
 
-    printk(KERN_DEBUG "The eIP at which the exception occurred: %p", (unsigned long)regs->eip);
-    printk(KERN_DEBUG "64 bytes of memory dump from eIP-16:");
+    printk("The eIP at which the exception occurred: %p", (unsigned long)regs->eip);
+    printk("64 bytes of memory dump from eIP-16:");
 
     memcpy(&buffer[0], "0x00: 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00\0", 51);
-    for (i = (uint8_t *)regs->eip - 16; i < regs->eip + 64; i++)
+    for (i = (regs->eip - 16); i < (regs->eip + 64); i++)
     {
-        byte2str(&buffer[10 + buffer_offset * 5], *i);
+        byte2str(&buffer[10 + buffer_offset * 5], *(uint8_t*)i);
 
         offs++;
         buffer_offset++;
 
         if (buffer_offset % 9 == 0)
         {
-            printk(KERN_DEBUG "\t%s", buffer);
+            printk("\t%s", buffer);
             buffer_offset = 0;
             byte2str(&buffer[4], offs);
         }
@@ -81,7 +81,7 @@ extern void kernel_loop();
 
 extern int page_fault_handler(struct cpu_core *core, struct regs32 *r);
 
-uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
+void cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
 {
     static int32_t counter = 0;
     printk(KERN_ERR "CPU Exception: %s", EXCEPTIONS_NAMES[regs->int_no]);
@@ -102,7 +102,7 @@ uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
         if (regs->int_no == PAGE_FAULT_EXCEPTION)
         {
             page_fault_handler(core, regs);
-            // return 0;
+            return;
         }
 
         printk(KERN_ERR "\tGS  = 0x%x, FS  = 0x%x, ES  = 0x%x", regs->gs, regs->fs, regs->es);
@@ -112,7 +112,7 @@ uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
         printk(KERN_ERR "\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
         printk(KERN_ERR "\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
         printk(KERN_ERR "");
-        printk(KERN_ERR "\tEIP real: %p", (unsigned long)vmm_get_phys(vmm_current_directory(), regs->eip));
+        printk(KERN_ERR "\tEIP real: %p", (unsigned long)vmm_get_phys(vmm_current_directory(), (void*)regs->eip));
         // printk("\tTotal spurious interrupts 0x%x", cpu_irq_spurious_count());
 
         _invalid_opcode_exception_handler(regs);
@@ -128,4 +128,6 @@ uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
     {
         __asm__ volatile("cli\nhlt");
     }
+
+    return;
 }

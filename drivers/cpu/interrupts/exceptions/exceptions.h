@@ -79,4 +79,4 @@ static const char *EXCEPTIONS_NAMES[] = {
 };
 
 void cpu_exceptions_core_init(struct cpu_core *core);
-uintptr_t cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs);
+void cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs);

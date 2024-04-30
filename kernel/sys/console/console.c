@@ -22,6 +22,14 @@ void console_init()
     __has_serial = serial_init(CONSOLE_SERIAL_PORT, CONSOLE_SERIAL_BAUD) == SERIAL_SUCCESS;
 }
 
+void console_clear()
+{
+    console.offset_x = 0;
+    console.offset_y = 0;
+    memset(console.buffer, 0, console.buffer_width * console.buffer_height * sizeof(uint32_t));
+    memset(console.lines_state, 0, console.buffer_height * sizeof(uint32_t));
+}
+
 void console_enable_heap()
 {
     if (!__heap_allocated)
@@ -65,9 +73,9 @@ int console_printc(char c)
 
 void console_render()
 {
+    size_t i;
     console_flush();
-#if 0
-    size_t i, offset;
+    return;
 
     // print to the screen only if we allocated the buffer on heap
     if (__heap_allocated)
@@ -75,17 +83,14 @@ void console_render()
         // update only lines that changed since last render
         for (i = 0; i < console.buffer_height; i++)
         {
-            if (console.lines_state[i] & CONSOLE_LINE_UPDATED)
+            // if (console.lines_state[i] & CONSOLE_LINE_UPDATED)
             {
                 console.lines_state[i] &= ~CONSOLE_LINE_UPDATED;
-                offset = i * console.buffer_width;
-
-                video_text_print_at(&console.buffer[offset], 0x07, offset, console.buffer_width);
+                video_text_print_at(&console.buffer[i * console.buffer_width], console.buffer_width, 0x00, 0xcc, 0, i);
             }
         }
         __must_rerender = false;
     }
-#endif
 }
 
 void console_flush()
@@ -159,27 +164,27 @@ void __printc(char c)
         // print the char if it is not "special"
         offset = console.offset_y * width + console.offset_x;
 
-        if (IS_UNICODE(c) && !console.is_unicode)
-        {
-            console.unicode_bytes = (c & 0x20) ? ((c & 0x10) ? ((c & 0x08) ? ((c & 0x04) ? 6 : 5) : 4) : 3) : 2;
-            console.unicode_bytes_start = console.unicode_bytes;
-            console.is_unicode = true;
-        }
+        // if (IS_UNICODE(c) && !console.is_unicode)
+        // {
+        //     console.unicode_bytes = (c & 0x20) ? ((c & 0x10) ? ((c & 0x08) ? ((c & 0x04) ? 6 : 5) : 4) : 3) : 2;
+        //     console.unicode_bytes_start = console.unicode_bytes;
+        //     console.is_unicode = true;
+        // }
 
-        if (console.is_unicode)
-        {
-            ((uint8_t *)&console.buffer[offset])[console.unicode_bytes_start - console.unicode_bytes] = c;
-            console.unicode_bytes--;
+        // if (console.is_unicode)
+        // {
+        //     ((uint8_t *)&console.buffer[offset])[console.unicode_bytes_start - console.unicode_bytes] = c;
+        //     console.unicode_bytes--;
 
-            if (console.unicode_bytes <= 0)
-            {
-                console.offset_x++;
-                console.unicode_bytes = 0;
-                console.unicode_bytes_start = 0;
-                console.is_unicode = false;
-            }
-        }
-        else
+        //     if (console.unicode_bytes <= 0)
+        //     {
+        //         console.offset_x++;
+        //         console.unicode_bytes = 0;
+        //         console.unicode_bytes_start = 0;
+        //         console.is_unicode = false;
+        //     }
+        // }
+        // else
         {
             console.buffer[offset] = c;
             console.offset_x++;

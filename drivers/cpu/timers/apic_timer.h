@@ -10,7 +10,7 @@
 #define APIC_TIMER_TMR_PERIODIC	    0x20000
 #define APIC_TIMER_TMR_BASEDIV	    (1<<20)
 
-extern struct cpu_core;
+struct cpu_core;
 
 void cpu_atimer_init(struct cpu_core *core);
 void cpu_atimer_disable(struct cpu_core *core);

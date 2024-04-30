@@ -1,5 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/include/C/math.h>
+#include <kernel/include/C/string.h>
 
 #include <drivers/fs/fat/fat32.h>
 
@@ -26,7 +27,7 @@ int fat32_load(struct fat32_info *fat, struct driver_disk disk)
     // validate signature of the EBR
     if (fat->ebr.signature != 0x28 && fat->ebr.signature != 0x29)
     {
-        printk(KERN_DEBUG "fat32: EBR invalid signature.");
+        printk("fat32: EBR invalid signature.");
         fat32_cleanup(fat);
         return FAT32_INVALID;
     }
@@ -43,7 +44,7 @@ int fat32_load(struct fat32_info *fat, struct driver_disk disk)
         fat->fsinfo.signature != 0x61417272 ||
         fat->fsinfo.trail_signature != 0xAA550000)
     {
-        printk(KERN_DEBUG "fat32: fsinfo invalid signature.");
+        printk("fat32: fsinfo invalid signature.");
         fat32_cleanup(fat);
         return FAT32_INVALID;
     }
@@ -64,7 +65,7 @@ int fat32_parse_dir(struct fat32_info *fat, uint32_t cluster)
     fat->disk_device.read_handler(
         fat->disk_device.device,
         SECTOR(fat, cluster), 1,
-        &entries[0]);
+        (uint8_t*)&entries[0]);
     entry = &entries[i];
 
     // if we have zero the directory is empty
@@ -82,7 +83,7 @@ int fat32_parse_dir(struct fat32_info *fat, uint32_t cluster)
             fat->disk_device.read_handler(
                 fat->disk_device.device,
                 SECTOR(fat, cluster) + sector_offset, 1,
-                &entries[0]);
+                (uint8_t*)&entries[0]);
         }
 
         entry = &entries[i++];

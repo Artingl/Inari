@@ -5,6 +5,7 @@
 #include <drivers/cpu/cpu.h>
 
 #include <drivers/memory/vmm.h>
+#include <drivers/memory/memory.h>
 
 #include <kernel/include/C/typedefs.h>
 #include <kernel/include/C/string.h>
@@ -20,7 +21,7 @@ void cpu_acpi_init()
 
     if (!(cpu_feat_edx() & CPU_FEATURE_EDX_ACPI))
     {
-        printk(KERN_NOTICE "ACPI is not supported!");
+        printk("acpi: is not supported!");
         return;
     }
 
@@ -29,8 +30,8 @@ void cpu_acpi_init()
     {
         if (memcmp((char *)i, "RSD PTR ", 8) == 0)
         {
-            printk(KERN_DEBUG "RSDP found at 0x%x", i);
             sdp = (struct XSDP *)i;
+            printk("acpi: RSDP found at 0x%x", i);
             break;
         }
     }
@@ -38,27 +39,27 @@ void cpu_acpi_init()
     // todo: also perform search in EBDA (https://wiki.osdev.org/RSDP)
     if (!sdp)
     {
-        panic("Unable to find RSDP in memory!");
+        panic("acpi: unable to find RSDP in memory!");
     }
 
     if (sdp->revision == 0)
     {
-        printk(KERN_DEBUG "RSDP version is 1.0==");
+        printk("acpi: RSDP version is 1.0==");
 
         // RSDP checksum validation
         if (!(cpu_acpi_signature(sdp, sizeof(struct RSDP))))
-            panic("ACPI checksum validation failed!");
+            panic("acpi: checksum validation failed!");
 
         // parse RSDT
         root_sdt = (struct XSDT *)sdp->rsdt_address;
     }
     else if (sdp->revision == 2)
     {
-        printk(KERN_DEBUG "RSDP version is 2.0>=");
+        printk("acpi: RSDP version is 2.0>=");
 
         // XSDP checksum validation
         if (!(cpu_acpi_signature(sdp, sizeof(struct XSDP))))
-            panic("ACPI XSDP checksum validation failed!");
+            panic("acpi: XSDP checksum validation failed!");
 
 // parse XSDT
 #ifdef CONFIG_CPU_32BIT
@@ -71,9 +72,15 @@ void cpu_acpi_init()
     // map the SDT
     kident(root_sdt, sizeof(struct XSDT), KERN_PAGE_RW);
 
+    memory_forbid_region((uintptr_t)sdp, PAGE_SIZE);
+    memory_forbid_region((uintptr_t)root_sdt, PAGE_SIZE);
+    ACPI_ITERATE(idx, pointer, {
+        memory_forbid_region((uintptr_t)pointer, PAGE_SIZE);
+    })
+
     // R/XSDT checksum validation
     if (!(cpu_acpi_signature(root_sdt, root_sdt->header.length)))
-        panic("ACPI RootSDT checksum validation failed!");
+        panic("acpi: RootSDT checksum validation failed!");
 
     acpi_loaded = true;
 }
@@ -94,19 +101,19 @@ bool cpu_acpi_signature(void *ptr, size_t size)
 struct XSDP *cpu_acpi_sdp()
 {
     if (!sdp)
-        panic("ACPI not initalized!");
+        panic("acpi: not initalized");
     return sdp;
 }
 
 struct XSDT *cpu_acpi_root_sdt()
 {
     if (!root_sdt)
-        panic("ACPI not initalized!");
+        panic("acpi: not initalized");
     return root_sdt;
 }
 bool cpu_acpi_poweroff()
 {
-    printk(KERN_WARNING "Shutdown ACPI feature is not implemented!");
+    printk(KERN_WARNING "acpi: shutdown ACPI feature is not implemented!");
     return false;
 }
 
@@ -116,7 +123,7 @@ bool cpu_acpi_reboot()
     ACPI_ITERATE(idx, pointer, {
         if (memcmp(pointer->signature, "FACP", 4) == 0)
         {
-            struct FADT *fadt = (struct MADT *)pointer;
+            struct FADT *fadt = (struct FADT *)pointer;
 
             // try to output a byte
             __outb(fadt->reset_reg.address, fadt->reset_value);
@@ -127,7 +134,7 @@ bool cpu_acpi_reboot()
         }
     })
 
-    printk(KERN_WARNING "Unable to call ACPI reset command");
+    printk(KERN_WARNING "acpi: unable to call ACPI reset command");
     return false;
 }
 
@@ -144,7 +151,7 @@ uint32_t cpu_acpi_remap_irq(uint32_t irq)
             struct MADT *madt = (struct MADT *)pointer;
 
             if (!madt || !cpu_acpi_signature(madt, madt->header.length))
-                panic("Unable to find MADT record; or got invalid record (bad checksum)");
+                panic("acpi: unable to find MADT record; or got invalid record (bad checksum)");
             // iterate thru all MADT entries to get all APICs on the system
             for (
                 i = ((uint8_t *)(madt)) + 0x2c;
@@ -189,7 +196,7 @@ uint8_t cpu_acpi_load_madt(struct cpu_core *cores)
             struct MADT *madt = (struct MADT *)pointer;
 
             if (!madt || !cpu_acpi_signature(madt, madt->header.length))
-                panic("Unable to find MADT record; or got invalid record (bad checksum)");
+                panic("acpi: unable to find MADT record; or got invalid record (bad checksum)");
 
             // iterate thru all MADT entries to get all APICs on the system
             for (
@@ -208,7 +215,7 @@ uint8_t cpu_acpi_load_madt(struct cpu_core *cores)
                     cores[lapic_table->acpi_proc_id].lapic_ptr = madt->local_apic_address;
 
                     physical_cpus++;
-                    printk(KERN_DEBUG "Local APIC found[%d]", lapic_table->acpi_proc_id);
+                    printk("acpi: lapic found[%d]", lapic_table->acpi_proc_id);
                 }
                 else if (entry->entry_type == APIC_IO)
                 {
@@ -218,18 +225,18 @@ uint8_t cpu_acpi_load_madt(struct cpu_core *cores)
                     //       If another one was found, panic
                     if (cpu_ioapic)
                     {
-                        printk(KERN_WARNING "Another IO/APIC was found, which is not supported (see the ACPI driver)");
+                        printk(KERN_WARNING "acpi: another io/apic was found, which is not supported (see the ACPI driver)");
                         goto next;
                     }
 
-                    printk(KERN_DEBUG "IO/APIC found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
+                    printk("acpi: io/apic found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
                     cpu_ioapic = io_apic_table->io_apic_address;
                 }
                 else if (entry->entry_type == APIC_IO_INT_SRC_OVERRIDE)
                 {
                     struct IOAPIC_INTSRCO_MADT *int_overrd = (struct IOAPIC_INTSRCO_MADT *)(entry);
 
-                    printk(KERN_DEBUG "IO/APIC ISO: bus = 0x%x, irq = 0x%x, gsi = 0x%x, flags = 0x%x",
+                    printk("acpi: io/apic ISO: bus = 0x%x, irq = 0x%x, gsi = 0x%x, flags = 0x%x",
                         int_overrd->bus, int_overrd->irq, int_overrd->gsi, int_overrd->flags);
                 }
                 

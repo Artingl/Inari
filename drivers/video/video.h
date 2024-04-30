@@ -24,3 +24,6 @@ void *video_fb();
 size_t video_fb_size();
 
 void video_setmode(uint8_t mode, uint32_t width, uint32_t height);
+
+void video_put_pixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b);
+void video_text_print_at(uint8_t *buffer, size_t length, uint8_t bg, uint8_t fg, uint32_t x, uint32_t y);

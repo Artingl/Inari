@@ -17,7 +17,7 @@ volatile uint32_t ap_lock;
 
 void cpu_smp_shutdown()
 {
-    printk(KERN_INFO "TODO: cpu_smp_shutdown");
+    printk("TODO: cpu_smp_shutdown");
 }
 
 void cpu_smp_bringup(int cores_count)
@@ -29,7 +29,7 @@ void cpu_smp_bringup(int cores_count)
     size_t trampoline_size = (size_t)&ap_trampoline_end - (size_t)&ap_trampoline;
     memcpy((void *)0x8000, &ap_trampoline, trampoline_size);
 
-    printk(KERN_DEBUG "smp: copied %d bytes of the APs trampoline code", trampoline_size);
+    printk("smp: copied %d bytes of the APs trampoline code", trampoline_size);
 
 #define WAIT_DELIVERY(addr, val)                \
     do                                          \
@@ -85,7 +85,7 @@ void cpu_smp_bringup(int cores_count)
 
 // AP lower init function that should enable paging, initialize proper stack and jump to the main kernel at +3GB
 __attribute__((section(".lo_text")))
- __attribute__ ((noreturn))
+__attribute__ ((noreturn))
 void lo_cpu_smp_ap_init(uint32_t _, uint32_t lapic_id)
 {
     // Switch to the kernel directory that should be in the kernel's payload
@@ -98,8 +98,8 @@ void lo_cpu_smp_ap_init(uint32_t _, uint32_t lapic_id)
     cr0 |= 0x80000000;
     __asm__ volatile("mov %0, %%cr0" ::"r"(cr0));
 
-    printk(KERN_INFO "smp: booting CPU#%d", cpu_current_core()->core_id);
-    printk(KERN_DEBUG "smp: stack=%p, pd=%p", (unsigned long)cpu_current_core()->stackptr, (unsigned long)cpu_current_core()->pd);
+    printk("smp: booting CPU[%d]", cpu_current_core()->core_id);
+    printk("smp: stack=%p", (unsigned long)cpu_current_core()->stackptr);
 
     // Initialize the core
     cpu_init_core(cpu_current_core()->core_id);

@@ -8,7 +8,7 @@
 #include <drivers/cpu/cpu.h>
 #include <drivers/impl.h>
 
-interrupt_handler_t apic_timer_irq(struct cpu_core *core, struct regs32 *regs);
+void apic_timer_irq(struct cpu_core *core, struct regs32 *regs);
 
 void pit_early_prepare_sleep(size_t us);
 void pit_early_sleep_disable();
@@ -38,7 +38,7 @@ void cpu_atimer_init(struct cpu_core *core)
     // disable PIT
     pit_early_sleep_disable();
 
-    printk(KERN_DEBUG "apic_timer#%d: 10ms elapsed ticks: %u", core->core_id, core->apic_timer_ticks);
+    printk("apic_timer[%d]: 10ms elapsed ticks: %u", core->core_id, core->apic_timer_ticks);
 
     // start the timer
     cpu_ints_sub(INTERRUPT_TIMER, &apic_timer_irq);
@@ -52,7 +52,7 @@ void cpu_atimer_disable(struct cpu_core *core)
     // todo
 }
 
-interrupt_handler_t apic_timer_irq(struct cpu_core *core, struct regs32 *regs)
+void apic_timer_irq(struct cpu_core *core, struct regs32 *regs)
 {
     if (core->is_bsp)
         cpu_timer_ticks++;

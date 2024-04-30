@@ -21,21 +21,21 @@ int ata_pio_init()
 
     if (master_res != ATA_SUCCESS && slave_res != ATA_SUCCESS)
     {
-        printk(KERN_DEBUG "ATA PIO: Unable to find master (status = %d) and slave drives (status = %d).",
+        printk("ATA PIO: Unable to find master (status = %d) and slave drives (status = %d).",
                master_res, slave_res);
         return ATA_NO_DRIVES_FOUND;
     }
     else if (master_res != ATA_SUCCESS)
     {
-        printk(KERN_DEBUG "ATA PIO: Master drive not found.");
+        printk("ATA PIO: Master drive not found.");
     }
     else if (slave_res != ATA_SUCCESS)
     {
-        printk(KERN_DEBUG "ATA PIO: Slave drive not found.");
+        printk("ATA PIO: Slave drive not found.");
     }
     else
     {
-        printk(KERN_DEBUG "ATA PIO: Master and slave drivers were found.");
+        printk("ATA PIO: Master and slave drivers were found.");
     }
 
     // uint8_t buffer[512];

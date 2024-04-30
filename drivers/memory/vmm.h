@@ -42,14 +42,17 @@ uintptr_t vmm_get_phys(
     struct page_directory *directory,
     void *virtual);
 
+struct page_directory *vmm_kernel_directory();
 struct page_directory *vmm_fork_directory();
 void vmm_deallocate_directory(struct page_directory *pd);
 
-void vmm_page_inval();
+void vmm_page_invalidate(uintptr_t page);
 void vmm_init();
+
+size_t vmm_total_pages();
 size_t vmm_allocated_pages();
 
-extern struct cpu_core;
-extern struct regs32;
+struct cpu_core;
+struct regs32;
 
 int page_fault_handler(struct cpu_core *core, struct regs32 *r);

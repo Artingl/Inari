@@ -20,7 +20,7 @@ void machine_reboot()
         __outb(0x64, 0xFE);
 
         // We couldn't reboot, just halt
-        printk(KERN_NOTICE "The system is going to be halted NOW!");
+        printk("The system is going to be halted NOW!");
         __halt();
     }
 }
@@ -34,7 +34,7 @@ void machine_poweroff()
     if (!cpu_acpi_poweroff())
     {
         // We couldn't poweroff, just halt
-        printk(KERN_NOTICE "The system is going to be halted NOW!");
+        printk("The system is going to be halted NOW!");
         __halt();
     }
 }
@@ -44,6 +44,6 @@ void machine_halt()
     scheduler_shutdown();
     cpu_shutdown();
 
-    printk(KERN_NOTICE "The system is going to be halted NOW!");
+    printk("The system is going to be halted NOW!");
     __halt();
 }

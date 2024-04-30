@@ -3,6 +3,7 @@
 #include <drivers/cpu/interrupts/apic/local_apic.h>
 #include <drivers/cpu/interrupts/apic/io_apic.h>
 #include <drivers/cpu/acpi/acpi.h>
+#include <drivers/memory/memory.h>
 #include <drivers/cpu/interrupts/pic/pic.h>
 #include <drivers/cpu/interrupts/irq/irq.h>
 
@@ -15,16 +16,18 @@ uintptr_t __ioapic;
 
 void cpu_io_apic_init(uintptr_t ioapic)
 {
+    memory_forbid_region(ioapic, PAGE_SIZE * 4);
+
     // map io apic memory
     // kmmap(IO_APIC_BASE, ioapic, PAGE_SIZE * 2, KERN_PAGE_RW);
-    kident(ioapic - PAGE_SIZE, PAGE_SIZE * 2, KERN_PAGE_RW);
+    kident((void*)(ioapic - PAGE_SIZE), PAGE_SIZE * 2, KERN_PAGE_RW);
     __ioapic = ioapic;
 
     size_t i;
     uint32_t count = ((cpu_io_apic_read_reg(IOAPICVER) >> 16) & 0xff) + 1;
 
-    printk(KERN_INFO "IO/APIC address: %p", (unsigned long)cpu_io_apic_get_base());
-    printk(KERN_INFO "IO/APIC max IRQs to handle: %d", count);
+    printk("ioapic: address: %p", (unsigned long)cpu_io_apic_get_base());
+    printk("ioapic: max IRQs to handle: %d", count);
 
     for (i = 0; i < count; i++)
         cpu_io_apic_map(i, 1 << 16);

@@ -5,9 +5,12 @@
         "bootloader",
         "framebuffer",
         "Inari",
+        "kcalloc",
         "MADT",
         "multiboot",
+        "pdoffset",
         "printk",
+        "ptoffset",
         "RSDP",
         "superblocks"
     ],
@@ -53,7 +56,8 @@
         "spinlock.h": "c",
         "exceptions.h": "c",
         "scheduler.h": "c",
-        "thread.h": "c"
+        "thread.h": "c",
+        "stdarg.h": "c"
     },
     "cSpell.language": "en,ru,en-GB",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"

@@ -3,6 +3,7 @@
 #include <drivers/cpu/interrupts/apic/local_apic.h>
 #include <drivers/cpu/interrupts/apic/io_apic.h>
 #include <drivers/cpu/acpi/acpi.h>
+#include <drivers/memory/memory.h>
 #include <drivers/cpu/interrupts/pic/pic.h>
 #include <drivers/cpu/interrupts/irq/irq.h>
 
@@ -15,8 +16,10 @@ int apic_initialize_pic = 0;
 
 void cpu_lapic_init(struct cpu_core *core)
 {
+    memory_forbid_region(core->lapic_ptr, PAGE_SIZE * 4);
+
     // map lapic memory
-    kident(core->lapic_ptr - PAGE_SIZE, PAGE_SIZE * 2, KERN_PAGE_RW);
+    kident((void*)(core->lapic_ptr - PAGE_SIZE), PAGE_SIZE * 2, KERN_PAGE_RW);
 
     // enable all kinds of interrupts
     cpu_lapic_out(core, LAPIC_TPR, 0);
@@ -31,7 +34,7 @@ void cpu_lapic_init(struct cpu_core *core)
     cpu_lapic_set_base(core, core->lapic_ptr);
     cpu_lapic_out(core, LAPIC_SVR, 0x100 | 0xff);
 
-    printk(KERN_DEBUG "lapic: core %d ptr: %p", core->lapic_id, (unsigned long)core->lapic_ptr);
+    printk("lapic: core %d ptr: %p", core->lapic_id, (unsigned long)core->lapic_ptr);
 }
 
 uintptr_t cpu_lapic_get_base(struct cpu_core *core)

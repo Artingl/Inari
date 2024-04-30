@@ -6,11 +6,12 @@
 
 #include <drivers/memory/pmm.h>
 
-uintptr_t __host_state = NULL;
+uintptr_t __host_state = (uintptr_t)NULL;
 bool __svm_initialized = false;
 
 int cpu_svm_make(struct SVM **svm)
 {
+    panic("svm: unimplemented");
     int r;
     struct SVM *ptr = kmalloc(sizeof(struct SVM));
     memset(svm, 0, sizeof(struct SVM));
@@ -19,14 +20,14 @@ int cpu_svm_make(struct SVM **svm)
     if ((r = __cpu_svm_init()) != SVM_SUCCESS)
         goto err;
 
-    ptr->__vmcb = pmm_alloc_frames(1);
+    ptr->__vmcb = (struct vmcb*)pmm_alloc_frames(1);
 
     kident(ptr->__vmcb, PAGE_SIZE, KERN_PAGE_RW);
     memset(ptr->__vmcb, 0, PAGE_SIZE);
 
     goto end;
 err:    
-    cpu_svm_cleanup(svm);
+    cpu_svm_cleanup(*svm);
     *svm = NULL;
     return r;
 end:
@@ -39,7 +40,7 @@ void cpu_svm_cleanup(struct SVM* svm)
     if (svm->__vmcb != NULL)
     {
         // unmap page and deallocate memory frame for the VMCB
-        pmm_free_frames(svm->__vmcb, 1);
+        pmm_free_frames((uintptr_t)svm->__vmcb, 1);
         kunident(svm->__vmcb, PAGE_SIZE);
     }
 
@@ -63,8 +64,8 @@ int __cpu_svm_init()
     lo |= IA32_EFER_SVME;
     __set_msr(IA32_EFER, lo, hi);
 
-    kident(__host_state, PAGE_SIZE, KERN_PAGE_RW);
-    memset(__host_state, 0, PAGE_SIZE);
+    kident((void*)__host_state, PAGE_SIZE, KERN_PAGE_RW);
+    memset((void*)__host_state, 0, PAGE_SIZE);
 
     // set address to the memory which will contain host state when entering guest environment
     __set_msr(VM_HSAVE_PA, __host_state, 0x00);

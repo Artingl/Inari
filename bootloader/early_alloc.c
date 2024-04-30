@@ -1,5 +1,6 @@
 #include <kernel/include/C/typedefs.h>
 #include <kernel/include/C/math.h>
+#include <kernel/kernel.h>
 
 #include <bootloader/lower.h>
 
@@ -43,6 +44,7 @@ LKERN void early_alloc_setup(multiboot_info_t *multiboot)
 
     // align the ptr by the page size
     ptr = align(ptr, PAGE_SIZE);
+    ln = ln > PAGE_SIZE * 32 ? PAGE_SIZE * 32 : ln;
 
     *(&lo_early_heap_top) = (void*)ptr;
     *(&lo_early_heap) = (void *)ptr + PAGE_SIZE;
@@ -52,9 +54,9 @@ LKERN void early_alloc_setup(multiboot_info_t *multiboot)
 LKERN struct early_alloc_info early_alloc_info()
 {
     return (struct early_alloc_info){
-        .heap_top = *(&lo_early_heap_top),
-        .heap = *(&lo_early_heap),
-        .heap_end = *(&lo_early_heap_end),
+        .heap_top = (uintptr_t)*(&lo_early_heap_top),
+        .heap = (uintptr_t)*(&lo_early_heap),
+        .heap_end = (uintptr_t)*(&lo_early_heap_end),
     };
 }
 
@@ -67,7 +69,7 @@ LKERN void *early_alloc(size_t length)
         mem = *(&lo_early_heap);
         *(&lo_early_heap) += align(length, PAGE_SIZE);
 
-        if (mem > &_kernel_phys_end && *(&lo_early_heap) > &_kernel_phys_end)
+        if ((uintptr_t)mem > (uintptr_t)&_kernel_phys_end && (uintptr_t)*(&lo_early_heap) > (uintptr_t)&_kernel_phys_end)
             break;
     }
     while (true);

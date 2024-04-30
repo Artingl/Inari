@@ -5,7 +5,7 @@
 #include <drivers/cpu/interrupts/interrupts.h>
 #include <drivers/impl.h>
 
-interrupt_handler_t pit_irq(struct cpu_core *core, struct regs32 *regs);
+void pit_irq(struct cpu_core *core, struct regs32 *regs);
 
 volatile double divider;
 volatile double irq_ticks;
@@ -69,7 +69,7 @@ uint32_t cpu_pit_read()
     return count;
 }
 
-interrupt_handler_t pit_irq(struct cpu_core *core, struct regs32 *regs)
+void pit_irq(struct cpu_core *core, struct regs32 *regs)
 {
     if (!core->is_bsp)
         cpu_timer_ticks++;

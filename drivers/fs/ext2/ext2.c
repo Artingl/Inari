@@ -12,10 +12,10 @@ int ext2_load(struct ext2_info *ext, struct driver_disk disk)
     ext->disk_device.read_handler(
         ext->disk_device.device,
         EXT2_SUPERBLOCK_LBA, 2, // superblock is exactly 2 LBAs in size (1024 bytes)
-        &ext->superblock);
+        (uint8_t*)&ext->superblock);
     if (ext->superblock.signature != EXT2_SIGNATURE)
     {
-        printk(KERN_DEBUG "ext2: invalid signature 0x%2x", ext->superblock.signature);
+        printk("ext2: invalid signature 0x%2x", ext->superblock.signature);
         ext2_cleanup(ext);
         return EXT2_INVALID;
     }
@@ -41,7 +41,7 @@ int ext2_load(struct ext2_info *ext, struct driver_disk disk)
         }
 
         // print some debug info
-        printk(KERN_DEBUG "ext2: last_mount = '%s', required_features = 0x%x, optional_features = 0x%x",
+        printk("ext2: last_mount = '%s', required_features = 0x%x, optional_features = 0x%x",
                ext->superblock.extended.last_mount_path,
                (unsigned long)ext->superblock.extended.required_features,
                (unsigned long)ext->superblock.extended.optional_features);
@@ -52,14 +52,14 @@ int ext2_load(struct ext2_info *ext, struct driver_disk disk)
     v1 = round(ext->superblock.total_inodes_bg / ext->superblock.total_inodes);
     ext->block_groups_count = v0 / v1;
 
-    printk(KERN_DEBUG "ext2: block_groups = %d");
+    printk("ext2: block_groups = %d");
 
     // read block groups table
     ext->block_groups = kcalloc(ext->block_groups_count, sizeof(struct ext2_block));
     ext->disk_device.read_handler(
         ext->disk_device.device,
         EXT2_SUPERBLOCK_LBA, 2, // superblock is exactly 2 LBAs in size (1024 bytes)
-        ext->block_groups);
+        (uint8_t*)ext->block_groups);
 
     // TODO: we must support EXT2_REQUIRED_TYPE_FIELD for the dummy_gpt.img partition 1 to work
     return EXT2_SUCCESS;

@@ -22,7 +22,7 @@ make build_kernel
 You can run the following command to compile and run the kernel in the VM:
 
 ```shell
-make run_debug
+make test_serial
 ```
 
 # Screenshots

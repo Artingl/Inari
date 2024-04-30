@@ -33,12 +33,12 @@ char cpu_model[49];
 void cpu_bsp_init()
 {
     size_t i;
-    memset(0, &cores, sizeof(cores));
+    memset((void*)&cores[0], 0, sizeof(cores));
     for (i = 0; i < KERN_MAX_CORES; i++)
         cores[i].core_id = i;
 
     cpu_timer_ticks = 0;
-    cpu_ioapic = NULL;
+    cpu_ioapic = (uintptr_t)NULL;
 
     // get CPU vendor
     uint32_t eax, ebx, ecx, edx;
@@ -89,7 +89,7 @@ void cpu_bsp_init()
     cpu_acpi_init();
     if (cpu_acpi_loaded())
     {
-        cpu_count = cpu_acpi_load_madt(&cores);
+        cpu_count = cpu_acpi_load_madt(&cores[0]);
     }
     else
     {
@@ -105,7 +105,7 @@ void cpu_bsp_init()
 #endif
 
     if (cpu_count > KERN_MAX_CORES)
-        panic("Reached maximum amount of CPU cores (KERN_MAX_CORES)");
+        panic("cpu: reached maximum amount of CPU cores (increase the value of KERN_MAX_CORES)");
 
     // Allocate all necessary things for the cores
     for (i = 0; i < cpu_count; i++)
@@ -123,27 +123,29 @@ void cpu_bsp_init()
 
     // show features info
     if (cpu_features_edx & CPU_FEATURE_EDX_SSE2)
-        printk(KERN_DEBUG "CPU does support SSE2");
+        printk("CPU does support SSE2");
     if (cpu_features_edx & CPU_FEATURE_EDX_SSE)
-        printk(KERN_DEBUG "CPU does support SSE");
+        printk("CPU does support SSE");
 
     // Bringup all other CPU cores if we're using apic
     if (cpu_using_apic() && cpu_count > 1)
     {
         cpu_max_count = cpu_count;
         cpu_count = 1;
+#ifndef CONFIG_CPU_NO_SMP
         cpu_smp_bringup(cpu_max_count);
+#endif
     }
 
     // print info
-    printk(KERN_INFO "CPU info:");
-    printk(KERN_INFO "\tvendor: %s", cpu_vendor);
-    printk(KERN_INFO "\tmodel: %s", cpu_model);
-    printk(KERN_INFO "\tphysical_cpus: %d", cpu_count);
-    printk(KERN_INFO "\tUsing APIC: %s", (cpu_using_apic() ? "yes" : "no"));
-    printk(KERN_INFO "\tIs a VM: %s", (cpu_features_ecx & CPU_FEATURE_ECX_VMX ? "yes" : "no"));
-    printk(KERN_INFO "\tfeatures (ecx): 0x%x", cpu_features_ecx);
-    printk(KERN_INFO "\tfeatures (edx): 0x%x", cpu_features_edx);
+    printk("CPU info:");
+    printk("\tvendor: %s", cpu_vendor);
+    printk("\tmodel: %s", cpu_model);
+    printk("\tphysical_cpus: %d", cpu_count);
+    printk("\tUsing APIC: %s", (cpu_using_apic() ? "yes" : "no"));
+    printk("\tVM: %s", (cpu_features_ecx & CPU_FEATURE_ECX_VMX ? "yes" : "no"));
+    printk("\tfeatures (ecx): 0x%x", cpu_features_ecx);
+    printk("\tfeatures (edx): 0x%x", cpu_features_edx);
 }
 
 void cpu_core_alloc(struct cpu_core *core)
@@ -165,7 +167,6 @@ void cpu_core_alloc(struct cpu_core *core)
         core->stackptr = kmalloc(KERN_STACK_SIZE);
     }
 
-    core->pd = vmm_fork_directory();
     core->enabled = 0;
 }
 
@@ -183,16 +184,13 @@ void cpu_core_cleanup(struct cpu_core *core)
             kfree(core->stackptr);
     }
 
-    if (core->pd != NULL)
-        vmm_deallocate_directory(core->pd);
-
     core->enabled = 0;
 }
 
 void cpu_init_core(int id)
 {
     struct cpu_core *core = &cores[id];
-    vmm_switch_directory(core->pd);
+    vmm_switch_directory(vmm_kernel_directory());
 
     // Initialize interrupts for the core
     cpu_ints_core_init(core);
@@ -206,7 +204,7 @@ void cpu_idt_init(struct cpu_core *core)
 {
     core->idt_desc.size = (sizeof(struct cpu_idt) * 256) - 1;
     core->idt_desc.base = (uintptr_t)core->idt;
-    printk("IDT: %p", (unsigned long)core->idt);
+    printk("idt: base ptr %p", (unsigned long)core->idt);
     __load_idt(core->idt_desc);
 }
 
@@ -224,7 +222,7 @@ void cpu_shutdown()
     __disable_int();
     size_t i;
 
-    printk(KERN_NOTICE "Shutting down ALL CPUs!");
+    printk("Shutting down ALL CPUs!");
 
     if (cpu_using_apic())
     {

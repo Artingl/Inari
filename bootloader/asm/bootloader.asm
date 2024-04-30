@@ -10,8 +10,8 @@ section .lo_data
     dd 0
 
     dd 1	    ; type
-    dq 640	    ; width
-    dd 480	    ; height
+    dq 800	    ; width
+    dd 600	    ; height
     dd 32	    ; depth
 
 

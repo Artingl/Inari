@@ -98,8 +98,6 @@ struct cpu_core {
 
     struct cpu_idt_descriptor idt_desc;
     struct cpu_idt *idt;
-
-    struct page_directory *pd;
 };
 
 void cpu_bsp_init();

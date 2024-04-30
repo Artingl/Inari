@@ -1,6 +1,7 @@
 #include <drivers/impl.h>
 
 #include <kernel/include/C/typedefs.h>
+#include <kernel/include/C/string.h>
 #include <bootloader/lower.h>
 
 #include <stdarg.h>
@@ -15,7 +16,7 @@ LKERN void lower_vga_init()
 
 LKERN void lower_vga_print(char *msg)
 {
-    lower_vga_add(MESSAGES_POOL[MSG_PREFIX]);
+    lower_vga_add((char*)MESSAGES_POOL[MSG_PREFIX]);
     lower_vga_add(msg);
 }
 
@@ -39,11 +40,11 @@ LKERN void lower_vga_printc(char c)
         {
             lower_vga_y = 79;
             memcpy(
-                0xb8000,
-                0xb8000 + 80,
+                (void*)0xb8000,
+                (void*)(0xb8000 + 80),
                 3840);
 
-            memset(0xb8000 + 3840, 0, 80);
+            memset((void*)(0xb8000 + 3840), 0, 80);
         }
         return;
     }
@@ -61,7 +62,7 @@ LKERN int __lower_vga_wh(char c, void **)
 
 LKERN void __lower_vga_printf_wrapper(char *fmt, ...)
 {
-    lower_vga_add(MESSAGES_POOL[MSG_PREFIX]);
+    lower_vga_add((char*)MESSAGES_POOL[MSG_PREFIX]);
     
     va_list args;
     va_start(args, fmt);

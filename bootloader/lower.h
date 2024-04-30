@@ -7,19 +7,13 @@
 
 #define LKERN __attribute__((section(".lo_text")))
 
-#define PAGE_SIZE 0x1000
-
-#define PAGE_PRESENT (1 << 0)
-#define PAGE_RW (1 << 1)
-#define PAGE_USR (1 << 2)
-
 #define bl_panic(msg)                          \
     {                                          \
-        lower_vga_print(msg);                        \
-        lower_vga_print(MESSAGES_POOL[MSG_DIR_HLT]); \
+        lower_vga_print((char*)msg);                        \
+        lower_vga_print((char*)MESSAGES_POOL[MSG_DIR_HLT]); \
         __asm__ volatile("hlt");               \
     }
-#define bl_debug(msg...) __lower_vga_printf_wrapper(msg);
+#define bl_debug(msg...) __lower_vga_printf_wrapper((char*)msg);
 
 extern char *LO_MESSAGE_DEBUG;
 extern char *LO_MESSAGE_FILLING;

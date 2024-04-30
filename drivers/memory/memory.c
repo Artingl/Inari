@@ -19,7 +19,7 @@ void memory_init()
 
 void *kmalloc(size_t length)
 {
-    return kmalloc_real(align(length, PAGE_SIZE));
+    return kmalloc_real(length);
 }
 
 void kfree(void *ptr)
@@ -39,14 +39,39 @@ void *kcalloc(size_t n, size_t size)
     return kcalloc_real(n, size);
 }
 
+int memory_forbid_region(uintptr_t origin, size_t size)
+{
+    return pmm_disable_region(origin, size);
+}
+
+
+void kident(void *addr, size_t length, uint32_t flags)
+{
+    vmm_identity(vmm_current_directory(), addr, length, flags);
+}
+
+void kunident(void *addr, size_t length)
+{
+    vmm_unident(vmm_current_directory(), addr, length);
+}
+
+int kmmap(
+    void *virtual,
+    void *real,
+    size_t length,
+    uint32_t flags)
+{
+    return vmm_kmmap(vmm_current_directory(), virtual, real, length, flags);
+}
+
 void memory_info()
 {
     size_t usage = pmm_usage() * PAGE_SIZE;
     size_t total = pmm_total() * PAGE_SIZE;
 
-    printk(KERN_INFO "Memory info:");
-    printk(KERN_INFO "\tusage: %dKB (%dMB)", usage / 1024, usage / 1024 / 1024);
-    printk(KERN_INFO "\ttotal: %dKB (%dMB)", total / 1024, total / 1024 / 1024);
-    printk(KERN_INFO "\tfree: %dKB (%dMB)", (total - usage) / 1024, (total - usage) / 1024 / 1024);
-    printk(KERN_INFO "\tused pages: %d", vmm_allocated_pages());
+    printk("Memory info:");
+    printk("\tusage: %uKB (%uMB)", usage >> 10, (usage >> 10) >> 10);
+    printk("\ttotal: %uKB (%uMB)", total >> 10, (total >> 10) >> 10);
+    printk("\tfree: %uKB (%uMB)", (total - usage) >> 10, ((total - usage) >> 10) >> 10);
+    printk("\tused pages: %u/%u", vmm_allocated_pages(), vmm_total_pages());
 }

@@ -1,4 +1,5 @@
 #include <kernel/kernel.h>
+#include <kernel/include/C/string.h>
 
 #include <drivers/video/video.h>
 #include <drivers/cpu/cpu.h>
@@ -12,7 +13,7 @@ const char *kernel_root_mount_point()
 
 void __parse_cmdline_cmd(const char *command, const char *argument)
 {
-    printk(KERN_DEBUG "cmdline: cmd = %s, argument = %s", command, argument);
+    printk("cmdline: cmd = %s, argument = %s", command, argument);
 
     if (memcmp(command, "root", 4) == 0)
     {
@@ -32,7 +33,7 @@ void kernel_parse_cmdline()
     char buffer[128];
 
     struct kernel_payload const *config = kernel_configuration();
-    char *cmdline = config->cmdline;
+    char *cmdline = (char*)config->cmdline;
     size_t i, cmdline_len = strlen(cmdline);
 
     char *cmd = NULL;

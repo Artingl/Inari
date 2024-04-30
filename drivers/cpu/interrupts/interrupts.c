@@ -23,14 +23,14 @@ void cpu_ints_core_init(struct cpu_core *core)
     cpu_exceptions_core_init(core);
     cpu_irq_init(core);
 #ifdef CONFIG_CPU_NOAPIC
-    printk(KERN_NOTICE "Using PIC only because CONFIG_CPU_NOAPIC option was set during compilation.");
+    printk("Using PIC only because CONFIG_CPU_NOAPIC option was set during compilation.");
     cpu_pic_init();
     cpu_pit_init();
 #else
     // initialize APIC or PIC (APIC: edx APIC feature flag is set && ACPI is loaded ; Otherwise PIC)
     if (!(cpu_feat_edx() & CPU_FEATURE_EDX_APIC) || !cpu_acpi_loaded())
     {
-        printk(KERN_INFO "CPU does not support APIC. Using PIC instead (only one CPU core can be used).");
+        printk("CPU does not support APIC. Using PIC instead (only one CPU core can be used).");
         cpu_pic_init();
         cpu_pit_init();
     }
@@ -67,7 +67,7 @@ struct {
 
 void cpu_ints_init()
 {
-    memset(0, &interrupts_subs, sizeof(interrupts_subs));
+    memset((void*)&interrupts_subs, 0, sizeof(interrupts_subs));
 }
 
 void cpu_ints_sub(int int_no, interrupt_handler_t handler)
@@ -103,15 +103,14 @@ uintptr_t isr_handler(struct regs32 *regs)
 {
     uint32_t i;
     void *ret;
-    uintptr_t result = NULL;
     struct cpu_core *core = cpu_current_core();
 
     if (!core->is_bsp)
-        printk("!!! %d", regs->int_no);
+        printk("isr_handler: !!! %d", regs->int_no);
 
     if (regs->int_no < 32)
     { // exceptions
-        result = cpu_exceptions_core_handle(core, regs);
+        cpu_exceptions_core_handle(core, regs);
     }
     else if (regs->int_no >= 32 && regs->int_no <= 47 && !cpu_using_apic())
     { // IRQs
@@ -127,19 +126,17 @@ uintptr_t isr_handler(struct regs32 *regs)
     // send events to subscribed functions
     for (i = 0; i < 256; i++)
     {
-        if (interrupts_subs[i].occupied && regs->int_no == interrupts_subs[i].int_no)
+        if (interrupts_subs[i].occupied && regs->int_no == interrupts_subs[i].int_no && interrupts_subs[i].handler != NULL)
         {
-            if ((ret = interrupts_subs[i].handler(core, regs)) != NULL)
-            {
-                result = (uintptr_t)ret;
-            }
+            interrupts_subs[i].handler(core, regs);
         }
     }
 
     // call scheduler if the interrupt is from the timer
     if (regs->int_no == INTERRUPT_TIMER) {
+        extern interrupt_handler_t scheduler_handler(struct cpu_core *core, struct regs32 *regs);
         scheduler_handler(core, regs);
     }
 
-    return result;
+    return 0;
 }

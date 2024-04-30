@@ -67,7 +67,7 @@ typedef struct regs16 regs16_t;
 #define SEG(addr) ((((uint32_t)addr) >> 4) & 0xF000)
 #define OFF(addr) (((uint32_t)addr) & 0xFFFF)
 
-void int32(unsigned char intnum, struct regs32 *regs);
+void int32(unsigned char intnum, struct regs16 *regs);
 
 void __outb(uint16_t port, uint8_t val);
 void __outw(uint16_t port, uint16_t val);
