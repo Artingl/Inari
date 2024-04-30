@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/include/C/typedefs.h>
+#include <kernel/lock/spinlock.h>
 
 #include <drivers/serial/serial.h>
 
@@ -19,12 +20,18 @@ struct console {
     uint32_t offset_y;
     uint32_t buffer_width;
     uint32_t buffer_height;
+    uint32_t serial_port;
 
     uint8_t *buffer;
     
     uint8_t unicode_bytes;
     uint8_t unicode_bytes_start;
     bool is_unicode;
+
+    bool __heap_allocated;
+    bool __must_flush;
+
+    spinlock_t __spinlock;
 
 #define CONSOLE_LINE_UPDATED (1 << 0)
     uint32_t *lines_state;
@@ -36,7 +43,6 @@ void console_init();
 
 void console_clear();
 void console_use(struct console *console);
-void console_render();
 void console_flush();
 
 int console_print(const char *msg);

@@ -40,7 +40,7 @@
 
 #define __enable_int() __asm__ volatile("sti")
 #define __disable_int() __asm__ volatile("cli")
-#define __halt() do { __asm__ volatile("hlt"); } while (1)
+#define __halt() do { __asm__ volatile("cli\nhlt"); } while (1)
 #define __load_idt(descriptor) __asm__ volatile("lidt %0" :: "m"(descriptor))
 
 #define __io_wait() __outb(0x80, 0)

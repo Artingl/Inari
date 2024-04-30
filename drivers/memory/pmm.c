@@ -9,7 +9,7 @@
 #include <drivers/cpu/interrupts/apic/io_apic.h>
 #include <drivers/cpu/interrupts/apic/local_apic.h>
 
-#include <bootloader/lower.h>
+#include <bootloader/bios_stub/lower.h>
 
 struct page_frame frames_pool[PMM_POOL_SIZE];
 size_t frames_pool_size = 0;
@@ -101,7 +101,6 @@ int pmm_check_overlap(uintptr_t addr)
 
     // also we need to be sure not to overwrite the kernel's memory
     if (CHECK_OVERLAP(0, kernel_end, addr)) return 1;
-    // if (CHECK_OVERLAP(bootloader_start, bootloader_end, addr)) return 1;
 
     return 0;
 }

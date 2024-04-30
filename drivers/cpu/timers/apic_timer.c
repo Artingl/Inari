@@ -33,7 +33,7 @@ void cpu_atimer_init(struct cpu_core *core)
     __disable_int();
     cpu_lapic_out(core, LAPIC_TIMER, APIC_TIMER_DISABLE);
 
-    core->apic_timer_ticks = 0xFFFFFFFF - cpu_lapic_in(core, LAPIC_TCCR);
+    core->apic_timer_ticks = (0xFFFFFFFF - cpu_lapic_in(core, LAPIC_TCCR));
 
     // disable PIT
     pit_early_sleep_disable();

@@ -28,7 +28,7 @@ __attribute__((section(".lo_text"))) struct kernel_payload payload;
 extern void *_hi_start_marker;
 extern void *_hi_end_marker;
 
-void kernel_scheduled(void*);
+void kernel_scheduled(thread_t*, void*);
 
 // !!! STACK DEBUG
 #define STACK() { \
@@ -66,7 +66,7 @@ void kmain(struct kernel_payload *__payload)
     printk("Kernel virtual start: %p", &_hi_start_marker);
     printk("Kernel virtual end: %p", &_hi_end_marker);
 
-    // scheduler_init();
+    scheduler_init();
     sys_init();
 
     // initialize drivers
@@ -74,11 +74,6 @@ void kmain(struct kernel_payload *__payload)
 
     // parse cmdline to initialize the kernel itself
     kernel_parse_cmdline();
-
-    while(1) {
-        printk("test");
-        cpu_sleep(1000 * 1000);
-    }
 
 #if 0
     // mount the root
@@ -108,27 +103,28 @@ void kmain(struct kernel_payload *__payload)
 
     printk("vfs: total mount points %d", vfs_mount_points());
 #endif
+    thread_t ths[2];
+    for (size_t i = 0; i < 2; i++) {
+        thread_init(&ths[i], NULL, &kernel_scheduled);
+        thread_start(&ths[i]);
+    }
 
-    // memory_info();
-    // printk("HELLO!\n");
+    // Run scheduler for the core
+    scheduler_enter(cpu_current_core());
 
-    // thread_t ths[128];
-    // for (size_t i = 0; i < 128; i++) {
-    //     thread_init(&ths[i], NULL, &kernel_scheduled);
-    //     // thread_start(&ths[i]);
-    // }
-
-    // // Run scheduler for the core
-    // scheduler_enter(cpu_current_core());
-
-    // while (1) {}
+    panic("bsp: end reached");
+    __halt();
 }
 
 void ap_kmain(struct cpu_core *core)
 {
-    // scheduler_enter(core);
-    printk("HELLO!\n");
-    while (1) {}
+    printk("ap: booted #%u", core->core_id);
+
+    // Run scheduler for the core
+    scheduler_enter(core);
+    
+    panic("ap: end reached; #%u", core->core_id);
+    __halt();
 }
 
 struct kernel_payload const *kernel_configuration()
@@ -143,25 +139,7 @@ double kernel_uptime()
     return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
 }
 
-void kernel_scheduled(void*)
+void kernel_scheduled(thread_t *thread, void *data)
 {
-    // for (volatile size_t i = 0; i < 10; i++)
-    //     printk("%d", i);
-
-    thread_t *th = thread_self();
-
-    for (volatile size_t i = 0; i < 32; i++)
-    {}
-        // printk("Hello from thread %d!", th->tid);
-    printk("done %d", th->tid);
-
-    // for (volatile size_t i = 0; i < 0xffffff;i++);
-    // printk("done %d", th->tid);
-    // machine_reboot();
-    
-    // thread_kill(th, 0);
-    volatile int f = 0;
-    while (1) {
-        f ++;
-    }
+    printk("hello world from thread %d", thread->tid);
 }

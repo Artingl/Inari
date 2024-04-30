@@ -8,7 +8,7 @@
 #include <drivers/video/vbe/vbe_drv.h>
 #include <drivers/impl.h>
 
-#include <bootloader/lower.h>
+#include <bootloader/bios_stub/lower.h>
 
 extern void *_hi_start_marker;
 extern void *_hi_end_marker;

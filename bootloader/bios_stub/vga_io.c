@@ -1,7 +1,7 @@
 #include <stdarg.h>
 
 #include <kernel/include/C/string.h>
-#include <bootloader/lower.h>
+#include <bootloader/bios_stub/lower.h>
 
 #define PR_LJ 0x01
 #define PR_CA 0x02

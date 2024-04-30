@@ -8,10 +8,6 @@
 
 struct console console;
 
-int __heap_allocated = 0;
-int __must_rerender = 0;
-int __has_serial = 0;
-
 void __printc(char c);
 
 void console_init()
@@ -19,20 +15,33 @@ void console_init()
     memset(&console, 0, sizeof(struct console));
 
     // initialize serial for the console
-    __has_serial = serial_init(CONSOLE_SERIAL_PORT, CONSOLE_SERIAL_BAUD) == SERIAL_SUCCESS;
+    if (serial_init(CONSOLE_SERIAL_PORT, CONSOLE_SERIAL_BAUD) == SERIAL_SUCCESS)
+    {
+        console.serial_port = CONSOLE_SERIAL_PORT;
+    }
+    else {
+        console.serial_port = 0;
+    }
+
+    console.__heap_allocated = 0;
+    console.__must_flush = 0;
+
+    spinlock_init(&console.__spinlock);
 }
 
 void console_clear()
 {
+    spinlock_acquire(&console.__spinlock);
     console.offset_x = 0;
     console.offset_y = 0;
     memset(console.buffer, 0, console.buffer_width * console.buffer_height * sizeof(uint32_t));
     memset(console.lines_state, 0, console.buffer_height * sizeof(uint32_t));
+    spinlock_release(&console.__spinlock);
 }
 
 void console_enable_heap()
 {
-    if (!__heap_allocated)
+    if (!console.__heap_allocated)
     {
         console.buffer_width = CONSOLE_WIDTH;
         console.buffer_height = CONSOLE_HEIGHT;
@@ -40,12 +49,13 @@ void console_enable_heap()
         console.lines_state = kcalloc(sizeof(uint32_t), console.buffer_height);
         memset(console.buffer, 0, console.buffer_width * console.buffer_height * sizeof(uint32_t));
         memset(console.lines_state, 0, console.buffer_height * sizeof(uint32_t));
-        __heap_allocated = true;
+        console.__heap_allocated = 1;
     }
 }
 
 int console_print(const char *msg)
 {
+    spinlock_acquire(&console.__spinlock);
     char c;
     int i = 0;
 
@@ -57,40 +67,21 @@ int console_print(const char *msg)
         i++;
     }
 
-    if (__must_rerender)
-        console_render();
+    if (console.__must_flush)
+        console_flush();
+    spinlock_release(&console.__spinlock);
     return i;
 }
 
 int console_printc(char c)
 {
+    spinlock_acquire(&console.__spinlock);
     __printc(c);
 
-    if (__must_rerender)
-        console_render();
+    if (console.__must_flush)
+        console_flush();
+    spinlock_release(&console.__spinlock);
     return 1;
-}
-
-void console_render()
-{
-    size_t i;
-    console_flush();
-    return;
-
-    // print to the screen only if we allocated the buffer on heap
-    if (__heap_allocated)
-    {
-        // update only lines that changed since last render
-        for (i = 0; i < console.buffer_height; i++)
-        {
-            // if (console.lines_state[i] & CONSOLE_LINE_UPDATED)
-            {
-                console.lines_state[i] &= ~CONSOLE_LINE_UPDATED;
-                video_text_print_at(&console.buffer[i * console.buffer_width], console.buffer_width, 0x00, 0xcc, 0, i);
-            }
-        }
-        __must_rerender = false;
-    }
 }
 
 void console_flush()
@@ -99,7 +90,7 @@ void console_flush()
 
 void __printc(char c)
 {
-    if (__has_serial)
+    if (console.serial_port != 0)
     {
         if (c == '\n')
         {
@@ -118,7 +109,7 @@ void __printc(char c)
     }
 
     // print to the screen only if we allocated the buffer on heap
-    if (__heap_allocated)
+    if (console.__heap_allocated)
     {
         size_t last_line_offset, width = console.buffer_width, offset = 0;
 
@@ -200,7 +191,7 @@ void __printc(char c)
             console.lines_state[console.offset_y]   |= CONSOLE_LINE_UPDATED;
             console.lines_state[console.offset_y-1] |= CONSOLE_LINE_UPDATED;
             
-            __must_rerender = true;
+            console.__must_flush = true;
         }
     }
 }

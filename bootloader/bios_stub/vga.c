@@ -2,7 +2,7 @@
 
 #include <kernel/include/C/typedefs.h>
 #include <kernel/include/C/string.h>
-#include <bootloader/lower.h>
+#include <bootloader/bios_stub/lower.h>
 
 #include <stdarg.h>
 

@@ -5,6 +5,7 @@
 
 #include <stdarg.h>
 
+spinlock_t printk_spinlock = {0};
 
 int do_printf_handler(char c, void **)
 {
@@ -51,9 +52,11 @@ int printk_wrapper(size_t line, const char *file, const char *func, const char *
     va_list args;
     va_start(args, fmt);
 
+    spinlock_acquire(&printk_spinlock);
     c += printk_helper("[  %f]%s ", kernel_uptime(), prefix);
     c += do_printkn(fmt + shift, args, &do_printf_handler, NULL);
     c += console_printc('\n');
+    spinlock_release(&printk_spinlock);
 
     va_end(args);
     return c;

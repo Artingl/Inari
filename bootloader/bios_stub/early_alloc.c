@@ -2,7 +2,7 @@
 #include <kernel/include/C/math.h>
 #include <kernel/kernel.h>
 
-#include <bootloader/lower.h>
+#include <bootloader/bios_stub/lower.h>
 
 extern void *lo_early_heap_top;
 extern void *lo_early_heap;
