@@ -10,6 +10,14 @@
 #define serial_received(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 1)
 #define serial_is_transmit_empty(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 0x20)
 
+void test11()
+{
+    *((uint8_t*)0xb8002)='A';
+    *((uint8_t*)0xb8003)='A';
+    *((uint8_t*)0xb8004)='A';
+    *((uint8_t*)0xb8005)='A';
+}
+
 int serial_init(uint16_t port, uint32_t baud)
 {
     // *((int*)0xb8000)=0x07690748;
