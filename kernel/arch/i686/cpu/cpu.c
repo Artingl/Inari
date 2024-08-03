@@ -141,7 +141,7 @@ void cpu_bsp_init()
     }
 
     printk("cpu: vendor=%s, model=%s, phys_cpus=%d", cpu_vendor, cpu_model, cpu_count);
-    printk("cpu: is_vm=%d, exc=0x%x, edx=0x%x", (cpu_features_ecx & CPU_FEATURE_ECX_VMX) ? 1 : 0, cpu_features_ecx, cpu_features_edx);
+    printk("cpu: is_vm=%d, ecx=0x%x, edx=0x%x", (cpu_features_ecx & CPU_FEATURE_ECX_VMX) ? 1 : 0, cpu_features_ecx, cpu_features_edx);
 }
 
 static void cpu_core_alloc(struct cpu_core *core)
