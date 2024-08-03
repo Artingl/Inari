@@ -2,10 +2,6 @@
 
 #include <kernel/include/C/typedefs.h>
 
-#include <drivers/cpu/cpu.h>
-#include <drivers/memory/pmm.h>
-#include <drivers/video/video.h>
-
 #define KERN_ERR "0"
 #define KERN_WARNING "1"
 #define KERN_DEFAULT ""
@@ -13,24 +9,23 @@
 #define INARI ...
 
 #define KERN_MAX_CORES 256
-#define KERN_STACK_SIZE 0x100000
+#define KERN_STACK_SIZE 0x2000
 
 #define printk(message...) printk_wrapper(__LINE__, __FILE__, __FUNCTION__, message)
 #define kernel_assert(cond, msg) \
     do { if (!(cond))            \
     panic("%s: in %s at line %d", msg, __FILE__, __LINE__); } while(0)
 
-extern void *_hi_start_marker;
-
-#define KERN_PHYS(addr) ((uintptr_t)(addr) - (uintptr_t) & _hi_start_marker)
+extern char __kvirtual_start;
+#define KERN_PHYS(addr) ((uintptr_t)(addr) - (uintptr_t) & __kvirtual_start)
 
 // wrapper for log functions
 int printk_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...);
 
 void panic(const char *message, ...);
 
-// get the kernel uptime (in MS)
-double kernel_uptime();
+// get the kernel time (in MS)
+double kernel_time();
 
 struct kernel_mmap_entry
 {
@@ -50,16 +45,12 @@ struct kernel_payload
     const char *bootloader; // name of the bootloader
     const char *cmdline;    // kernel command line arguments
 
-    struct kern_video video_service; // video service to be used by the kernel (VGA, VBE, etc.)
-
     struct kernel_mmap_entry *mmap; // list of mmaps
     size_t mmap_length;             // amount of mmaps in the list
 };
 
-const char *kernel_root_mount_point();
-void kernel_parse_cmdline();
-void kmain(struct kernel_payload *payload);
-void ap_kmain(struct cpu_core *core);
+void kparse_cmdline();
+void kmain();
 
 // kernel configuration at startup (provided by the bootloader)
 struct kernel_payload const *kernel_configuration();
@@ -95,5 +86,3 @@ void *kmalloc(size_t length);
 void kfree(void *ptr);
 void *krealloc(void *ptr, size_t size);
 void *kcalloc(size_t n, size_t size);
-
-int kernel_initialize_gdb();

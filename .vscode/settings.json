@@ -3,6 +3,7 @@
         "ACPI",
         "apic",
         "bootloader",
+        "dynlist",
         "framebuffer",
         "Inari",
         "kcalloc",
@@ -58,7 +59,12 @@
         "scheduler.h": "c",
         "thread.h": "c",
         "stdarg.h": "c",
-        "lower.h": "c"
+        "lower.h": "c",
+        "module.h": "c",
+        "dynlist.h": "c",
+        "ps2.h": "c",
+        "pit.h": "c",
+        "*.tcc": "c"
     },
     "cSpell.language": "en,ru,en-GB",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"

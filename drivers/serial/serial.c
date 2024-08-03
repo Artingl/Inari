@@ -1,7 +1,7 @@
 #include <kernel/kernel.h>
 
 #include <drivers/serial/serial.h>
-#include <drivers/impl.h>
+#include <kernel/arch/i386/impl.h>
 
 #include <kernel/include/C/io.h>
 
@@ -12,6 +12,9 @@
 
 int serial_init(uint16_t port, uint32_t baud)
 {
+    // *((int*)0xb8000)=0x07690748;
+return 0;
+
     // disable interrupts
     __outb(SERIAL_PORT(port, SERIAL_INT_ENABLE), 0x00);
 

@@ -13,9 +13,8 @@
 #define CONSOLE_TAB_SIZE 4
 
 #define CONSOLE_SERIAL_BAUD 9600
-#define CONSOLE_SERIAL_PORT SERIAL_COM0
 
-struct console {
+typedef struct console {
     uint32_t offset_x;
     uint32_t offset_y;
     uint32_t buffer_width;
@@ -23,26 +22,24 @@ struct console {
     uint32_t serial_port;
 
     uint8_t *buffer;
-    
     uint8_t unicode_bytes;
     uint8_t unicode_bytes_start;
+
     bool is_unicode;
+    bool heap_allocated;
+    bool must_flush;
 
-    bool __heap_allocated;
-    bool __must_flush;
-
-    spinlock_t __spinlock;
+    spinlock_t spinlock;
 
 #define CONSOLE_LINE_UPDATED (1 << 0)
     uint32_t *lines_state;
 
-};
+} console_t;
 
 void console_enable_heap();
-void console_init();
+void console_init(uint16_t serial_port);
 
 void console_clear();
-void console_use(struct console *console);
 void console_flush();
 
 int console_print(const char *msg);

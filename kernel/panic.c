@@ -9,19 +9,33 @@
 
 spinlock_t panic_spinlock = {0};
 
-int do_printf_handler(char c, void **);
-int printk_helper(const char *fmt, ...);
+void __console_printc(char c);
+
+int do_panic_handler(char c, void **_)
+{
+    __console_printc(c);
+}
+
+int panic_helper(const char *fmt, ...)
+{
+    int c;
+    va_list args;
+    va_start(args, fmt);
+    c += do_printkn(fmt, args, &do_panic_handler, NULL);
+    va_end(args);
+
+    return c;
+}
 
 void panic(const char *message, ...)
 {
     spinlock_acquire(&panic_spinlock);
     va_list args;
     va_start(args, message);
-    printk_helper("[  %f] PANIC: ", kernel_uptime());
-    do_printkn(message, args, &do_printf_handler, NULL);
+    panic_helper("[  %f] PANIC: ", kernel_time() / 1000.0f);
+    do_printkn(message, args, &do_panic_handler, NULL);
 
-    // print the NL character so the screen would update
-    console_printc('\n');
+    __console_printc('\n');
     va_end(args);
 
     spinlock_release(&panic_spinlock);

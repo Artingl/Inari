@@ -1,8 +1,8 @@
 bits 32
-section .lo_data
+section .__klo_data
     dd 0x1BADB002   ; Magic number
-    dd 0x07         ; Flags
-    dd - (0x1BADB002 + 0x07) ; Checksum
+    dd 0x03         ; Flags
+    dd - (0x1BADB002 + 0x03) ; Checksum
     dd 0 	    ; header_addr
     dd 0 	    ; load_addr
     dd 0 	    ; load_end_addr
@@ -16,21 +16,17 @@ section .lo_data
 
 
 
-section .lo_gdt
+section .__klo_gdt
 %include "bootloader/asm/cpu/gdt.asm"
 
-section .lo_text
-%include "bootloader/asm/video/vga.asm"
+section .__klo_text
 
-global lo_kernel_asm_entry
-global lo_update_stack_and_jump
-global lo_stack_bottom
+global __klo_stack
+global __klo_i386_entry
 
-extern _lo_end_marker
-extern lo_kmain
-extern jump_to_kernel
+extern i386_entrypoint
 
-lo_kernel_asm_entry:
+__klo_i386_entry:
     lgdt [gdt_descriptor]
     jmp CODE_SEG:.setcs                       ;; Set CS to our 32-bit code selector
     .setcs:
@@ -40,63 +36,28 @@ lo_kernel_asm_entry:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    mov esp, lo_stack_bottom                     ;; set stack pointer
+    mov esp, __klo_stack                      ;; set stack pointer
     cli                                       ;; Disable interrupts
 
     ;; multiboot struct must be inside the ebx register
-    mov dword [_lower_multiboot_info_struct], ebx
-    push ebx
+    ; mov dword [_lower_multiboot_info_struct], ebx
+    ; push ebx
     
-    call init_vga
-    call lo_kmain
+    call i386_entrypoint
     hlt
 
-lo_update_stack_and_jump:
-    mov esp, hi_stack_bottom
-    call jump_to_kernel
-
-section .lo_bss
-global _lower_multiboot_info_struct
-    _lower_multiboot_info_struct: dq 0
-
-
-global lo_early_heap_top
-    lo_early_heap_top: dq 0
-global lo_early_heap
-    lo_early_heap: dq 0
-global lo_early_heap_end
-    lo_early_heap_end: dq 0
-
-global LO_MESSAGE_DEBUG
-    LO_MESSAGE_DEBUG: db "Debug!", 10, 0
-global LO_MESSAGE_FILLING
-    LO_MESSAGE_FILLING: db "Filling core directory...", 0
-global LO_MESSAGE_DONE
-    LO_MESSAGE_DONE: db " done!", 10, 0
-global LO_MESSAGE_IDENTIFY
-    LO_MESSAGE_IDENTIFY: db "Identifying all necessary addresses to core directory...", 0
-global LO_MESSAGE_NO_MMAPS
-    LO_MESSAGE_NO_MMAPS: db "No memory mappings were found in the multiboot structure!", 10, 0
-global LO_MESSAGE_DIR_DEBUG
-    LO_MESSAGE_DIR_DEBUG: db "Core directory info: base = %p, tablePhys = %p", 10, 0
-global LO_MESSAGE_HALT
-    LO_MESSAGE_HALT: db "System is going to be halted NOW.", 10, 0
-global LO_MESSAGE_PASS_CONTROL
-    LO_MESSAGE_PASS_CONTROL: db "Paging enabled! Passing control to the higher kernel...", 10, 0
-
-    resb 0xffff
-    lo_stack_bottom:
+resb 0xffff
+__klo_stack:
 
 ;; higher bootloader part
 section .text
 %include "bootloader/asm/cpu/idt.asm"
 
-global hi_stack_top
-global hi_stack_bottom
+global __kstack_top_bsp
+global __kstack_bottom_bsp
 
 section .bss
-    hi_stack_top:
-	resb 0x100000 ;; 1MB of stack
-                  ;; TODO: allocate kernel stack on the heap later, so we don't waste memory here
-    hi_stack_bottom:
+    __kstack_top_bsp:
+	resb 0x2000   ;; 4KB of stack
+    __kstack_bottom_bsp:
 

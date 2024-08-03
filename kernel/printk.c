@@ -7,7 +7,7 @@
 
 spinlock_t printk_spinlock = {0};
 
-int do_printf_handler(char c, void **)
+int do_printf_handler(char c, void **_)
 {
     console_printc(c);
 }
@@ -22,6 +22,8 @@ int printk_helper(const char *fmt, ...)
 
     return c;
 }
+
+int test = 0;
 
 int printk_wrapper(size_t line, const char *file, const char *func, const char *fmt, ...)
 {
@@ -53,7 +55,7 @@ int printk_wrapper(size_t line, const char *file, const char *func, const char *
     va_start(args, fmt);
 
     spinlock_acquire(&printk_spinlock);
-    c += printk_helper("[  %f]%s ", kernel_uptime(), prefix);
+    c += printk_helper("[  %f]%s ", kernel_time() / 1000.0f, prefix);
     c += do_printkn(fmt + shift, args, &do_printf_handler, NULL);
     c += console_printc('\n');
     spinlock_release(&printk_spinlock);

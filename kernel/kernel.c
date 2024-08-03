@@ -1,131 +1,19 @@
 #include <kernel/kernel.h>
 #include <kernel/tests/kernel_tests.h>
-
-#include <drivers/fs/fat/fat32.h>
-
-#include <drivers/video/video.h>
-#include <drivers/memory/memory.h>
-#include <drivers/memory/vmm.h>
-#include <drivers/cpu/cpu.h>
-#include <drivers/cpu/amd/svm/svm.h>
+#include <kernel/module/module.h>
 #include <drivers/serial/serial.h>
-#include <drivers/ps2/ps2.h>
-
-#include <kernel/scheduler/scheduler.h>
-#include <kernel/scheduler/thread.h>
 #include <kernel/sys/console/console.h>
-#include <kernel/sys/devfs/devfs.h>
-#include <kernel/sys/disks/disks.h>
-#include <kernel/sys/vfs/vfs.h>
-#include <kernel/sys/sys.h>
-
 #include <kernel/include/C/math.h>
 #include <kernel/include/C/string.h>
+
+#include <kernel/arch/i386/impl.h>
 
 // the payload should be in the lower memory so we can use it anywhere we want even without paging
 __attribute__((section(".lo_text"))) struct kernel_payload payload;
 
-extern void *_hi_start_marker;
-extern void *_hi_end_marker;
 
-void kernel_scheduled(thread_t*, void*);
-
-// !!! STACK DEBUG
-#define STACK() { \
-    register int espr __asm__("esp"); \
-    extern int hi_stack_bottom; \
-    uintptr_t l = vmm_get_phys(vmm_current_directory(), (void*)espr), u = (uintptr_t)(&hi_stack_bottom); \
-    printk("STACKDEBUG: %p %p, %p", (unsigned long)l, (unsigned long)u, (unsigned long)(u - l)); \
-    printk("HALT!!!"); \
-    __halt();}
-
-void kmain(struct kernel_payload *__payload)
-{
-    const char *mount_point;
-    struct devfs_node *block_device;
-    struct gendisk *disk;
-
-    memcpy(&payload, __payload, sizeof(struct kernel_payload));
-
-    console_init();
-    memory_init();
-    cpu_bsp_init();
-
-    // Initialize the debugger
-    kernel_initialize_gdb();
-
-    // Make some small kernel tests
-    kernel_make_tests();
-
-    console_enable_heap();
-    video_init();
-
-    console_clear();
-    printk("Inari kernel (x86, %s)", payload.bootloader);
-    printk("Kernel cmdline: %s", payload.cmdline);
-    printk("Kernel virtual start: %p", &_hi_start_marker);
-    printk("Kernel virtual end: %p", &_hi_end_marker);
-
-    scheduler_init();
-    sys_init();
-
-    // initialize drivers
-    ps2_init();
-
-    // parse cmdline to initialize the kernel itself
-    kernel_parse_cmdline();
-
-#if 0
-    // mount the root
-    mount_point = kernel_root_mount_point();
-    if (mount_point == NULL)
-        panic("kernel: unspecified mount point.");
-
-    block_device = devfs_get_node(mount_point);
-    if (block_device == NULL)
-        panic("kernel: block device '%s' not found.", mount_point);
-
-    disk = alloc_disk(block_device);
-    kernel_assert(vfs_mount_root(disk) == VFS_SUCCESS, "vfs init failed");
-
-    struct vfs_directory *dir = vfs_opendir("/");
-    struct vfs_entry *entry;
-
-    if (dir)
-    {
-        while ((entry = vfs_readdir(dir)))
-        {
-            printk("%s", entry->entry_path);
-        }
-
-        vfs_closedir(dir);
-    }
-
-    printk("vfs: total mount points %d", vfs_mount_points());
-#endif
-    thread_t ths[2];
-    for (size_t i = 0; i < 2; i++) {
-        thread_init(&ths[i], NULL, &kernel_scheduled);
-        thread_start(&ths[i]);
-    }
-
-    // Run scheduler for the core
-    scheduler_enter(cpu_current_core());
-
-    panic("bsp: end reached");
-    __halt();
-}
-
-void ap_kmain(struct cpu_core *core)
-{
-    printk("ap: booted #%u", core->core_id);
-
-    // Run scheduler for the core
-    scheduler_enter(core);
-    
-    panic("ap: end reached; #%u", core->core_id);
-    __halt();
-}
+extern char __kvirtual_start;
+extern char __kvirtual_end;
 
 struct kernel_payload const *kernel_configuration()
 {
@@ -133,13 +21,39 @@ struct kernel_payload const *kernel_configuration()
 }
 
 extern double cpu_timer_ticks;
-
-double kernel_uptime()
+double kernel_time()
 {
-    return cpu_timer_ticks / 1000.0f; // / cpu_timer_freq();
+    return cpu_timer_ticks; // / cpu_timer_freq();
 }
 
-void kernel_scheduled(thread_t *thread, void *data)
+void kmain()
 {
-    printk("hello world from thread %d", thread->tid);
+    console_init(SERIAL_COM0);
+
+    panic("end here");
+
+    // Make some small kernel tests
+    do_kern_tests();
+
+    console_enable_heap();
+    // video_init();
+
+    console_clear();
+    printk("Inari kernel (x86, %s)", payload.bootloader);
+    printk("Kernel cmdline: %s", payload.cmdline);
+    printk("Kernel virtual start: %p", &__kvirtual_start);
+    printk("Kernel virtual end: %p", &__kvirtual_end);
+
+    kload_modules();
+    // sys_init();
+
+    // initialize drivers
+    // ps2_init();
+
+    // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
+    kparse_cmdline();
+
+
+    panic("bsp: end reached");
+    __halt();
 }

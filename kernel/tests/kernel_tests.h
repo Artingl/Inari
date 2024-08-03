@@ -1,3 +1,3 @@
 #pragma once
 
-void kernel_make_tests();
+void do_kern_tests();

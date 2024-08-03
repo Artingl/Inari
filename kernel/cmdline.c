@@ -1,15 +1,7 @@
 #include <kernel/kernel.h>
 #include <kernel/include/C/string.h>
 
-#include <drivers/video/video.h>
-#include <drivers/cpu/cpu.h>
-
 char mount_point[256];
-
-const char *kernel_root_mount_point()
-{
-    return mount_point;
-}
 
 void __parse_cmdline_cmd(const char *command, const char *argument)
 {
@@ -28,7 +20,7 @@ void __parse_cmdline_cmd(const char *command, const char *argument)
     }
 }
 
-void kernel_parse_cmdline()
+void kparse_cmdline()
 {
     char buffer[128];
 

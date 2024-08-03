@@ -6,8 +6,8 @@ Simple kernel written for x86 architecture (with potential support for x86-64).
  - [ ] FAT32 driver.
  - [ ] VFS and Disks subsystem implementation.
  - [ ] Improve memory allocation (VMM mainly).
- - [ ] Maybe userland someday?
- - [ ] Maybe some decades later implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it's sooo messy right now).
+ - [ ] Userland someday?
+ - [ ] Implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it's sooo messy right now).
  - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
  - [ ] We cannot run more than 3 APs.
  - [ ] Rewrite kernel's "std" lib at kernel/include/C/...
