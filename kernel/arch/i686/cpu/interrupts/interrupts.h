@@ -9,5 +9,7 @@
 
 struct cpu_core;
 
-void cpu_ints_core_init(struct cpu_core *core);
-void cpu_ints_core_disable(struct cpu_core *core);
+void cpu_interrupts_core_init(struct cpu_core *core);
+void cpu_interrupts_core_disable(struct cpu_core *core);
+void cpu_interrupts_idt_init(struct cpu_core *core);
+void cpu_interrupts_idt_install(struct cpu_core *core, unsigned long base, uint8_t num, uint16_t sel, uint8_t flags);

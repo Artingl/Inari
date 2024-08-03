@@ -2,7 +2,7 @@
 #include <kernel/arch/i686/cpu/cpu.h>
 #include <kernel/arch/i686/cpu/acpi/acpi.h>
 
-#include <kernel/lock/spinlock.h>
+#include <kernel/core/lock/spinlock.h>
 #include <kernel/kernel.h>
 #include <kernel/machine.h>
 

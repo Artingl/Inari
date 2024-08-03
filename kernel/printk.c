@@ -1,6 +1,6 @@
 #include <kernel/kernel.h>
-#include <kernel/lock/spinlock.h>
-#include <kernel/sys/console/console.h>
+#include <kernel/core/lock/spinlock.h>
+#include <kernel/core/console/console.h>
 #include <kernel/include/io.h>
 
 #include <stdarg.h>

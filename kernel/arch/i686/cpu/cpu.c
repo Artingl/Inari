@@ -189,28 +189,13 @@ void cpu_init_core(int id)
     vmm_switch_directory(vmm_kernel_directory());
 
     // Initialize interrupts for the core
-    cpu_ints_core_init(core);
+    cpu_interrupts_core_init(core);
 
-    // ...
     core->enabled = 1;
-    __enable_int();
-}
 
-void cpu_idt_init(struct cpu_core *core)
-{
-    core->idt_desc.size = (sizeof(struct cpu_idt) * 256) - 1;
-    core->idt_desc.base = (uintptr_t)core->idt;
-    printk("idt: base ptr %p", (unsigned long)core->idt);
+    // Load IDT and enable interrupts
     __load_idt(core->idt_desc);
-}
-
-void cpu_idt_install(struct cpu_core *core, unsigned long base, uint8_t num, uint16_t sel, uint8_t flags)
-{
-    core->idt[num].base_low = ((uint64_t)base & 0xFFFF);
-    core->idt[num].base_high = ((uint64_t)base >> 16) & 0xFFFF;
-    core->idt[num].sel = sel;
-    core->idt[num].zero = 0;
-    core->idt[num].flags = flags | 0x60;
+    __enable_int();
 }
 
 void cpu_shutdown()
@@ -228,7 +213,7 @@ void cpu_shutdown()
     // disable interrupts
     for (i = 0; i < cpu_count; i++)
     {
-        cpu_ints_core_disable(&cores[i]);
+        cpu_interrupts_core_disable(&cores[i]);
         cpu_core_cleanup(&cores[i]);
     }
 

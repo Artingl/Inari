@@ -1,7 +1,7 @@
 #include <kernel/kernel.h>
 #include <kernel/machine.h>
-#include <kernel/lock/spinlock.h>
-#include <kernel/sys/console/console.h>
+#include <kernel/core/lock/spinlock.h>
+#include <kernel/core/console/console.h>
 #include <kernel/include/io.h>
 #include <kernel/include/string.h>
 

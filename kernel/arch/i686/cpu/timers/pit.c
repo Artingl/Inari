@@ -42,6 +42,8 @@ static inline void pit_set_div(uint16_t div)
 
 void cpu_pit_init()
 {
+    printk("pit: installing interrupt handler; speed=%d", INTERRUPT_TIMER_SPEED);
+
     cpu_timer_ticks = 0;
     irq_ticks = 0;
     kern_interrupts_install_handler(KERN_INTERRUPT_TIMER, &pit_irq);

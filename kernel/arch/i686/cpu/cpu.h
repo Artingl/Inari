@@ -108,7 +108,6 @@ struct cpu_core *cpu_current_core();
 struct cpu_core *cpu_get_core(uint32_t id);
 
 int cpu_using_apic();
-int cpu_ints_initialized(struct cpu_core *core);
 
 void cpu_sleep(size_t us);
 
@@ -124,6 +123,3 @@ uint64_t cpu_timer_freq();
 
 void cpu_smp_bringup(int cores_count);
 void cpu_smp_shutdown();
-
-void cpu_idt_init(struct cpu_core *core);
-void cpu_idt_install(struct cpu_core *core, unsigned long base, uint8_t num, uint16_t sel, uint8_t flags);

@@ -1,9 +1,9 @@
 #include <kernel/kernel.h>
 #include <kernel/machine.h>
 #include <kernel/tests/kernel_tests.h>
-#include <kernel/module/module.h>
+#include <kernel/core/module/module.h>
 #include <kernel/driver/serial/serial.h>
-#include <kernel/sys/console/console.h>
+#include <kernel/core/console/console.h>
 #include <kernel/include/math.h>
 #include <kernel/include/string.h>
 #include <kernel/driver/interrupt/interrupt.h>

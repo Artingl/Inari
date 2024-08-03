@@ -1,6 +1,7 @@
 #include <kernel/kernel.h>
 #include <kernel/include/string.h>
 
+#include <kernel/arch/i686/cpu/interrupts/interrupts.h>
 #include <kernel/arch/i686/cpu/interrupts/irq/irq.h>
 #include <kernel/arch/i686/cpu/interrupts/exceptions/exceptions.h>
 #include <kernel/arch/i686/memory/vmm.h>
@@ -8,29 +9,29 @@
 void cpu_exceptions_core_init(struct cpu_core *core)
 {
     // install all exceptions
-    cpu_idt_install(core, (unsigned)_excp0, DIVISION_ERROR_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp1, DEBUG_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp2, NON_MASKABLE_INTERRUPT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp3, BREAKPOINT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp4, OVERFLOW_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp5, BOUND_RAGE_EXCEEDED_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp6, INVALID_OPCODE_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp7, DEVICE_NOT_AVAILABLE_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp8, DOUBLE_FAULT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp9, CROSS_SEGMENT_OVERRRUN_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp10, INVALID_TSS_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp11, SEGMENT_NOT_PRESENT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp12, STACK_SEGMENT_FAULT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp13, GENERAL_PROTECTION_FAULT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp14, PAGE_FAULT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp16, x87_FLOATING_POINT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp17, ALIGNMENT_CHECK_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp18, MACHINE_CHECK_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp19, SIMD_FLOATING_POINT_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp20, VIRTUALIZATION_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp21, CONTROL_PROTECTION_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp29, HYPERVISOR_INJECTION_EXCEPTION, 0x08, 0x8e);
-    cpu_idt_install(core, (unsigned)_excp30, SECURITY_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp0, DIVISION_ERROR_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp1, DEBUG_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp2, NON_MASKABLE_INTERRUPT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp3, BREAKPOINT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp4, OVERFLOW_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp5, BOUND_RAGE_EXCEEDED_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp6, INVALID_OPCODE_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp7, DEVICE_NOT_AVAILABLE_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp8, DOUBLE_FAULT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp9, CROSS_SEGMENT_OVERRRUN_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp10, INVALID_TSS_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp11, SEGMENT_NOT_PRESENT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp12, STACK_SEGMENT_FAULT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp13, GENERAL_PROTECTION_FAULT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp14, PAGE_FAULT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp16, x87_FLOATING_POINT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp17, ALIGNMENT_CHECK_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp18, MACHINE_CHECK_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp19, SIMD_FLOATING_POINT_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp20, VIRTUALIZATION_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp21, CONTROL_PROTECTION_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp29, HYPERVISOR_INJECTION_EXCEPTION, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_excp30, SECURITY_EXCEPTION, 0x08, 0x8e);
 }
 
 static inline void byte2str(char *buffer, uint8_t num)

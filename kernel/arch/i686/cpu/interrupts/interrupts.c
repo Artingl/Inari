@@ -2,6 +2,7 @@
 #include <kernel/include/string.h>
 #include <kernel/list/dynlist.h>
 #include <kernel/driver/interrupt/interrupt.h>
+#include <kernel/driver/serial/serial.h>
 
 #include <kernel/arch/i686/impl.h>
 #include <kernel/arch/i686/cpu/cpu.h>
@@ -15,9 +16,9 @@
 #include <kernel/arch/i686/cpu/interrupts/apic/local_apic.h>
 #include <kernel/arch/i686/cpu/interrupts/apic/io_apic.h>
 
-void cpu_ints_core_init(struct cpu_core *core)
+void cpu_interrupts_core_init(struct cpu_core *core)
 {
-    cpu_idt_init(core);
+    cpu_interrupts_idt_init(core);
     
     // initialize exceptions and IRQs
     cpu_exceptions_core_init(core);
@@ -37,7 +38,8 @@ void cpu_ints_core_init(struct cpu_core *core)
     else
     {
         cpu_lapic_init(core);
-        if (core->is_bsp) {
+        if (core->is_bsp)
+        {
             cpu_atimer_init(core);
             cpu_pit_disable();
         }
@@ -47,7 +49,7 @@ void cpu_ints_core_init(struct cpu_core *core)
     core->ints_loaded = 1;
 }
 
-void cpu_ints_core_disable(struct cpu_core *core)
+void cpu_interrupts_core_disable(struct cpu_core *core)
 {
     core->ints_loaded = 0;
     // Disable APIC/PIC
@@ -57,13 +59,28 @@ void cpu_ints_core_disable(struct cpu_core *core)
         cpu_pic_disable();
 }
 
+void cpu_interrupts_idt_init(struct cpu_core *core)
+{
+    core->idt_desc.size = (sizeof(struct cpu_idt) * 256) - 1;
+    core->idt_desc.base = (uintptr_t)core->idt;
+    printk("idt: base ptr %p", (unsigned long)core->idt);
+}
+
+void cpu_interrupts_idt_install(struct cpu_core *core, unsigned long base, uint8_t num, uint16_t sel, uint8_t flags)
+{
+    core->idt[num].base_low = ((uint64_t)base & 0xFFFF);
+    core->idt[num].base_high = ((uint64_t)base >> 16) & 0xFFFF;
+    core->idt[num].sel = sel;
+    core->idt[num].zero = 0;
+    core->idt[num].flags = flags | 0x60;
+}
+
 extern void kern_interrupts_arch_handle(uint8_t int_no);
 
 uintptr_t isr_handler(struct regs32 *regs)
 {
-    uint32_t i;
-    void *ret;
     struct cpu_core *core = cpu_current_core();
+    serial_write(0, "handler", 7);
 
     // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
     if (regs->int_no == INTERRUPT_TIMER)
