@@ -3,7 +3,7 @@
 
 char mount_point[256];
 
-void __parse_cmdline_cmd(const char *command, const char *argument)
+static void parse_cmdline_cmd(const char *command, const char *argument)
 {
     printk("cmdline: cmd = %s, argument = %s", command, argument);
 
@@ -24,8 +24,7 @@ void kparse_cmdline()
 {
     char buffer[128];
 
-    struct kernel_payload const *config = kernel_configuration();
-    char *cmdline = (char*)config->cmdline;
+    const char *cmdline = kernel_cmdline();
     size_t i, cmdline_len = strlen(cmdline);
 
     char *cmd = NULL;
@@ -56,7 +55,7 @@ void kparse_cmdline()
                 }
 
                 // execute the command
-                __parse_cmdline_cmd(cmd, arg);
+                parse_cmdline_cmd(cmd, arg);
             }
 
             // reset values and parse next argument
@@ -71,14 +70,14 @@ void kparse_cmdline()
             // The end of the command. Parse argument if not the end of the cmdline
             if (i + 1 < cmdline_len)
             {
-                arg = &cmdline[i + 1];
+                arg = (char*)&cmdline[i + 1];
             }
             continue;
         }
 
         if (cmd == NULL)
         {
-            cmd = &cmdline[i];
+            cmd = (char*)&cmdline[i];
         }
 
         // increment the length of the command string if we're not parsing the argument
@@ -110,6 +109,6 @@ void kparse_cmdline()
         }
 
         // execute the command
-        __parse_cmdline_cmd(cmd, arg);
+        parse_cmdline_cmd(cmd, arg);
     }
 }

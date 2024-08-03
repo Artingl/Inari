@@ -3,7 +3,7 @@
 #include <kernel/include/C/typedefs.h>
 #include <kernel/lock/spinlock.h>
 
-#include <drivers/serial/serial.h>
+#include <kernel/driver/serial/serial.h>
 
 #define IS_UNICODE(c) (((c) & 0xc0) == 0xc0)
 
@@ -19,15 +19,15 @@ typedef struct console {
     uint32_t offset_y;
     uint32_t buffer_width;
     uint32_t buffer_height;
-    uint32_t serial_port;
+    uint16_t serial_port;
 
     uint8_t *buffer;
     uint8_t unicode_bytes;
     uint8_t unicode_bytes_start;
 
-    bool is_unicode;
-    bool heap_allocated;
-    bool must_flush;
+    int is_unicode;
+    int heap_allocated;
+    int must_flush;
 
     spinlock_t spinlock;
 
@@ -36,7 +36,7 @@ typedef struct console {
 
 } console_t;
 
-void console_enable_heap();
+void console_late_init();
 void console_init(uint16_t serial_port);
 
 void console_clear();

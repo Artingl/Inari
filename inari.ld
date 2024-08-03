@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(elf32-i386)
-ENTRY(__klo_i386_entry)
+ENTRY(i686_multiboot2_entry)
 SECTIONS
 {
     __kloreal_start = .;
@@ -10,6 +10,8 @@ SECTIONS
     .__klo_data : { *(.__klo_data) }
     .__klo_text : { *(.__klo_text) }
     .__klo_data : { *(.__klo_data) }
+
+    . = 0x600000;
     __kloreal_end = .;
 
     . += 0xC0000000;

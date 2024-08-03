@@ -1,4 +1,5 @@
 #include <kernel/kernel.h>
+#include <kernel/driver/memory/memory.h>
 #include <kernel/sys/console/console.h>
 
 #include <kernel/include/C/math.h>
@@ -37,7 +38,7 @@ void console_clear()
     // spinlock_release(&console.spinlock);
 }
 
-void console_enable_heap()
+void console_late_init()
 {
     // spinlock_acquire(&console.spinlock);
     if (!console.heap_allocated)

@@ -1,8 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/list/dynlist.h>
-
-#include <kernel/arch/i386/memory/memory.h>
-#include <kernel/arch/i386/memory/pmm.h>
+#include <kernel/driver/memory/memory.h>
 
 #include <liballoc/liballoc.h>
 

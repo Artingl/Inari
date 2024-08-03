@@ -49,7 +49,7 @@ int spinlock_release(spinlock_t *lock)
 int spinlock_trylock(spinlock_t *lock)
 {
 
-    // bool flip_interrupts = cpu_current_core()->ints_loaded && __eint();
+    // int flip_interrupts = cpu_current_core()->ints_loaded && __eint();
     // if (lock == NULL)
     //     return 1;
     

@@ -1,16 +1,5 @@
 # Inari
-Simple kernel written for x86 architecture (with potential support for x86-64).
-
-## TODO
- - [ ] Complete ATA PIO driver.
- - [ ] FAT32 driver.
- - [ ] VFS and Disks subsystem implementation.
- - [ ] Improve memory allocation (VMM mainly).
- - [ ] Userland someday?
- - [ ] Implement our own bootloader without the need to use multiboot (or at least rewrite lower kernel bootloader, because it's sooo messy right now).
- - [ ] Fix some BUGs with APIC (does not start up on virtualbox).
- - [ ] We cannot run more than 3 APs.
- - [ ] Rewrite kernel's "std" lib at kernel/include/C/...
+Simple kernel written for i686 architecture
 
 ## Building
 After running this command you'll get boot.iso file in the root folder (kernel ELF binary is located at build/Inari):
@@ -26,4 +15,4 @@ make test_serial
 ```
 
 # Screenshots
-![](screenshots/qemu.png)
+![](screenshots/serial_output.png)

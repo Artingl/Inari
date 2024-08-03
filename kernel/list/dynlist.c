@@ -1,4 +1,5 @@
 #include <kernel/list/dynlist.h>
+#include <kernel/driver/memory/memory.h>
 #include <kernel/kernel.h>
 
 

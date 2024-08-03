@@ -1,23 +1,21 @@
 #include <kernel/kernel.h>
+#include <kernel/machine.h>
 #include <kernel/tests/kernel_tests.h>
 #include <kernel/module/module.h>
-#include <drivers/serial/serial.h>
+#include <kernel/driver/serial/serial.h>
 #include <kernel/sys/console/console.h>
 #include <kernel/include/C/math.h>
 #include <kernel/include/C/string.h>
+#include <kernel/driver/interrupt/interrupt.h>
 
-#include <kernel/arch/i386/impl.h>
-
-// the payload should be in the lower memory so we can use it anywhere we want even without paging
-__attribute__((section(".lo_text"))) struct kernel_payload payload;
-
+static char *_cmdline;
 
 extern char __kvirtual_start;
 extern char __kvirtual_end;
 
-struct kernel_payload const *kernel_configuration()
+const char *kernel_cmdline()
 {
-    return &payload;
+    return _cmdline;
 }
 
 extern double cpu_timer_ticks;
@@ -26,23 +24,20 @@ double kernel_time()
     return cpu_timer_ticks; // / cpu_timer_freq();
 }
 
-void kmain()
+void kmain(char *cmdline)
 {
-    console_init(SERIAL_COM0);
+    _cmdline = (char*)cmdline;
 
-    panic("end here");
+    kern_interrupts_init();
+    console_late_init();
 
     // Make some small kernel tests
-    do_kern_tests();
+    // do_kern_tests();
 
-    console_enable_heap();
     // video_init();
 
     console_clear();
-    printk("Inari kernel (x86, %s)", payload.bootloader);
-    printk("Kernel cmdline: %s", payload.cmdline);
-    printk("Kernel virtual start: %p", &__kvirtual_start);
-    printk("Kernel virtual end: %p", &__kvirtual_end);
+    printk("Inari kernel: cmdline: %s", kernel_cmdline());
 
     kload_modules();
     // sys_init();
@@ -55,5 +50,5 @@ void kmain()
 
 
     panic("bsp: end reached");
-    __halt();
+    machine_halt();
 }

@@ -1,6 +1,5 @@
 // Configuration for the kernel and bootloader
 
-#define CONFIG_CPU_32BIT
-
-#define CONFIG_CPU_NO_SMP
-// #define CONFIG_CPU_NOAPIC
+#define CONFIG_ARCH_I686
+#define CONFIG_I686_NO_SMP
+// #define CONFIG_I686_NOAPIC
