@@ -4,8 +4,8 @@
 #include <kernel/module/module.h>
 #include <kernel/driver/serial/serial.h>
 #include <kernel/sys/console/console.h>
-#include <kernel/include/C/math.h>
-#include <kernel/include/C/string.h>
+#include <kernel/include/math.h>
+#include <kernel/include/string.h>
 #include <kernel/driver/interrupt/interrupt.h>
 
 static char *_cmdline;

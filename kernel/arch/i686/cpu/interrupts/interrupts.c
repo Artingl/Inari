@@ -1,5 +1,5 @@
 #include <kernel/kernel.h>
-#include <kernel/include/C/string.h>
+#include <kernel/include/string.h>
 #include <kernel/list/dynlist.h>
 #include <kernel/driver/interrupt/interrupt.h>
 

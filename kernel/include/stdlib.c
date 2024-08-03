@@ -1,4 +1,4 @@
-#include <kernel/include/C/stdlib.h>
+#include <kernel/include/stdlib.h>
 
 /**
  * C++ version 0.4 char* style "itoa":

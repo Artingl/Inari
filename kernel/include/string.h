@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kernel/include/C/typedefs.h"
+#include "kernel/include/typedefs.h"
 
 char *strdup(const char *str1);
 char k_toupper(char c);

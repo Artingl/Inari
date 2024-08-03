@@ -1,5 +1,5 @@
-#include "kernel/include/C/io.h"
-#include "kernel/include/C/string.h"
+#include "kernel/include/io.h"
+#include "kernel/include/string.h"
 
 #include <stdarg.h>
 

@@ -2,7 +2,7 @@
 
 #include <kernel/arch/i686/impl.h>
 #include <kernel/arch/i686/cpu/cpu.h>
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 
 #define IRQ_PIT   0x00
 #define IRQ_PS2   0x01

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 #include <kernel/arch/i686/cpu/cpu.h>
 
 #define APIC_LOCAL_PROCESSOR 0

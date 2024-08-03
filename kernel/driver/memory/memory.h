@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 #include <kernel/kernel.h>
 
 // These functions must be implemented inside the memory driver of currently booted architecture

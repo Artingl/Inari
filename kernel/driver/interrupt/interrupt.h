@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 
 // Interrupt IDs
 #define KERN_INTERRUPT_TIMER 0x00

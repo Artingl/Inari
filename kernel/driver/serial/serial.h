@@ -10,7 +10,7 @@
 #define SERIAL_COM7 0x08
 #define SERIAL_COM8 0x09
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 
 enum {
     SERIAL_SUCCESS = 0,

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kernel/include/C/typedefs.h"
+#include "kernel/include/typedefs.h"
 
 #define reciprocal(n) (1 / (n))
 #define odd(x) ((x) % 2)

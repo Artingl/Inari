@@ -1,4 +1,4 @@
-#include "kernel/include/C/math.h"
+#include "kernel/include/math.h"
 
 double pow(double base, int exp)
 {

@@ -2,7 +2,7 @@
 
 #include <stdatomic.h>
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 
 typedef struct spinlock {
     volatile uint8_t lock;

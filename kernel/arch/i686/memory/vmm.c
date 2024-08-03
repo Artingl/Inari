@@ -1,7 +1,7 @@
 #include <kernel/kernel.h>
-#include <kernel/include/C/typedefs.h>
-#include <kernel/include/C/math.h>
-#include <kernel/include/C/string.h>
+#include <kernel/include/typedefs.h>
+#include <kernel/include/math.h>
+#include <kernel/include/string.h>
 #include <kernel/lock/spinlock.h>
 
 #include <kernel/arch/i686/memory/memory.h>

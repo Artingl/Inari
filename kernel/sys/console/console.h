@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/C/typedefs.h>
+#include <kernel/include/typedefs.h>
 #include <kernel/lock/spinlock.h>
 
 #include <kernel/driver/serial/serial.h>
