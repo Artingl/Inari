@@ -17,6 +17,7 @@ void do_kern_tests()
     if ((result = kernel_mem_test()) != 0) panic("kern_tests: memory test failed; code: %d", result);
     kernel_assert(usage == liballoc_allocated(), "memory leak? check PMM/VMM");
     if ((result = kernel_dynlist_test()) != 0) panic("kern_tests: dynlist test failed; code: %d", result);
+    kernel_assert(usage == liballoc_allocated(), "memory leak? check PMM/VMM");
     printk("kernel: passed all tests");
 }
 
@@ -83,40 +84,40 @@ int kernel_dynlist_test()
 
 int kernel_mem_test()
 {
-    // size_t i, j, k;
-    // uint32_t *pointers[90];
-    // uint32_t *data_pointer;
-    // uint32_t value, tmp_value, size, t = 0;
+#define NUM_TESTS 32
+    size_t i, j, k;
+    uint32_t *pointers[NUM_TESTS];
+    uint32_t *data_pointer = NULL;
+    uint32_t value, tmp_value, size, t = 0;
 
-    // struct page_directory *dir = vmm_current_directory();
+    // small memory check
+    for (i = 0; i < NUM_TESTS; i++)
+    {
+        size = PAGE_SIZE * 128;
+        data_pointer = kcalloc(sizeof(uint32_t), size);
+        // printk("\tkcalloc -> 0x%x %lu %lu", data_pointer, size, i);
+        pointers[i] = data_pointer;
+        t += size;
 
-    // // small memory check
-    // for (i = 0; i < 48; i++)
-    // {
-    //     size = PAGE_SIZE + i * PAGE_SIZE;
-    //     data_pointer = kcalloc(sizeof(uint32_t), size);
-    //     pointers[i] = data_pointer;
-    //     t += size;
+        if (data_pointer == NULL)
+            return 1;
+        
 
-    //     if (data_pointer == NULL)
-    //         return 1;
+        for (j = 0; j < size; j++)
+        {
+            value = 0x823 + j * j + i;
+            data_pointer[j] = value;
 
-    //     for (j = 0; j < size; j++) {
-    //         value = 0x823 + j * j + i;
-    //         data_pointer[j] = value;
+            tmp_value = data_pointer[j];
+            if (tmp_value != value)
+            {
+                return 2;
+            }
+        }
+    }
 
-    //         tmp_value = data_pointer[j];
-    //         if (tmp_value != value) {
-    //             printk(KERN_ERR "kern_tests: real shit happened here... %d != %d", tmp_value, value);
-    //             printk(KERN_ERR "kern_tests: pointers:");
-    //             for (k = 0; k <= i; k++)
-    //                 printk(KERN_ERR "kern_tests: \tvirt: %p, phys: %p", (unsigned long)pointers[k], (unsigned long)vmm_get_phys(dir, (void*)pointers[k]));
-    //             return 2;
-    //         }
-    //     }
-    // }
-
-    // for (i = 0; i < 90; i++)
-    //     kfree(pointers[i]);
+    for (i = 0; i < NUM_TESTS; i++)
+        kfree(pointers[i]);
+#undef NUM_TESTS
     return 0;
 }

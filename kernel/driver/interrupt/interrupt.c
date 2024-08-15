@@ -60,6 +60,10 @@ void kern_interrupts_arch_handle(uint8_t int_no)
     size_t i;
     struct int_handler *s_handler = NULL;
 
+    extern double kernel_uptime_ticks;
+    if (int_no == KERN_INTERRUPT_TIMER)
+        kernel_uptime_ticks++;
+
     // Send interrupt event to all handlers
     for (i = 0; i < dynlist_size(interrupt_handlers); i++)
     {

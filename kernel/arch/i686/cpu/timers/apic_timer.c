@@ -13,12 +13,8 @@ void pit_early_prepare_sleep(size_t us);
 void pit_early_sleep_disable();
 void pit_early_sleep();
 
-extern double cpu_timer_ticks;
-
 static void apic_timer_irq(struct cpu_core *core, struct regs32 *regs)
 {
-    if (core->is_bsp)
-        cpu_timer_ticks++;
 }
 
 void cpu_atimer_init(struct cpu_core *core)

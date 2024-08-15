@@ -80,7 +80,6 @@ extern void kern_interrupts_arch_handle(uint8_t int_no);
 uintptr_t isr_handler(struct regs32 *regs)
 {
     struct cpu_core *core = cpu_current_core();
-    serial_write(0, "handler", 7);
 
     // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
     if (regs->int_no == INTERRUPT_TIMER)

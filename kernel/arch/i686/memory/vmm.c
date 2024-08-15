@@ -24,7 +24,7 @@ int page_fault_handler(struct cpu_core *core, struct regs32 *r)
                      : "=r"(virtual_address));
 
     printk(KERN_ERR "PAGE FAULT [virt=%p]!", (unsigned long)virtual_address);
-
+    
     if (r->err_code & (1 << 0))
         printk(KERN_ERR "\tPage-protection violation.");
     if (r->err_code & (1 << 1))
@@ -33,14 +33,15 @@ int page_fault_handler(struct cpu_core *core, struct regs32 *r)
         printk(KERN_ERR "\tRead process.");
     if (r->err_code & (1 << 2))
         printk(KERN_ERR "\tInside userland (CPL == 3).");
-    if (!(r->err_code & (1 << 2)))
-        printk(KERN_ERR "\tInside kernel (CPL == 0).");
     if (r->err_code & (1 << 5))
         printk(KERN_ERR "\tProtection-key violation.");
     if (r->err_code & (1 << 6))
         printk(KERN_ERR "\tShadow stack access.");
 
-    panic("...");
+    if (!(r->err_code & (1 << 2)))
+        panic("vmm: page fault inside kernel");
+    else
+        panic("vmm: TODO: recover from page fault");
 }
 
 struct page_directory *kernel_directory;
@@ -92,11 +93,12 @@ int vmm_unident(
 
 int vmm_init(struct page_directory *bsp_directory)
 {
+    size_t pdindex, ptindex;
     spinlock_init(&vmm_spinlock);
 
-    size_t pdindex, ptindex;
-    kernel_directory = bsp_directory;
-    
+    // copy the bsp directory
+    kernel_directory = vmm_fork_directory(bsp_directory);
+
     // count used pages
     for (pdindex = 0; pdindex < 1024; pdindex++)
     {
@@ -118,7 +120,7 @@ int vmm_init(struct page_directory *bsp_directory)
     return 0;
 }
 
-struct page_directory *vmm_fork_directory()
+struct page_directory *vmm_fork_directory(struct page_directory *target)
 {
     size_t pdindex, ptindex, i = 0;
 
@@ -131,7 +133,7 @@ struct page_directory *vmm_fork_directory()
         fork->tables_phys[pdindex] = ((uintptr_t)&fork->tables[pdindex]) | 3;
 
         struct page_table *fork_table = vmm_get_table(fork, pdindex);
-        struct page_table *table = vmm_get_table(kernel_directory, pdindex);
+        struct page_table *table = vmm_get_table(target, pdindex);
 
         for (ptindex = 0; ptindex < 1024; ptindex++)
         {
@@ -255,7 +257,7 @@ end:
         panic("vmm: no space in virtual memory OOPS; %d < %d", total_size, npages);
         return NULL;
     }
-
+    
     // allocate the virtual memory
     i = pd_start;
     j = pt_start;
@@ -265,7 +267,7 @@ end:
         struct page_table *table = vmm_get_table(dir, i);
 
         // Allocate frame in physical memory
-        // FIXME: allocate more than one frame at a time
+        // TODO: allocate more than one frame at a time, this is a HUGE bottleneck
         frame_ptr = pmm_alloc_frames(1);
         if (frame_ptr == (uintptr_t)NULL) {
             panic("vmm: got NULL from pmm");

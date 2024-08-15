@@ -9,7 +9,6 @@ SECTIONS
 
     .__klo_data : { *(.__klo_data) }
     .__klo_text : { *(.__klo_text) }
-    .__klo_data : { *(.__klo_data) }
 
     . = 0x600000;
     __kloreal_end = .;

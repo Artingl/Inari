@@ -26,8 +26,6 @@ uintptr_t cpu_ioapic;
 uint32_t cpu_max_count = 1;
 uint32_t cpu_count;
 
-double cpu_timer_ticks;
-
 char cpu_vendor[13];
 char cpu_model[49];
 
@@ -43,7 +41,6 @@ void cpu_bsp_init()
     for (i = 0; i < KERN_MAX_CORES; i++)
         cores[i].core_id = i;
 
-    cpu_timer_ticks = 0;
     cpu_ioapic = (uintptr_t)NULL;
 
     // get CPU vendor

@@ -18,10 +18,10 @@ const char *kernel_cmdline()
     return _cmdline;
 }
 
-extern double cpu_timer_ticks;
+double kernel_uptime_ticks;
 double kernel_time()
 {
-    return cpu_timer_ticks; // / cpu_timer_freq();
+    return kernel_uptime_ticks; // / cpu_timer_freq();
 }
 
 void kmain(char *cmdline)
@@ -32,7 +32,7 @@ void kmain(char *cmdline)
     console_late_init();
 
     // Make some small kernel tests
-    // do_kern_tests();
+    do_kern_tests();
 
     // video_init();
 
@@ -42,12 +42,8 @@ void kmain(char *cmdline)
     kload_modules();
     // sys_init();
 
-    // initialize drivers
-    // ps2_init();
-
     // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
     kparse_cmdline();
-
 
     panic("bsp: end reached");
     machine_halt();

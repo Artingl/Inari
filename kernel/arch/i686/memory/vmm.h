@@ -37,7 +37,7 @@ int vmm_unident(
     size_t length);
 
 struct page_directory *vmm_kernel_directory();
-struct page_directory *vmm_fork_directory();
+struct page_directory *vmm_fork_directory(struct page_directory *target);
 void vmm_deallocate_directory(struct page_directory *pd);
 
 void vmm_page_invalidate(uintptr_t page);

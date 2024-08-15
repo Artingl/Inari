@@ -57,7 +57,8 @@ int pmm_init(struct kernel_mmap_entry *mmap_list, size_t mmap_list_length)
                 }
             }
         }
-        else {
+        else
+        {
             // Ignore any other memory regions
             pmm_disable_region(addr, len);
         }
@@ -69,23 +70,21 @@ int pmm_init(struct kernel_mmap_entry *mmap_list, size_t mmap_list_length)
 
 extern char __kreal_start;
 extern char __kreal_end;
+extern char __kloreal_end;
 
 int pmm_check_overlap(uintptr_t addr)
 {
     uintptr_t kernel_start = (uintptr_t)&__kreal_start;
     uintptr_t kernel_end = (uintptr_t)&__kreal_end;
+    uintptr_t bootloader_end = (uintptr_t)&__kloreal_end;
     uintptr_t kernel_length = kernel_end - kernel_start;
-
 
     if (CHECK_OVERLAP(0x00100000, 0x01000000, addr)) return 1;
     if (CHECK_OVERLAP(0x00F00000, 0x00FFFFFF, addr)) return 1;
     if (CHECK_OVERLAP(0xC0000000, 0xFFFFFFFF, addr)) return 1;
 
     // make sure we don't overwrite the bootloader's memory
-    // TODO: We should not directly get the info from early allocator.
-    //       Instead the bootloader must mark the region of the early allocator as not available.
-    // struct early_alloc_info early_memory = early_alloc_info();
-    // if (CHECK_OVERLAP(0, early_memory.heap_end, addr)) return 1;
+    if (CHECK_OVERLAP(0, bootloader_end, addr)) return 1;
 
     // also we need to be sure not to overwrite the kernel's memory
     if (CHECK_OVERLAP(0, kernel_end, addr)) return 1;

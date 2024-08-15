@@ -32,7 +32,7 @@ static __lo struct page_table *i686_alloc_table(uintptr_t offset)
 // Some shit is written here, we're still really early in the boot process...
 static __lo void i686_map_higher_kernel()
 {
-    uintptr_t i, vstart, vend, offset, size;
+    uintptr_t i, virt_start, virt_end, real_end, offset, size;
     uintptr_t pd, pt;
     uint32_t cr0;
     struct page_table *table = NULL;
@@ -41,18 +41,21 @@ static __lo void i686_map_higher_kernel()
     for (i = 0; i < 1024; i++)
         pg.tables_phys[i] = ((uintptr_t)&pg.tables[offset]) | KERN_TABLE_RW;
 
-    vstart = (uintptr_t)&__kvirtual_start;
-    vend = (uintptr_t)&__kvirtual_end;
+    virt_start = (uintptr_t)&__kvirtual_start;
+    virt_end = (uintptr_t)&__kvirtual_end;
     offset = (uintptr_t)&__kreal_start;
+    real_end = (uintptr_t)&__kloreal_end;
 
     // Map real memory to virtual
-    for (i = 0; i < 0xffffffff - (vend - vstart); i+=PAGE_SIZE)
+    // for (i = 0; i < 0xffffffff - (virt_end - virt_start); i+=PAGE_SIZE)
+    for (i = 0; i < 0x1fffffff; i+=PAGE_SIZE)
     {
         table = i686_alloc_table(i >> 22);
         table->pages[i >> 12 & 0x03FF] = (unsigned long)i | (KERN_PAGE_RW & 0xFFF) | KERN_PAGE_PRESENT | KERN_PAGE_USED;
     }
     
-    for (i = vstart; i < vend; i+=PAGE_SIZE)
+    // Map kernel memory
+    for (i = virt_start; i < virt_end; i+=PAGE_SIZE)
     {
         table = i686_alloc_table(i >> 22);
         table->pages[i >> 12 & 0x03FF] = (unsigned long)offset | (KERN_PAGE_RW & 0xFFF) | KERN_PAGE_PRESENT | KERN_PAGE_USED;

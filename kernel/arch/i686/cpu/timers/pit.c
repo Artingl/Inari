@@ -6,15 +6,18 @@
 #include <kernel/arch/i686/cpu/interrupts/interrupts.h>
 #include <kernel/arch/i686/impl.h>
 
-void pit_irq(struct cpu_core *core, struct regs32 *regs);
 
 volatile double divider;
 volatile double irq_ticks;
-extern double cpu_timer_ticks;
 
 static inline void pit_send_cmd(uint8_t cmd)
 {
     __outb(PIT_CM, cmd);
+}
+
+static void pit_irq(struct cpu_core *core, struct regs32 *regs)
+{
+    irq_ticks++;
 }
 
 static inline void pit_send_data(uint16_t data, uint8_t counter)
@@ -44,7 +47,6 @@ void cpu_pit_init()
 {
     printk("pit: installing interrupt handler; speed=%d", INTERRUPT_TIMER_SPEED);
 
-    cpu_timer_ticks = 0;
     irq_ticks = 0;
     kern_interrupts_install_handler(KERN_INTERRUPT_TIMER, &pit_irq);
     pit_set_div(INTERRUPT_TIMER_SPEED);
@@ -72,13 +74,6 @@ uint32_t cpu_pit_read()
     return count;
 }
 
-void pit_irq(struct cpu_core *core, struct regs32 *regs)
-{
-    if (!core->is_bsp)
-        cpu_timer_ticks++;
-    irq_ticks++;
-}
-
 // we need to tell the compiler not to optimize these functions, because then it will mess up some of them
 volatile double pit_early_us;
 
@@ -98,7 +93,7 @@ void __attribute__((optimize("O0"))) pit_early_sleep_disable()
 
 void __attribute__((optimize("O0"))) pit_early_sleep()
 {
-    volatile double start = cpu_timer_ticks;
+    volatile double start = kernel_time();
     
     while (start + pit_early_us > irq_ticks)
     {}
