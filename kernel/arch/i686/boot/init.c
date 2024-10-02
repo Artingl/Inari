@@ -4,7 +4,7 @@
 #include <kernel/driver/serial/serial.h>
 #include <kernel/kernel.h>
 #include <kernel/core/console/console.h>
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #include <kernel/arch/i686/boot/multiboot.h>
 #include <kernel/arch/i686/cpu/cpu.h>

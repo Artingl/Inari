@@ -2,8 +2,8 @@
 #include <kernel/machine.h>
 #include <kernel/core/lock/spinlock.h>
 #include <kernel/core/console/console.h>
-#include <kernel/include/io.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/io.h>
+#include <kernel/libc/string.h>
 
 #include <stdarg.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #include <kernel/arch/i686/memory/vmm.h>
 

@@ -2,8 +2,8 @@
 
 #include <kernel/kernel.h>
 
-#include <kernel/include/math.h>
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/math.h>
+#include <kernel/libc/typedefs.h>
 
 #include <kernel/arch/i686/cpu/cpu.h>
 

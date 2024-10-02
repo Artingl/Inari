@@ -1,6 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/driver/serial/serial.h>
-#include <kernel/include/io.h>
+#include <kernel/libc/io.h>
 
 #include <stdarg.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #define PMM_POOL_SIZE 1048576 // 256 * 4096   (POOL_FRAME_SIZE * 64 == 1MB)
 

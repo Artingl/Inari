@@ -1,5 +1,5 @@
 #include <kernel/kernel.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/string.h>
 
 char mount_point[256];
 

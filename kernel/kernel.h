@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 #include <kernel/driver/serial/serial.h>
 
 #define KERN_ERR "0"

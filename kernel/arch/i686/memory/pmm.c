@@ -1,6 +1,6 @@
 #include <kernel/kernel.h>
-#include <kernel/include/math.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/math.h>
+#include <kernel/libc/string.h>
 
 #include <kernel/arch/i686/memory/pmm.h>
 #include <kernel/arch/i686/cpu/interrupts/apic/io_apic.h>

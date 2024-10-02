@@ -82,7 +82,10 @@
         "interrupt.h": "c",
         "cstdint": "c",
         "__locale": "c",
-        "ios": "c"
+        "ios": "c",
+        "block_dev.h": "c",
+        "dev.h": "c",
+        "system_error": "c"
     },
     "cSpell.language": "en,ru,en-GB",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"

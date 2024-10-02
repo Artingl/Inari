@@ -12,8 +12,8 @@
 #include <kernel/arch/i686/impl.h>
 
 #include <kernel/driver/memory/memory.h>
-#include <kernel/include/io.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/io.h>
+#include <kernel/libc/string.h>
 
 // ID 0 is always BSP
 struct cpu_core cores[KERN_MAX_CORES];

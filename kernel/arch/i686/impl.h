@@ -2,7 +2,7 @@
 
 // implementation for the x86_64 arch
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #define CPUID_SVM_FEATURE_BIT (1 << 2)
 #define CPUID_SVM_SVML (1 << 2)

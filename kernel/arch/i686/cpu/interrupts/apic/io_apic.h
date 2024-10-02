@@ -2,8 +2,8 @@
 
 #include <kernel/kernel.h>
 
-#include <kernel/include/math.h>
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/math.h>
+#include <kernel/libc/typedefs.h>
 
 #define IOREGSEL 0x00
 #define IOREGWIN 0x10

@@ -2,8 +2,8 @@
 #include <kernel/driver/memory/memory.h>
 #include <kernel/core/console/console.h>
 
-#include <kernel/include/math.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/math.h>
+#include <kernel/libc/string.h>
 
 struct console console;
 

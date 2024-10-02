@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #define PIT_DATA0 0x40 //  Channel 0 data port (read/write)
 #define PIT_DATA1 0x41 //  Channel 1 data port (read/write)

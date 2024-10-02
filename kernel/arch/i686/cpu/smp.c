@@ -1,5 +1,5 @@
 #include <kernel/kernel.h>
-#include <kernel/include/string.h>
+#include <kernel/libc/string.h>
 
 #include <kernel/arch/i686/cpu/interrupts/apic/local_apic.h>
 #include <kernel/arch/i686/cpu/interrupts/interrupts.h>

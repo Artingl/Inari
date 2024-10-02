@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/include/typedefs.h>
+#include <kernel/libc/typedefs.h>
 
 #define PD_SIZE (sizeof(struct page_directory) / PAGE_SIZE)
 
