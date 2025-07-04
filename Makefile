@@ -1,7 +1,6 @@
 TARGET = i686
 
 CFLAGS = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -Werror -Wno-stringop-overflow
-#CFLAGS = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -Werror -Wno-stringop-overflow
 CC = $(HOME)/opt/cross/bin/i686-elf-gcc
 LD = $(HOME)/opt/cross/bin/i686-elf-ld
 ASM = nasm

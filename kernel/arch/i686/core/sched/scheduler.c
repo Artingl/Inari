@@ -14,6 +14,7 @@ struct i686_task_regs
 
 void arch_scheduler_core_idle()
 {
+    __enable_int();
     __halt();
 }
 

@@ -75,6 +75,34 @@ void cpu_interrupts_idt_install(struct cpu_core *core, unsigned long base, uint8
     core->idt[num].flags = flags | 0x60;
 }
 
+uint32_t arch_syscall(uint8_t id, uint32_t param0, uint32_t param1, uint32_t param2)
+{
+    uint32_t syscall_result = 0;
+    __asm__ volatile(
+        "push %%ebx\n"
+        "push %%ecx\n"
+        "push %%edx\n"
+        "mov %0, %%eax\n"
+        "mov %1, %%ebx\n"
+        "mov %2, %%ecx\n"
+        "mov %3, %%edx\n"
+        "int $0x80\n"
+        :
+        : "m"(id), "m"(param0), "m"(param1), "m"(param2)
+    );
+
+    __asm__ volatile(
+        "mov %%eax, %0\n"
+        "pop %%edx\n"
+        "pop %%ecx\n"
+        "pop %%ebx\n"
+        : "=r"(syscall_result)
+    );
+
+    return syscall_result;
+}
+
+extern uint32_t kern_interrupts_syscall_handle(uint8_t id, uint32_t param0, uint32_t param1, uint32_t param2, void *regs_ptr);
 extern void kern_interrupts_arch_handle(uint8_t int_no, void *regs_ptr);
 
 uintptr_t isr_handler(struct regs32 *regs)
@@ -101,10 +129,15 @@ uintptr_t isr_handler(struct regs32 *regs)
     // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
     if (regs->int_no == INTERRUPT_TIMER)
         kern_interrupts_arch_handle(KERN_INTERRUPT_TIMER, regs);
-    else if (regs->int_no == INTERRUPT_PS2) {
+    else if (regs->int_no == INTERRUPT_PS2)
+    {
         kern_interrupts_arch_handle(KERN_INTERRUPT_PS2, regs);
         printk("key");
         __outb(0x64, __inb(0x60));
+    }
+    else if (regs->int_no == INTERRUPT_SYSCALL)
+    {
+        regs->eax = kern_interrupts_syscall_handle(regs->eax, regs->ebx, regs->ecx, regs->edx, regs);
     }
     else
     {

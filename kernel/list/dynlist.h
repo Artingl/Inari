@@ -19,6 +19,7 @@ typedef struct dynlist
 #define dynlist_remove(list, idx) __dynlist_remove(&(list), idx)
 #define dynlist_size(list) (list.size)
 #define dynlist_is_empty(list) (dynlist_size(list) == 0)
+#define dynlist_clear(list) (__dynlist_clear(&(list)))
 #define dynlist_insert(list, idx, data) (__dynlist_insert(&(list), idx, (uintptr_t)data))
 
 uintptr_t __dynlist_get(dynlist_t *list, int idx);
@@ -27,3 +28,4 @@ int __dynlist_set(dynlist_t *list, int idx, uintptr_t data);
 int __dynlist_insert(dynlist_t *list, int idx, uintptr_t data);
 int __dynlist_append(dynlist_t *list, uintptr_t data);
 int __dynlist_remove(dynlist_t *list, int idx);
+void __dynlist_clear(dynlist_t *list);

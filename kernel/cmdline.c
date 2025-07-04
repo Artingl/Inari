@@ -20,7 +20,7 @@ static void parse_cmdline_cmd(const char *command, const char *argument)
     }
 }
 
-void kparse_cmdline()
+void kern_parse_cmdline()
 {
     char buffer[128];
 

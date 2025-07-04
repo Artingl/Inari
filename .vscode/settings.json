@@ -87,7 +87,14 @@
         "dev.h": "c",
         "system_error": "c",
         "mutex": "c",
-        "shared_mutex": "c"
+        "shared_mutex": "c",
+        "typeinfo": "c",
+        "text_encoding": "c",
+        "machine.h": "c",
+        "syscall.h": "c",
+        "errno.h": "c",
+        "locale": "c",
+        "thread": "c"
     },
     "cSpell.language": "en,ru,en-GB",
     "C_Cpp.default.compilerPath": "/home/artingl/opt/cross/bin/i386-elf-gcc"

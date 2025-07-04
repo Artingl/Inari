@@ -232,6 +232,12 @@ _irq15:
 	push dword 0
 	push dword 47
 	jmp int_isr_stub
+global _syscall
+_syscall:
+	cli
+	push dword 0
+	push dword 0x80
+	jmp int_isr_stub
 
 extern isr_handler
 int_isr_stub:

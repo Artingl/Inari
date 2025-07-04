@@ -26,6 +26,7 @@ extern void _irq12();
 extern void _irq13();
 extern void _irq14();
 extern void _irq15();
+extern void _syscall();
 
 void cpu_irq_init(struct cpu_core *core)
 {
@@ -45,6 +46,7 @@ void cpu_irq_init(struct cpu_core *core)
     cpu_interrupts_idt_install(core, (unsigned)_irq13, 45, 0x08, 0x8e);
     cpu_interrupts_idt_install(core, (unsigned)_irq14, 46, 0x08, 0x8e);
     cpu_interrupts_idt_install(core, (unsigned)_irq15, 47, 0x08, 0x8e);
+    cpu_interrupts_idt_install(core, (unsigned)_syscall, INTERRUPT_SYSCALL, 0x08, 0x8e);
 
     spurious_interrupts = 0;
 }

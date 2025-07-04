@@ -2,8 +2,9 @@
 
 #define INTERRUPT_TIMER_SPEED 1000
 
-#define INTERRUPT_TIMER 0x20
-#define INTERRUPT_PS2   0x21
+#define INTERRUPT_TIMER     0x20
+#define INTERRUPT_PS2       0x21
+#define INTERRUPT_SYSCALL   0x80
 
 #include <kernel/arch/i686/impl.h>
 

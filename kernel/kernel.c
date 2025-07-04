@@ -21,8 +21,8 @@ const char *kernel_cmdline()
     return _cmdline;
 }
 
-double kernel_uptime_ticks;
-double kernel_time()
+uint64_t kernel_uptime_ticks = 0;
+uint64_t kernel_time()
 {
     return kernel_uptime_ticks; // / cpu_timer_freq();
 }
@@ -40,7 +40,6 @@ void kmain(char *cmdline)
     _cmdline = (char*)cmdline;
 
     kern_interrupts_init();
-    console_late_init();
 
     // Make some small kernel tests
     do_kern_tests();
@@ -53,55 +52,33 @@ void kmain(char *cmdline)
     scheduler_init();
 
     vfs_init();
-    kload_modules();
-    // sys_init();
-
     test_vfs();
 
-    // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
-    kparse_cmdline();
+    kern_modules_init();
 
-    void entrycode_a1();
-    void entrycode_b1();
-    void entrycode_c1();
-    
-    scheduler_create_task(&entrycode_a1);
-    scheduler_create_task(&entrycode_b1);
-    // scheduler_create_task(&entrycode_c1);
+    void test11(void*);
+    scheduler_create_task(&test11, NULL);
+
+    // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
+    // kern_parse_cmdline();
 
     kernel_assert(scheduler_enter() != 0, "Unable to run the scheduler on BSP!");
-
-    panic("bsp: end reached");
+    panic("kennel: bsp end reached");
     machine_halt();
 }
 
-void serial_putc(uint16_t port, uint8_t c);
-
-void entrycode_a1()
+#include <kernel/core/syscall/syscall.h>
+void test11(void*fd)
 {
-    volatile uint32_t i = 0;
-    while (1) {
-        printk("task 2 printing");
-        // serial_putc(1, 'a');
-        *((uint8_t*)0xb8000) = i++;
-        *((uint8_t*)0xb8001) = (i + 60);
-    }
+    printk("started");
+    kern_syscall(KERN_SYSCALL_SLEEP, 1000 * 2000, 0, 0);
+    kern_module_unload("vconsole");
+    printk("ended");
 }
 
-void entrycode_b1()
+void kern_shutdown()
 {
-    volatile uint32_t i = 128;
-    while (1) {
-        printk("task 1 printing");
-        // serial_putc(1, 'b');
-        *((uint8_t*)0xb8004) = i++;
-        *((uint8_t*)0xb8005) = (i + 60);
-    }
-}
+    printk("kernel: shutting down");
 
-void entrycode_c1()
-{
-    while (1) {
-        serial_putc(1, 'c');
-    }
+    kern_modules_cleanup();
 }

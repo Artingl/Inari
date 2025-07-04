@@ -3,7 +3,12 @@
 #include <kernel/libc/string.h>
 #include <kernel/list/dynlist.h>
 #include <kernel/driver/memory/memory.h>
+#include <kernel/core/syscall/syscall.h>
 #include <kernel/driver/interrupt/interrupt.h>
+#include <kernel/core/syscall/syscall.h>
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 
 size_t __scheduler_last_tid = 0;
 
@@ -18,7 +23,7 @@ extern void arch_scheduler_load_current_task(struct sched_core *core, void *regs
 extern void arch_scheduler_save_current_task(struct sched_core *core, void *regs_ptr);
 extern void arch_scheduler_init_task(struct sched_task *task);
 
-tid_t scheduler_create_task(void *entrypoint)
+tid_t scheduler_create_task(void *entrypoint, void *argument)
 {
     spinlock_acquire(&sched_tasks_lock);
 
@@ -30,6 +35,7 @@ tid_t scheduler_create_task(void *entrypoint)
     task->state = TASK_STATE_ACTIVE;
     task->entrypoint = (void*)entrypoint;
     task->stack_base = kmalloc(KERN_STACK_SIZE);
+    task->argument = argument;
     
     arch_scheduler_init_task(task);
 end:
@@ -39,10 +45,15 @@ end:
     return tid;
 }
 
-static struct sched_task *scheduler_get_current_task()
+struct sched_task *scheduler_get_current_task()
 {
     if (!sched_cores[0].is_running) return NULL;
     return sched_cores[0].current_task;
+}
+
+void scheduler_yield()
+{
+    kern_syscall(KERN_SYSCALL_SCHEDULER_YIELD, NULL, NULL, NULL);
 }
 
 void scheduler_task_entrypoint()
@@ -55,7 +66,7 @@ void scheduler_task_entrypoint()
     }
 
     // Call the task's entrypoint
-    ((void(*)(void))task->entrypoint)();
+    ((void(*)(void*))task->entrypoint)(task->argument);
 
     // Kill the task and idle the core if we reached the end of the entrypoint
     scheduler_kill_task(task->tid);
@@ -66,6 +77,7 @@ static void scheduler_attach_task(struct sched_core *core)
 {
     size_t i;
     struct sched_task *task, *last_task;
+    uint32_t ktime = kernel_time() * 1000;
 
     if (dynlist_size(sched_tasks) == 0)
     {
@@ -79,46 +91,53 @@ static void scheduler_attach_task(struct sched_core *core)
         core->current_task = NULL;
     }
 
-    // Get next task for the core to execute
     for (i = 0; i < dynlist_size(sched_tasks); i++)
     {
         task = dynlist_get(sched_tasks, i, struct sched_task*);
 
-        // Check if the task is available
-        if (task->attached_core == NULL && task->state == TASK_STATE_ACTIVE)
+        if (task->state == TASK_STATE_SLEEPING && task->sleeping_timeout <= ktime)
         {
-            if (last_task == NULL || dynlist_size(sched_tasks) <= 1)
-            {
-                task->attached_core = core;
-                core->current_task = task;
-                break;
-            }
-            else if (last_task->tid < task->tid || last_task->tid >= dynlist_size(sched_tasks) - 1)
-            {
-                task->attached_core = core;
-                core->current_task = task;
-                break;
-            }
+            task->state = TASK_STATE_ACTIVE;
+        }
+    }
+
+    // Get next task for the core to execute
+    do
+    {
+        size_t idx = core->last_task_index++;
+        task = dynlist_get(sched_tasks, idx, struct sched_task*);
+        if (task == NULL)
+        {
+            core->last_task_index = 0;
+            break;
+        }
+
+        // Check if the task is available
+        if (task->attached_core == NULL && last_task->tid != task->tid && task->state == TASK_STATE_ACTIVE)
+        {
+            task->attached_core = core;
+            core->current_task = task;
+            break;
         }
         else if (task->state == TASK_STATE_DEAD && task->attached_core == NULL) {
             // Cleanup the dead task
             #ifdef SCHEDULER_DEBUG
                 printk("sched: removing dead task: tid=%d", task->tid);
             #endif
-            dynlist_remove(sched_tasks, i);
+            dynlist_remove(sched_tasks, idx);
             kfree(task->stack_base);
             kfree(task);
             break;
         }
-    }
+    } while (core->current_task == NULL);
 
+    // printk("%d %d %d", core->current_task->tid, core->last_task_index, dynlist_size(sched_tasks));
     core->task_timeout_counter = SCHEDULER_TASK_TIMEOUT;
 }
 
 void scheduler_reschedule(void *regs_ptr)
 {
     spinlock_acquire(&sched_tasks_lock);
-    size_t i;
     struct sched_core *core;
 
     core = &sched_cores[0];
@@ -136,7 +155,6 @@ void scheduler_reschedule(void *regs_ptr)
         || core->current_task->state != TASK_STATE_ACTIVE
         || core->task_timeout_counter <= 0)
     {
-
         scheduler_attach_task(core);
 
         if (core->current_task != NULL) {
@@ -145,10 +163,34 @@ void scheduler_reschedule(void *regs_ptr)
             spinlock_release(&sched_tasks_lock);
             arch_scheduler_load_current_task(core, regs_ptr);
         }
+        else {
+            spinlock_release(&sched_tasks_lock);
+            arch_scheduler_core_idle();
+        }
     }
 
 end:
     spinlock_release(&sched_tasks_lock);
+}
+
+static uint32_t scheduler_syscall(uint32_t id, uint32_t param0, uint32_t param1, uint32_t param2, void *regs_ptr)
+{
+    struct sched_core *core = &sched_cores[0];
+    if (!core->is_running || !scheduler_enabled_flag) return 0;
+    switch (id)
+    {
+        case KERN_SYSCALL_SLEEP: {
+            spinlock_acquire(&sched_tasks_lock);
+            core->current_task->state = TASK_STATE_SLEEPING;
+            core->current_task->sleeping_timeout = kernel_time() + param0;
+            spinlock_release(&sched_tasks_lock);
+        } break;
+    }
+
+    core->task_timeout_counter = 0;
+    scheduler_reschedule(regs_ptr);
+
+    return 0;
 }
 
 struct sched_task *scheduler_find_task(tid_t tid)
@@ -197,6 +239,9 @@ int scheduler_init()
     // Fill the cores array with zeros
     memset((void*)&sched_cores, 0, sizeof(sched_cores));
     scheduler_enabled_flag = 1;
+
+    kern_syscall_register(KERN_SYSCALL_SCHEDULER_YIELD, &scheduler_syscall);
+    kern_syscall_register(KERN_SYSCALL_SLEEP, &scheduler_syscall);
     return 0;
 }
 
@@ -229,3 +274,5 @@ void scheduler_shutdown()
     }
 }
 
+
+#pragma GCC pop_options

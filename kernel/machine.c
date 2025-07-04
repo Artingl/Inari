@@ -7,30 +7,28 @@ extern void arch_cleanup();
 extern void arch_poweroff();
 extern void arch_reboot();
 extern void arch_halt();
+extern void kern_shutdown();
 
-void machine_reboot()
+void __machine_reboot()
 {
-    printk("kernel: system is rebooting!!!");
-    
-    // scheduler_shutdown();
+    kern_shutdown();
+    scheduler_shutdown();
     arch_cleanup();
     arch_reboot();
 }
 
-void machine_poweroff()
+void __machine_poweroff()
 {
-    printk("kernel: system is powering down!!!");
-
-    // scheduler_shutdown();
+    kern_shutdown();
+    scheduler_shutdown();
     arch_cleanup();
     arch_poweroff();
 }
 
-void machine_halt()
+void __machine_halt()
 {
-    printk("The system is going to be halted NOW!");
-
-    // scheduler_shutdown();
+    kern_shutdown();
+    scheduler_shutdown();
     arch_cleanup();
     arch_halt();
 }

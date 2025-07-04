@@ -1,6 +1,7 @@
 #include <kernel/driver/interrupt/interrupt.h>
 #include <kernel/driver/memory/memory.h>
 #include <kernel/list/dynlist.h>
+#include <kernel/core/syscall/syscall.h>
 
 dynlist_t interrupt_handlers = {0};
 
@@ -56,7 +57,12 @@ int kern_interrupts_uninstall_handler(interrupt_handler_t handler)
 
 extern void scheduler_reschedule(void *regs_ptr);
 extern int scheduler_enabled_flag;
-extern double kernel_uptime_ticks;
+extern uint64_t kernel_uptime_ticks;
+
+uint32_t kern_interrupts_syscall_handle(uint8_t id, uint32_t param0, uint32_t param1, uint32_t param2, void *regs_ptr)
+{
+    return kern_syscall_handle(id, param0, param1, param2, regs_ptr);
+}
 
 // This function must be called from within implementation of an isr in the currently booted architecture
 void kern_interrupts_arch_handle(uint8_t int_no, void *regs_ptr)

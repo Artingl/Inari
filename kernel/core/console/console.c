@@ -40,6 +40,8 @@ void console_clear()
 
 void console_late_init()
 {
+    // init module
+
     // spinlock_acquire(&console.spinlock);
     if (!console.heap_allocated)
     {

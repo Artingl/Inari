@@ -44,6 +44,22 @@ int __dynlist_append(dynlist_t *list, uintptr_t data)
     return idx;
 }
 
+void __dynlist_clear(dynlist_t *list)
+{
+    spinlock_acquire(&list->lock);
+    if (list->size == 0)
+    {
+        // the list is empty
+        goto end;
+    }
+
+    list->size = 0;
+    kfree(list->items);
+end:
+    spinlock_release(&list->lock);
+    return;
+}
+
 int __dynlist_remove(dynlist_t *list, int idx)
 {
     size_t i, offset = 0;

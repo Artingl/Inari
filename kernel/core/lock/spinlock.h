@@ -6,7 +6,6 @@
 
 typedef struct spinlock {
     volatile uint8_t lock;
-    int enable_interrupts;
     uint32_t count;
     size_t owner_tid;
 } spinlock_t;

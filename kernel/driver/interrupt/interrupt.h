@@ -3,8 +3,9 @@
 #include <kernel/libc/typedefs.h>
 
 // Interrupt IDs
-#define KERN_INTERRUPT_TIMER 0x00
-#define KERN_INTERRUPT_PS2   0x01
+#define KERN_INTERRUPT_TIMER    0x00
+#define KERN_INTERRUPT_PS2      0x01
+#define KERN_INTERRUPT_SYSCALL  0x80
 
 #define KERN_INTERRUPT_EXCEPTION_PAGE_FAULT 0xff
 

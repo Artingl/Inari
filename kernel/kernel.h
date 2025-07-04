@@ -28,7 +28,7 @@ int printk_wrapper(size_t line, const char *file, const char *func, const char *
 void panic(const char *message, ...);
 
 // get the kernel time (in MS)
-double kernel_time();
+uint64_t kernel_time();
 
 struct kernel_mmap_entry
 {
@@ -43,7 +43,7 @@ struct kernel_mmap_entry
 
 const char *kernel_cmdline();
 
-void kparse_cmdline();
+void kern_parse_cmdline();
 void kmain(char *cmdline);
 
 #define KERN_PAGE_PRESENT (1 << 0)
