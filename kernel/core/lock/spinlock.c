@@ -5,7 +5,6 @@
 
 int32_t irq_disable_counter = 0;
 
-void serial_putc(uint16_t port, uint8_t c);
 int spinlock_init(spinlock_t *lock)
 {
     if (lock == NULL)

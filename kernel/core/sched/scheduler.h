@@ -3,16 +3,14 @@
 #include <kernel/libc/typedefs.h>
 #include <kernel/core/lock/spinlock.h>
 
-#ifdef CONFIG_ARCH_I686
-    #include <kernel/arch/i686/impl.h>
-#endif
+// #define SCHEDULER_DEBUG
 
 #define TASK_STATE_ACTIVE   0x00
 #define TASK_STATE_SLEEPING 0x01
 #define TASK_STATE_DEAD     0x02
 
 // Defines how many timer IRQs must happen before we forcefully switch the task
-#define SCHEDULER_TASK_TIMEOUT 1//10
+#define SCHEDULER_TASK_TIMEOUT 1
 
 typedef size_t tid_t; // task id
 
@@ -25,12 +23,8 @@ struct sched_task
     uint8_t state;
     tid_t tid;
 
-#ifdef CONFIG_ARCH_I686
-    struct {
-        uint32_t esp;
-        uint32_t ss;
-    } regs;
-#endif
+    // buffer for any arch to store its regs in
+    uint8_t regs[0xff];
 };
 
 struct sched_core

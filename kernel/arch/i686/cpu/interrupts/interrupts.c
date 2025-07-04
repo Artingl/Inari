@@ -75,35 +75,11 @@ void cpu_interrupts_idt_install(struct cpu_core *core, unsigned long base, uint8
     core->idt[num].flags = flags | 0x60;
 }
 
-extern void kern_interrupts_arch_handle(uint8_t int_no);
-extern void scheduler_reschedule(struct regs32 *regs);
-extern int __scheduler_enabled;
+extern void kern_interrupts_arch_handle(uint8_t int_no, void *regs_ptr);
 
 uintptr_t isr_handler(struct regs32 *regs)
 {
-    // if (regs->ss != 0x10)
-    // {
-    //     uint32_t ss;
-    //     __asm__ volatile("movl %%ss,%0" : "=r"(ss));
-    //     panic("PIZDEC 0x%x 0x%x 0x%x", regs->ss, ss, regs->cs);
-    //     while(1){}
-    // }
-
     struct cpu_core *core = cpu_current_core();
-
-    // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
-    if (regs->int_no == INTERRUPT_TIMER)
-        kern_interrupts_arch_handle(KERN_INTERRUPT_TIMER);
-    else if (regs->int_no == INTERRUPT_PS2) {
-        kern_interrupts_arch_handle(KERN_INTERRUPT_PS2);
-        printk("key");
-        __outb(0x64, __inb(0x60));
-    }
-    else
-    {
-        // If we don't know the source and/or ID of the interrupt, send it as it is
-        kern_interrupts_arch_handle(regs->int_no);
-    }
 
     if (regs->int_no < 32)
     {
@@ -122,10 +98,18 @@ uintptr_t isr_handler(struct regs32 *regs)
         cpu_lapic_out(core, LAPIC_EOI, 0x0);
     }
 
-    // Call the scheduler if it is enabled and we got timer interrupt
-    if (__scheduler_enabled && regs->int_no == INTERRUPT_TIMER)
+    // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
+    if (regs->int_no == INTERRUPT_TIMER)
+        kern_interrupts_arch_handle(KERN_INTERRUPT_TIMER, regs);
+    else if (regs->int_no == INTERRUPT_PS2) {
+        kern_interrupts_arch_handle(KERN_INTERRUPT_PS2, regs);
+        printk("key");
+        __outb(0x64, __inb(0x60));
+    }
+    else
     {
-        scheduler_reschedule(regs);
+        // If we don't know the source and/or ID of the interrupt, send it as it is
+        kern_interrupts_arch_handle(regs->int_no, regs);
     }
 
     return 0;

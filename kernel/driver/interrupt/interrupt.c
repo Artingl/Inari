@@ -54,15 +54,15 @@ int kern_interrupts_uninstall_handler(interrupt_handler_t handler)
     return 0;
 }
 
+extern void scheduler_reschedule(void *regs_ptr);
+extern int scheduler_enabled_flag;
+extern double kernel_uptime_ticks;
+
 // This function must be called from within implementation of an isr in the currently booted architecture
-void kern_interrupts_arch_handle(uint8_t int_no)
+void kern_interrupts_arch_handle(uint8_t int_no, void *regs_ptr)
 {
     size_t i;
     struct int_handler *s_handler = NULL;
-
-    extern double kernel_uptime_ticks;
-    if (int_no == KERN_INTERRUPT_TIMER)
-        kernel_uptime_ticks++;
 
     // Send interrupt event to all handlers
     for (i = 0; i < dynlist_size(interrupt_handlers); i++)
@@ -72,6 +72,17 @@ void kern_interrupts_arch_handle(uint8_t int_no)
         if (s_handler != NULL && s_handler->int_no == int_no)
         {
             s_handler->handler();
+        }
+    }
+
+    if (int_no == KERN_INTERRUPT_TIMER)
+    {
+        kernel_uptime_ticks++;
+
+        // Call the scheduler if it is enabled
+        if (scheduler_enabled_flag)
+        {
+            scheduler_reschedule(regs_ptr);
         }
     }
 }

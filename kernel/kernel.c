@@ -61,16 +61,12 @@ void kmain(char *cmdline)
     // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
     kparse_cmdline();
 
-    void entrycode_a();
-    void entrycode_b();
     void entrycode_a1();
     void entrycode_b1();
     void entrycode_c1();
     
-    scheduler_create_task(&entrycode_a);
-    scheduler_create_task(&entrycode_b);
     scheduler_create_task(&entrycode_a1);
-    // scheduler_create_task(&entrycode_b1);
+    scheduler_create_task(&entrycode_b1);
     // scheduler_create_task(&entrycode_c1);
 
     kernel_assert(scheduler_enter() != 0, "Unable to run the scheduler on BSP!");
@@ -81,20 +77,25 @@ void kmain(char *cmdline)
 
 void serial_putc(uint16_t port, uint8_t c);
 
-
 void entrycode_a1()
 {
-    uint32_t i = 0;
-    while (i < 10000) {
-        serial_putc(1, 'a');
-        i++;
+    volatile uint32_t i = 0;
+    while (1) {
+        printk("task 2 printing");
+        // serial_putc(1, 'a');
+        *((uint8_t*)0xb8000) = i++;
+        *((uint8_t*)0xb8001) = (i + 60);
     }
 }
 
 void entrycode_b1()
 {
+    volatile uint32_t i = 128;
     while (1) {
-        serial_putc(1, 'b');
+        printk("task 1 printing");
+        // serial_putc(1, 'b');
+        *((uint8_t*)0xb8004) = i++;
+        *((uint8_t*)0xb8005) = (i + 60);
     }
 }
 
