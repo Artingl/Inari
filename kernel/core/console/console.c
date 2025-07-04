@@ -76,12 +76,12 @@ int console_print(const char *msg)
 
 int console_printc(char c)
 {
-    spinlock_acquire(&console.spinlock);
+    // spinlock_acquire(&console.spinlock);
     __console_printc(c);
 
     if (console.must_flush)
         console_flush();
-    spinlock_release(&console.spinlock);
+    // spinlock_release(&console.spinlock);
     return 1;
 }
 
@@ -91,6 +91,7 @@ void console_flush()
 
 void __console_printc(char c)
 {
+    // TODO: fix console
     if (console.serial_port != 0)
     {
         if (c == '\n')

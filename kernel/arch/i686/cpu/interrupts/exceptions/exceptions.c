@@ -110,7 +110,7 @@ void cpu_exceptions_core_handle(struct cpu_core *core, struct regs32 *regs)
         printk(KERN_ERR "\tESP = 0x%x, EBX = 0x%x, EDX = 0x%x", regs->esp, regs->ebp, regs->edx);
         printk(KERN_ERR "\tECX = 0x%x, EAX = 0x%x, INT = 0x%x", regs->ecx, regs->eax, regs->int_no);
         printk(KERN_ERR "\tERR = 0x%x, EIP = 0x%x, CS  = 0x%x", regs->err_code, regs->eip, regs->cs);
-        printk(KERN_ERR "\tEFLAGS = 0x%x, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
+        printk(KERN_ERR "\tEFLAGS = 0x%x", regs->eflags);//, USERSP = 0x%x, SS = 0x%x", regs->eflags, regs->useresp, regs->ss);
         printk(KERN_ERR "");
         printk(KERN_ERR "\tEIP real: %p", (unsigned long)vmm_get_phys(vmm_current_directory(), (void*)regs->eip));
         // printk("\tTotal spurious interrupts 0x%x", cpu_irq_spurious_count());

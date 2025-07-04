@@ -62,4 +62,3 @@ section .bss
     __kstack_top_bsp:
 	resb 0x2000   ;; 4KB of stack
     __kstack_bottom_bsp:
-

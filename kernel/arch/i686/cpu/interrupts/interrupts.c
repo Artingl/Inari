@@ -76,16 +76,29 @@ void cpu_interrupts_idt_install(struct cpu_core *core, unsigned long base, uint8
 }
 
 extern void kern_interrupts_arch_handle(uint8_t int_no);
+extern void scheduler_reschedule(struct regs32 *regs);
+extern int __scheduler_enabled;
 
 uintptr_t isr_handler(struct regs32 *regs)
 {
+    // if (regs->ss != 0x10)
+    // {
+    //     uint32_t ss;
+    //     __asm__ volatile("movl %%ss,%0" : "=r"(ss));
+    //     panic("PIZDEC 0x%x 0x%x 0x%x", regs->ss, ss, regs->cs);
+    //     while(1){}
+    // }
+
     struct cpu_core *core = cpu_current_core();
 
     // Forward the interrupt to the kernel's interrupt handler using the IDs that the kernel understands
     if (regs->int_no == INTERRUPT_TIMER)
         kern_interrupts_arch_handle(KERN_INTERRUPT_TIMER);
-    else if (regs->int_no == INTERRUPT_PS2)
+    else if (regs->int_no == INTERRUPT_PS2) {
         kern_interrupts_arch_handle(KERN_INTERRUPT_PS2);
+        printk("key");
+        __outb(0x64, __inb(0x60));
+    }
     else
     {
         // If we don't know the source and/or ID of the interrupt, send it as it is
@@ -107,6 +120,12 @@ uintptr_t isr_handler(struct regs32 *regs)
     if (cpu_using_apic())
     {
         cpu_lapic_out(core, LAPIC_EOI, 0x0);
+    }
+
+    // Call the scheduler if it is enabled and we got timer interrupt
+    if (__scheduler_enabled && regs->int_no == INTERRUPT_TIMER)
+    {
+        scheduler_reschedule(regs);
     }
 
     return 0;

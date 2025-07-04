@@ -1,8 +1,9 @@
 TARGET = i686
 
-CFLAGS = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -m32 -mfpmath=387 -Werror -Wno-stringop-overflow
-CC = $(HOME)/opt/cross/bin/i386-elf-gcc
-LD = $(HOME)/opt/cross/bin/i386-elf-ld
+CFLAGS = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -Werror -Wno-stringop-overflow
+#CFLAGS = -std=c99 -O2 --include "config.h" -I . -fno-stack-protector -nostdlib -ffreestanding -c -Werror -Wno-stringop-overflow
+CC = $(HOME)/opt/cross/bin/i686-elf-gcc
+LD = $(HOME)/opt/cross/bin/i686-elf-ld
 ASM = nasm
 
 bootloader_asm_source := $(shell find kernel/arch/$(TARGET)/boot/asm/ -maxdepth 1 -name *.asm)
@@ -33,10 +34,10 @@ clean:
 	mkdir build
 
 test:
-	qemu-system-x86_64 -smp 4 -m 2G -monitor stdio -d int -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -device VGA
+	qemu-system-x86_64 -smp 4 -m 2G -monitor stdio -d cpu_reset -no-reboot -no-shutdown -accel tcg -boot d -cdrom boot.iso -device VGA
 
 test_serial:
-	qemu-system-x86_64 -smp 4 -m 2G -serial stdio -no-shutdown -no-reboot -boot d -cdrom boot.iso -device VGA
+	qemu-system-x86_64 -smp 4 -m 2G -serial stdio -d cpu_reset -no-shutdown -no-reboot -boot d -cdrom boot.iso -device VGA
 
 build_kernel: $(bootloader_asm_objects) $(modules_objects) $(kernel_objects)
 	$(MAKE) -C liballoc compile && \

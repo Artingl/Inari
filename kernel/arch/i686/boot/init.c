@@ -29,7 +29,6 @@ static __lo struct page_table *i686_alloc_table(uintptr_t offset)
 }
 
 // This is used to map the kernel to the higher half to continue booting.
-// Some shit is written here, we're still really early in the boot process...
 static __lo void i686_map_higher_kernel()
 {
     uintptr_t i, virt_start, virt_end, real_end, offset, size;

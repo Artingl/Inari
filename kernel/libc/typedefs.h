@@ -4,16 +4,16 @@
 	#define NULL ((void*)0)
 #endif
 
-// typedef char bool;
-// #define false 0
-// #define true 1
+//typedef char bool;
+#define false 0
+#define true 1
 
 // #include <stddef.h>
 // #include <stdint.h>
 
 typedef long int off_t;
 
-typedef enum { false, true } bool;
+//typedef enum { false, true } bool;
 
 #ifdef __INTPTR_TYPE__
 typedef __INTPTR_TYPE__ intptr_t;

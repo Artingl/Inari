@@ -40,7 +40,7 @@
 
 #define __enable_int() __asm__ volatile("sti")
 #define __disable_int() __asm__ volatile("cli")
-#define __halt() do { __asm__ volatile("cli\nhlt"); } while (1)
+#define __halt() do { __asm__ volatile("hlt"); } while (1)
 #define __load_idt(descriptor) __asm__ volatile("lidt %0" :: "m"(descriptor))
 
 #define __io_wait() __outb(0x80, 0)
@@ -48,9 +48,10 @@
 struct regs32
 {
     unsigned int gs, fs, es, ds;
+    unsigned int esp_pushad;
     unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
     unsigned int int_no, err_code;
-    unsigned int eip, cs, eflags, useresp, ss;
+    unsigned int eip, cs, eflags;//, useresp, ss;
 } __attribute__((packed));
 
 struct regs16
@@ -79,6 +80,7 @@ uint16_t __inw(uint16_t port);
 void __get_msr(uint32_t msr, uint32_t *lo, uint32_t *hi);
 void __set_msr(uint32_t msr, uint32_t lo, uint32_t hi);
 void __rdtsc(uint32_t *lo, uint32_t *hi);
+uint64_t __rdtsc_v();
 
 // tells are interrupts enabled
 int __eint();

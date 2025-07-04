@@ -20,6 +20,7 @@ void arch_poweroff()
     {
         // We couldn't poweroff, just halt
         printk("arch_reboot: unable to poweroff, halting!");
+        __disable_int();
         __halt();
     }
 }
@@ -37,12 +38,14 @@ void arch_reboot()
 
         // We couldn't reboot, just halt
         printk("arch_reboot: unable to reboot, halting!");
+        __disable_int();
         __halt();
     }
 }
 
 void arch_halt()
 {
+    __disable_int();
     __halt();
 }
 
@@ -123,4 +126,11 @@ void __cpuid(uint32_t leah, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_
     __asm__ volatile("cpuid"
                      : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
                      : "0"(leah));
+}
+
+uint64_t __rdtsc_v()
+{
+    uint32_t a, b;
+    __rdtsc(&a, &b);
+    return ((uint64_t)b << 32) | a;
 }

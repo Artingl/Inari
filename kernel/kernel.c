@@ -9,6 +9,8 @@
 #include <kernel/libc/string.h>
 #include <kernel/driver/interrupt/interrupt.h>
 
+#include <kernel/core/sched/scheduler.h>
+
 static char *_cmdline;
 
 extern char __kvirtual_start;
@@ -33,18 +35,6 @@ static void test_vfs()
 
 #include <kernel/arch/i686/impl.h>
 
-static void shenanigans()
-{
-    // 0xFFFFFFF0
-    __inb(0x3DA);
-    __outb(0x3C0, 0x10);
-    __outb(0x3C0, 0x01);
-    printk("switched mode");
-    memset((void*)0xA0000, 0xff, 0xFFFF);
-
-    while (1);
-}
-
 void kmain(char *cmdline)
 {
     _cmdline = (char*)cmdline;
@@ -60,6 +50,8 @@ void kmain(char *cmdline)
     console_clear();
     printk("Inari kernel: cmdline: %s", kernel_cmdline());
 
+    scheduler_init();
+
     vfs_init();
     kload_modules();
     // sys_init();
@@ -69,8 +61,46 @@ void kmain(char *cmdline)
     // parse cmdline to initialize the kernel itself, and load all necessary kernel modules
     kparse_cmdline();
 
-    shenanigans();
+    void entrycode_a();
+    void entrycode_b();
+    void entrycode_a1();
+    void entrycode_b1();
+    void entrycode_c1();
+    
+    scheduler_create_task(&entrycode_a);
+    scheduler_create_task(&entrycode_b);
+    scheduler_create_task(&entrycode_a1);
+    // scheduler_create_task(&entrycode_b1);
+    // scheduler_create_task(&entrycode_c1);
+
+    kernel_assert(scheduler_enter() != 0, "Unable to run the scheduler on BSP!");
 
     panic("bsp: end reached");
     machine_halt();
+}
+
+void serial_putc(uint16_t port, uint8_t c);
+
+
+void entrycode_a1()
+{
+    uint32_t i = 0;
+    while (i < 10000) {
+        serial_putc(1, 'a');
+        i++;
+    }
+}
+
+void entrycode_b1()
+{
+    while (1) {
+        serial_putc(1, 'b');
+    }
+}
+
+void entrycode_c1()
+{
+    while (1) {
+        serial_putc(1, 'c');
+    }
 }

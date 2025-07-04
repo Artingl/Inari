@@ -22,8 +22,9 @@ int page_fault_handler(struct cpu_core *core, struct regs32 *r)
     uintptr_t virtual_address;
     __asm__ volatile("mov %%cr2, %0"
                      : "=r"(virtual_address));
+    uintptr_t phys = vmm_get_phys(vmm_current_directory(), (void*)virtual_address);
 
-    printk(KERN_ERR "PAGE FAULT [virt=%p]!", (unsigned long)virtual_address);
+    printk(KERN_ERR "PAGE FAULT [virt=%p, phys=%p]!", (unsigned long)virtual_address, (unsigned long)phys);
     
     if (r->err_code & (1 << 0))
         printk(KERN_ERR "\tPage-protection violation.");
@@ -114,7 +115,7 @@ int vmm_init(struct page_directory *bsp_directory)
         }
     }
 
-    printk("vmm: bsp_dir=0x%x; usage=%lu", bsp_directory, pages_usage);
+    printk("vmm: krnl_dir=0x%x; bsp_dir=0x%x; usage=%lu", kernel_directory, bsp_directory, pages_usage);
     vmm_switch_directory(kernel_directory);
 
     return 0;
@@ -252,7 +253,7 @@ end:
     pt_end = j;
 
     // unable to find space in virtual memory
-    if (total_size < npages)
+    if (total_size < npages || total_size == 0)
     {
         panic("vmm: no space in virtual memory OOPS; %d < %d", total_size, npages);
         return NULL;

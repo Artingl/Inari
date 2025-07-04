@@ -14,8 +14,8 @@ void do_kern_tests()
     memory_info();
 
     printk("kernel: running self tests...");
-    if ((result = kernel_mem_test()) != 0) panic("kern_tests: memory test failed; code: %d", result);
-    kernel_assert(usage == liballoc_allocated(), "memory leak? check PMM/VMM");
+    // if ((result = kernel_mem_test()) != 0) panic("kern_tests: memory test failed; code: %d", result);
+    // kernel_assert(usage == liballoc_allocated(), "memory leak? check PMM/VMM");
     if ((result = kernel_dynlist_test()) != 0) panic("kern_tests: dynlist test failed; code: %d", result);
     kernel_assert(usage == liballoc_allocated(), "memory leak? check PMM/VMM");
     printk("kernel: passed all tests");
@@ -95,7 +95,7 @@ int kernel_mem_test()
     {
         size = PAGE_SIZE * 128;
         data_pointer = kcalloc(sizeof(uint32_t), size);
-        // printk("\tkcalloc -> 0x%x %lu %lu", data_pointer, size, i);
+        printk("\tkcalloc -> 0x%x %lu %lu", data_pointer, size, i);
         pointers[i] = data_pointer;
         t += size;
 

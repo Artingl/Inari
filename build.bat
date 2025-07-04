@@ -1,0 +1,1 @@
+@make clean build_kernel test_serial -j16

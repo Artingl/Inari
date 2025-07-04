@@ -69,6 +69,12 @@ int __dynlist_remove(dynlist_t *list, int idx)
     list->size--;
     kfree(list->items);
     list->items = new_list;
+
+    if (list->size == 0)
+    {
+        kfree(list->items);
+        list->items = NULL;
+    }
 end:
     spinlock_release(&list->lock);
     return 0;

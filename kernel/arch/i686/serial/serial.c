@@ -19,7 +19,7 @@
 #define serial_received(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 1)
 #define serial_is_transmit_empty(port) (__inb(SERIAL_PORT(port, SERIAL_LINE_STATUS)) & 0x20)
 
-inline uint16_t serial_portnum_to_id(uint16_t num)
+static uint16_t serial_portnum_to_id(uint16_t num)
 {
     switch (num)
     {
