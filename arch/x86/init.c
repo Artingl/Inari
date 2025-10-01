@@ -52,8 +52,8 @@ static void _x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 {
     kearly_init((bootinfo_t){
         .bootloader_magic = magic,
+        .bootloader_info = multiboot,
         .cmdline = (const char*)multiboot->cmdline,
-        .info = multiboot
     });
     
 

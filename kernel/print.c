@@ -115,8 +115,7 @@ static int do_printkn(const char *fmt, va_list args,
 
 static inline void do_printf_handler(char c)
 {
-    extern void serial_putc(char c);
-    serial_putc(c);
+    console_printc(CONSOLE_PRINTK, &c, 1);
 }
 
 static inline int print(const char *fmt, ...)

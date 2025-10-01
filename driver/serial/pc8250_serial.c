@@ -21,18 +21,19 @@ static int pc8250_is_initialized = 0;
 static int pc8250_port = COM1;
 
 // static void serial_putc(char c)
-void serial_putc(char c)
+void serial_putc(const char *s, uint32_t count)
 {
     if (!pc8250_is_initialized)
         return;
     while (is_transmit_empty(pc8250_port) == 0);
-    x86_outb(pc8250_port, c);
+    while (count--)
+        x86_outb(pc8250_port, *s++);
 }
 
-
-console_dev_t console_dev = {
+static struct console_dev console_dev = {
     .name = "pc8250_serial",
-    .putc = serial_putc,
+    .write = serial_putc,
+    .read = NULL,
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };
 
@@ -79,13 +80,11 @@ int pc8250_serial_early_probe()
     if (pc8250_serial_init() != 0)
         return -ENODEV;
     
-    console_register(&console_dev);
-    return 0;
+    return console_register(&console_dev);
 }
 
 void pc8250_serial_early_cleanup()
 {
-    
 }
 
 earlycon_device(

@@ -17,8 +17,8 @@
 typedef struct
 {
     uint32_t bootloader_magic;
+    void *bootloader_info;
     const char *cmdline;
-    void *info;
 } bootinfo_t;
 
 // Performs all early initialization: earlycon device, etc.
@@ -26,7 +26,7 @@ extern void kearly_init(bootinfo_t bootinfo);
 
 // The main kernel entrypoint after the hardware was initialized
 extern void kmain(void);
-
+extern bootinfo_t get_boot_info();
 
 extern int printk(const char *fmt, ...);
 extern void panic(const char *fmt, ...);

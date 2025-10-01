@@ -10,6 +10,7 @@
         "initdata.h": "c",
         "console.h": "c",
         "list.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "pmm.h": "c"
     }
 }
