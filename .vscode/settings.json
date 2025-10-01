@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "inari.h": "c",
+        "stdint.h": "c",
+        "early_debug.h": "c",
+        "arch.h": "c",
+        "errno.h": "c",
+        "earlycon.h": "c",
+        "string.h": "c",
+        "initdata.h": "c",
+        "console.h": "c",
+        "list.h": "c",
+        "stddef.h": "c"
+    }
+}

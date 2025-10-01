@@ -1,0 +1,63 @@
+#include <kernel/inari.h>
+
+void x86_outb(uint16_t port, uint8_t val)
+{
+    __asm__ volatile("outb %0, %1"
+                 :
+                 : "a"(val), "Nd"(port));
+}
+
+void x86_outw(uint16_t port, uint16_t val)
+{
+    __asm__ volatile("outw %w0, %w1"
+                     :
+                     : "a"(val), "Nd"(port));
+}
+
+void x86_outsw(unsigned short int __port, const void *__addr,
+                                unsigned long int __count)
+{
+    __asm__ __volatile__("cld ; rep ; outsw"
+                         : "=S"(__addr), "=c"(__count)
+                         : "d"(__port), "0"(__addr), "1"(__count));
+}
+
+void x86_insw(unsigned short int __port, void *__addr, unsigned long int __count)
+{
+    __asm__ __volatile__("cld ; rep ; insw"
+                         : "=D"(__addr), "=c"(__count)
+                         : "d"(__port), "0"(__addr), "1"(__count));
+}
+
+uint8_t x86_inb(uint16_t port)
+{
+    uint8_t ret;
+    __asm__ volatile("inb %1, %0"
+                 : "=a"(ret)
+                 : "Nd"(port));
+    return ret;
+}
+
+uint16_t x86_inw(uint16_t port)
+{
+    uint16_t data;
+    __asm__ volatile("inw %w1, %w0"
+                     : "=a"(data)
+                     : "Nd"(port));
+    return data;
+}
+
+void x86_get_msr(uint32_t msr, uint32_t *lo, uint32_t *hi)
+{
+    __asm__ volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
+}
+
+void x86_set_msr(uint32_t msr, uint32_t lo, uint32_t hi)
+{
+    __asm__ volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
+}
+
+void x86_rdtsc(uint32_t *lo, uint32_t *hi)
+{
+    __asm__ volatile("rdtsc" : "=a"(*lo), "=d"(*hi));
+}

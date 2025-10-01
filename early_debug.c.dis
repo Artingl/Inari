@@ -1,0 +1,59 @@
+#include <kernel/console>
+#include <kernel/inari.h>
+
+#define VGA_BASE   0xb8000
+#define VGA_WIDTH  80
+#define VGA_HEIGHT 25
+
+#define DEF_COLOR 0x07
+
+static struct earlycon_debug debug_info __attribute__((section("._lo_kern_data"))) = {0};
+
+_lo_text static void __vga_print(const char *text)
+{
+    uint8_t *vga_base = (uint8_t*)VGA_BASE;
+
+    while (*text != 0)
+    {
+        char c = *text++;
+
+        switch (c)
+        {
+            case '\n': {
+                debug_info.offset = 0;
+                debug_info.line++;
+                break;
+            }
+            case '\t': {
+                debug_info.line += 4;
+                break;
+            }
+            default: {
+                *(vga_base + debug_info.line * VGA_WIDTH + debug_info.offset) = c;
+                *(vga_base + debug_info.line * VGA_WIDTH + debug_info.offset + 1) = DEF_COLOR;
+            }
+        }
+
+        debug_info.offset++;
+        if (debug_info.offset > EARLYCON_WIDTH)
+        {
+            debug_info.offset = 0;
+            debug_info.line++;
+        }
+
+        // No text scrolling for earlycon :(
+        if (debug_info.line > VGA_HEIGHT)
+            debug_info.line = 0;
+    }
+}
+
+_lo_text void earlycon_print(const char *text)
+{
+    __vga_print("Inari: ");
+    __vga_print(text);
+}
+
+_lo_text struct earlycon_debug *earlycon_info()
+{
+    return &debug_info;
+}
