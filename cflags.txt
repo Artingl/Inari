@@ -1,0 +1,1 @@
+-ffreestanding -fno-asynchronous-unwind-tables -fno-stack-protector -nostdlib -Wall -Wextra -std=gnu99 -g

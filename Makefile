@@ -2,7 +2,7 @@ TARGET=x86
 CC = gcc
 LD = ld
 
-CFLAGS = -ffreestanding -fno-asynchronous-unwind-tables -fno-stack-protector -nostdlib -Wall -Wextra -I include/ $(shell cat arch/$(TARGET)/cflags.txt) -std=gnu99
+CFLAGS = --include "build/config.h" -I include/ $(shell cat arch/$(TARGET)/cflags.txt) $(shell cat cflags.txt)
 
 kernel_source := $(shell find kernel/ -name '*.c')
 kernel_objects := $(patsubst kernel/%.c, build/kernel/%.o, $(kernel_source))
@@ -27,11 +27,16 @@ $(arch_build_stamp): $(arch_sources)
 	mkdir -p $(dir $@)
 	touch $@
 
+mkconfig:
+	mkdir -p build && \
+	cat config.h > build/config.h && \
+	echo "#define CONFIG_ARCH_$(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]')" >> build/config.h
+
 clean:
 	-rm -rf build && \
 	make -C arch/${TARGET} clean
 
-build: $(kernel_objects) $(driver_objects) $(arch_build_stamp)
+build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	mkdir -p build/grub/boot/grub && \
 	cp grub.cfg build/grub/boot/grub && \
 	make -C arch/${TARGET} build_ld && \

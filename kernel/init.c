@@ -4,6 +4,7 @@
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
 
+#include <arch/paging.h>
 #include <misc/string.h>
 
 bootinfo_t bootinfo;
@@ -18,18 +19,19 @@ void kearly_init(bootinfo_t b)
     pmm_init();
     vmm_init();
 
-    uintptr_t addr = pmm_alloc_frames(1024);
-
-    printk("allocated: 0x%08x", addr);
-    
-    printk("kearly_init: done");
+    printk("kearly_init: done 0x%02x; 0x%08x 0x%08x");
 }
 
 void kmain(void)
 {
+    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
+    printk("Available memory %ldkb", (pmm_total() - pmm_usage()) * (KERN_PAGE_SIZE / 1024));
+
     if (console_init() != 0)
         panic("Couldn't initialize console");
 
+
+    panic("Reached end of kmain");
 }
 
 bootinfo_t get_boot_info()

@@ -11,6 +11,10 @@
         "console.h": "c",
         "list.h": "c",
         "stddef.h": "c",
-        "pmm.h": "c"
+        "pmm.h": "c",
+        "paging.h": "c",
+        "page.h": "c",
+        "multiboot.h": "c",
+        "vmm.h": "c"
     }
 }

@@ -4,10 +4,6 @@ section ._lo_kern_multiboot
     dd 0x00
     dd - (0x1BADB002 + 0x00)
 
-section ._lo_kern_data
-global _arch_paging_pool
-_arch_paging_pool: resb 0x100000
-
 
 section ._lo_kern_text
 global _arch_entry_point

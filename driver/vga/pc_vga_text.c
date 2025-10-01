@@ -1,3 +1,6 @@
+#ifdef CONFIG_ARCH_X86
+#ifdef CONFIG_VGA_TEXT
+
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
@@ -98,3 +101,6 @@ earlycon_device(
     pc_vga_text_early_probe,
     pc_vga_text_early_cleanup
 );
+
+#endif
+#endif

@@ -1,4 +1,5 @@
 #include <kernel/inari.h>
+#include <arch/sys.h>
 #include <kernel/console/console.h>
 
 #include <misc/string.h>
@@ -147,16 +148,13 @@ void panic(const char *fmt, ...)
     va_start(args, fmt);
     int c = 0;
     
-    c += print("[  0.0] ");
+    c += print("[  0.0] Panic: ");
     c += do_printkn(fmt, args, &do_printf_handler);
     c += print("\n");
 
     c += print("\n");
-    c += print("\n");
     c += print("Kernel panic! Halting!");
-
-    // Yeah, that's bad, we'll implement something better later
-    while (1) {}
-
+    
     va_end(args);
+    halt();
 }

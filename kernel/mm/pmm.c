@@ -1,6 +1,5 @@
 #include <kernel/inari.h>
 #include <kernel/mm/pmm.h>
-#include <kernel/errno.h>
 
 #include <misc/string.h>
 
@@ -16,10 +15,11 @@ extern char kern_virt_end;
 
 static int pmm_check_overlap(uintptr_t addr, size_t len)
 {
-    // Check that we don't allocate kernel's code
-    if (addr + len <= (uintptr_t)&kern_virt_end - KERN_VIRTUAL_ADDR)
-        return -1;
+    uintptr_t kernel_start = 0;
+    uintptr_t kernel_end   = (uintptr_t)&kern_virt_end - KERN_VIRTUAL_ADDR;
 
+    if (!(addr + len <= kernel_start || addr >= kernel_end))
+        return -1;
     return 0;
 }
 
@@ -42,29 +42,29 @@ int pmm_init(void)
         // Populate the pool only with those regions that are available.
         if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
         {
-            for (j = addr; j < addr + len; j += PMM_FRAME_SIZE)
+            for (j = addr; j < addr + len; j += KERN_PAGE_SIZE)
             {
                 // Ensure that this memory region doesn't overlap important memory regions
-                if (pmm_check_overlap(j, PMM_FRAME_SIZE) != 0)
+                if (pmm_check_overlap(j, KERN_PAGE_SIZE) != 0)
                 {
-                    frames_pool[j >> 12].flags = PMM_FRAME_DISABLED;
+                    frames_pool[j / KERN_PAGE_SIZE].flags = PMM_FRAME_DISABLED;
                     continue;
                 }
 
                 // Check that we're not over the max pool size
                 if (j >> 12 >= PMM_POOL_SIZE)
                 {
-                    printk("pmm: warning - over the pool size; %ld > %ld", j >> 12, PMM_POOL_SIZE);
+                    printk("pmm: warning - over the pool size; %ld > %ld", j / KERN_PAGE_SIZE, PMM_POOL_SIZE);
                     goto end;
                 }
 
-                if (!(frames_pool[j >> 12].flags & PMM_FRAME_DISABLED))
+                if (!(frames_pool[j / KERN_PAGE_SIZE].flags & PMM_FRAME_DISABLED))
                 {
-                    frames_pool[j >> 12].flags = PMM_FRAME_AVAILABLE;
+                    frames_pool[j / KERN_PAGE_SIZE].flags = PMM_FRAME_AVAILABLE;
                     available_frames++;
 
-                    if (first_good_frame == 0 || first_good_frame > j >> 12)
-                        first_good_frame = j >> 12;
+                    if (first_good_frame == 0 || first_good_frame > j / KERN_PAGE_SIZE)
+                        first_good_frame = j / KERN_PAGE_SIZE;
                 }
             }
         }
@@ -81,10 +81,10 @@ int pmm_init(void)
 end:
     pmm_reserve_memory((struct reserved_memory){
         .start = 0,
-        .end = (uintptr_t)&kern_virt_end - KERN_VIRTUAL_ADDR
+        .end = (uintptr_t)&kern_virt_end - KERN_VIRTUAL_ADDR + KERN_PAGE_SIZE
     });
 
-    printk("pmm: initialized, %lu frames available, %lukb.", available_frames, available_frames * 4);
+    printk("pmm: initialized, %lu frames available, %lukb.", available_frames, available_frames * (KERN_PAGE_SIZE / 1024));
     return 0;
 }
 
@@ -93,14 +93,14 @@ void pmm_reserve_memory(struct reserved_memory region)
     printk("pmm: reserving region [0x%08x...0x%08x]", region.start, region.end);
 
     size_t i;
-    for (i = region.start; i < region.end; i += PMM_FRAME_SIZE)
+    for (i = region.start; i < region.end; i += KERN_PAGE_SIZE)
     {
-        if (frames_pool[i >> 12].flags & PMM_FRAME_AVAILABLE)
+        if (frames_pool[i / KERN_PAGE_SIZE].flags & PMM_FRAME_AVAILABLE)
         {
             available_frames--;
         }
 
-        frames_pool[i >> 12].flags = PMM_FRAME_DISABLED;
+        frames_pool[i / KERN_PAGE_SIZE].flags = PMM_FRAME_DISABLED;
     }
 }
 
@@ -109,15 +109,18 @@ uintptr_t pmm_alloc_frames(size_t nframes)
     struct pmm_frame *frame;
     size_t i, block_offset = 0, block_size = 0;
 
+    if (nframes == 0)
+        return (uintptr_t)NULL;
+
     // Check if we have available memory
-    if (frames_used + nframes >= available_frames)
+    if (frames_used + nframes > available_frames)
     {
         panic("pmm: no physical memory left!");
         return (uintptr_t)NULL;
     }
 
     // Find free frame in the pool
-    for (i = 0; i < first_good_frame + available_frames; i++)
+    for (i = first_good_frame; i < PMM_POOL_SIZE; i++)
     {
         frame = &frames_pool[i];
         if (!(frame->flags & PMM_FRAME_AVAILABLE) || frame->flags & PMM_FRAME_USED) {
@@ -134,7 +137,7 @@ uintptr_t pmm_alloc_frames(size_t nframes)
     }
 
     if (block_size < nframes) {
-        printk("pmm: no available contiguous blocks were found (nframes = %d).", nframes);
+        panic("pmm: no available contiguous blocks were found (nframes = %d).", nframes);
         return (uintptr_t)NULL;
     }
 
@@ -144,7 +147,7 @@ uintptr_t pmm_alloc_frames(size_t nframes)
     }
 
     frames_used += nframes;
-    return block_offset << 12;
+    return block_offset * KERN_PAGE_SIZE;
 }
 
 int pmm_free_frames(uintptr_t frames, size_t nframes)
@@ -154,9 +157,19 @@ int pmm_free_frames(uintptr_t frames, size_t nframes)
         return 1;
 
     for (i = 0; i < nframes; i++) {
-        frames_pool[(frames >> 12) + i].flags &= ~PMM_FRAME_USED;
+        frames_pool[(frames / KERN_PAGE_SIZE) + i].flags &= ~PMM_FRAME_USED;
     }
 
     frames_used -= nframes;
     return 0;
+}
+
+size_t pmm_usage()
+{
+    return frames_used;
+}
+
+size_t pmm_total()
+{
+    return available_frames;
 }

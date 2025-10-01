@@ -2,7 +2,7 @@ TARGET = x86
 AS = nasm
 CC = gcc
 
-CFLAGS = -ffreestanding -fno-asynchronous-unwind-tables -fno-stack-protector -nostdlib -Wall -Wextra -I ../../include/ $(shell cat cflags.txt) -std=gnu99
+CFLAGS = --include "../../build/config.h" -I ../../include/ $(shell cat cflags.txt) $(shell cat ../../cflags.txt)
 
 arch_source_c := $(shell find . -name '*.c')
 arch_source_s := $(shell find . -name '*.S')

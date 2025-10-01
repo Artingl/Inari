@@ -1,5 +1,20 @@
 #include <kernel/inari.h>
 
+void _arch_hlt()
+{
+    do { __asm__ volatile("cli\nhlt"); } while (1);
+}
+
+void _disable_int()
+{
+    __asm__ volatile("cli");
+}
+
+void _enable_int()
+{
+    __asm__ volatile("sti");
+}
+
 void x86_outb(uint16_t port, uint8_t val)
 {
     __asm__ volatile("outb %0, %1"

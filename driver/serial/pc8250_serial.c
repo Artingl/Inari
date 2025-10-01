@@ -1,3 +1,6 @@
+#ifdef CONFIG_ARCH_X86
+#ifdef CONFIG_PC8250_SERIAL
+
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
@@ -92,3 +95,6 @@ earlycon_device(
     pc8250_serial_early_probe,
     pc8250_serial_early_cleanup
 );
+
+#endif
+#endif

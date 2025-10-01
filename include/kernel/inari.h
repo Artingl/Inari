@@ -21,6 +21,11 @@ typedef struct
     const char *cmdline;
 } bootinfo_t;
 
+typedef struct reserved_memory {
+    uintptr_t start;
+    uintptr_t end;
+} reserved_memory_t;
+
 // Performs all early initialization: earlycon device, etc.
 extern void kearly_init(bootinfo_t bootinfo);
 

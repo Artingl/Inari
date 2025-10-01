@@ -12,6 +12,12 @@ SECTIONS
     ._lo_kern_text : { *(._lo_kern_text) }
     ._lo_kern_stack : { *(._lo_kern_stack) }
 
+    . = ALIGN(0x1000);
+    _arch_pagetable_area_start = .;
+    . += 0x400000;           /* reserve 4MB */
+    _arch_pagetable_area_end = .;
+
+
     kern_phys_end = .;
     . += 0xC0000000;
     kern_virt_start = .;

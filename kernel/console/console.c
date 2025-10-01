@@ -8,6 +8,9 @@
 LIST_HEAD(consoles_list);
 static int console_is_early = 1;
 
+// TODO: lazy message history list
+// CONFIG_CONSOLE_LINES
+
 int console_init(void)
 {
     return 0;
@@ -18,6 +21,7 @@ int console_register(struct console_dev *dev)
     if (!dev)
         return -EINVAL;
     list_add(&dev->list, &consoles_list);
+    return 0;
 }
 
 int console_unregister(struct console_dev *dev)
@@ -25,10 +29,11 @@ int console_unregister(struct console_dev *dev)
     if (!dev)
         return -EINVAL;
     list_del(&dev->list);
+    return 0;
 }
 
 int console_printc(int type, const char *s, uint32_t count)
-{;
+{
     struct console_dev *entry;
     struct list_head *pos;
     
@@ -36,7 +41,7 @@ int console_printc(int type, const char *s, uint32_t count)
         entry = list_entry(pos, struct console_dev, list);
         
         // If we're on early stage, send the data only to earlycon
-        if (console_is_early && !(entry->flags & CONSOLE_EARLY))
+        if (console_is_early && entry->write && !(entry->flags & CONSOLE_EARLY))
             continue;
 
         entry->write(s, count);

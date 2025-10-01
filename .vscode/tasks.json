@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-and-run",
+            "type": "shell",
+            "command": "./debug.sh",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "kill-qemu",
+            "type": "shell",
+            "command": "pkill -f qemu-system-i386 || true",
+            "problemMatcher": []
+        }
+    ]
+}

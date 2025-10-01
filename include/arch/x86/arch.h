@@ -1,10 +1,6 @@
 #ifndef _INARI_ARCH_H
 #define _INARI_ARCH_H
 
-#define __sti() __asm__ volatile("sti")
-#define __cli() __asm__ volatile("cli")
-#define __halt() do { __asm__ volatile("hlt"); } while (1)
-
 
 void x86_outb(uint16_t port, uint8_t val);
 void x86_outw(uint16_t port, uint16_t val);
