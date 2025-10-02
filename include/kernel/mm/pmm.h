@@ -6,7 +6,7 @@
 
 #include <kernel/inari.h>
 
-#define PMM_POOL_SIZE  262144
+#define PMM_POOL_SIZE  1048576
 
 #define PMM_PAGE_AVAILABLE (1 << 0)
 #define PMM_PAGE_DISABLED  (1 << 1)

@@ -16,6 +16,11 @@
         "page.h": "c",
         "multiboot.h": "c",
         "vmm.h": "c",
-        "kmalloc.h": "c"
+        "kmalloc.h": "c",
+        "cpu.h": "c",
+        "acpi.h": "c",
+        "pic.h": "c",
+        "irq.h": "c",
+        "sys.h": "c"
     }
 }

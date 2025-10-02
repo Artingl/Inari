@@ -90,6 +90,9 @@ end:
 
 void pmm_reserve_memory(struct reserved_memory region)
 {
+    if (region.end < region.start)
+        return;
+
     printk("pmm: reserving region [0x%08x...0x%08x]", region.start, region.end);
 
     size_t i;

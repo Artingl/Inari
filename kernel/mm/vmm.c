@@ -21,8 +21,6 @@ static inline void __mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
 
 int vmm_init(void)
 {
-    size_t i;
-
     // Allocate some memory for the VMM pages pool
     pages_pool = arch_map_page(
         (void*)VMM_VBASE,

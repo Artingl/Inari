@@ -78,7 +78,7 @@ int pc_vga_text_init()
 
     // Clear the screen
     uint32_t *base = (uint32_t*)VGA_BASE;
-    while (base < VGA_BASE+VGA_SIZE)
+    while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
         *base++ = 0x00;
     
     pc_vga_text_is_initialized = 1;

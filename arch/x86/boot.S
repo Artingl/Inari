@@ -8,17 +8,17 @@ section ._lo_kern_multiboot
 section ._lo_kern_text
 global _arch_entry_point
 
-extern _x86_gdt_descriptor
-extern _x86_gdt_code_seg
-extern _x86_gdt_data_seg
-extern _x86_entrypoint
+extern x86_gdt_descriptor
+extern x86_gdt_code_seg
+extern x86_gdt_data_seg
+extern x86_entrypoint
 
 _arch_entry_point:
     cli
     
     ;; Setup gdt
-    lgdt [_x86_gdt_descriptor]
-    jmp _x86_gdt_code_seg:.setcs
+    lgdt [x86_gdt_descriptor]
+    jmp x86_gdt_code_seg:.setcs
     .setcs:
 
     ;; Setup stack
@@ -29,14 +29,14 @@ _arch_entry_point:
     push eax                                  ;; multiboot2: magic value
 
     ;; Setup the segment registers with our flat data selector
-    mov ax, _x86_gdt_data_seg
+    mov ax, x86_gdt_data_seg
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
 
-    call _x86_entrypoint
+    call x86_entrypoint
     hlt
 
 

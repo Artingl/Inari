@@ -6,7 +6,7 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "forcedInclude": ["${workspaceFolder}/build/config.h"],
+            "forcedInclude": ["${workspaceFolder}/build/config.h", "${workspaceFolder}/config.h"],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "gnu99",
             "cppStandard": "gnu++17",

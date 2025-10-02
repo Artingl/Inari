@@ -46,4 +46,6 @@ int console_printc(int type, const char *s, uint32_t count)
 
         entry->write(s, count);
     }
+
+    return 0;
 }

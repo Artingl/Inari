@@ -1,8 +1,8 @@
 section ._lo_kern_gdt
 
-global _x86_gdt_descriptor
-global _x86_gdt_code_seg
-global _x86_gdt_data_seg
+global x86_gdt_descriptor
+global x86_gdt_code_seg
+global x86_gdt_data_seg
 
 ; GDT - Global Descriptor Table
 gdt_start:
@@ -46,13 +46,13 @@ gdt_data:
 gdt_end:        ; Needed to calculate GDT size for inclusion in GDT descriptor
 
 ; GDT Descriptor
-_x86_gdt_descriptor:
+x86_gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; Size of GDT, always less one
     dd gdt_start
 
 ; Define constants
-_x86_gdt_code_seg equ gdt_code - gdt_start
-_x86_gdt_data_seg equ gdt_data - gdt_start
+x86_gdt_code_seg equ gdt_code - gdt_start
+x86_gdt_data_seg equ gdt_data - gdt_start
 
 ; In protected mode, set DS = INDEX to select GDT entries
 ; Then CPU knows to use segment at that offset

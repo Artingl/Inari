@@ -134,7 +134,6 @@ int printk(const char *fmt, ...)
     va_start(args, fmt);
     int c = 0;
 
-    c += print("[  0.0] ");
     c += do_printkn(fmt, args, &do_printf_handler);
     c += print("\n");
 
@@ -148,13 +147,14 @@ void panic(const char *fmt, ...)
     va_start(args, fmt);
     int c = 0;
     
-    c += print("[  0.0] Panic: ");
+    c += print("Panic:\n");
     c += do_printkn(fmt, args, &do_printf_handler);
     c += print("\n");
 
     c += print("\n");
-    c += print("Kernel panic! Halting!");
+    c += print("Kernel panic!");
     
     va_end(args);
-    halt();
+    while (1){}
+    // halt();
 }

@@ -27,12 +27,10 @@ void kearly_init(bootinfo_t b)
 void kmain(void)
 {
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
-    printk("Available memory %ldkb", (pmm_total() - pmm_usage()) * (PAGE_SIZE / 1024));
 
     if (console_init() != 0)
         panic("Couldn't initialize console");
-
-
+    
     panic("Reached end of kmain");
 }
 

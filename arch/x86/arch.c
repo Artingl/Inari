@@ -76,3 +76,10 @@ void x86_rdtsc(uint32_t *lo, uint32_t *hi)
 {
     __asm__ volatile("rdtsc" : "=a"(*lo), "=d"(*hi));
 }
+
+void x86_cpuid(uint32_t leah, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+{
+    __asm__ volatile("cpuid"
+                     : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+                     : "0"(leah));
+}
