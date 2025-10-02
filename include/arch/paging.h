@@ -6,6 +6,7 @@
 
 struct paging_directory;
 
+extern void *arch_phys_page(void *vbase);
 extern void *arch_map_page(void *vbase, void *pbase, size_t len, uint32_t flags);
 extern void arch_unmap_page(void *vbase, size_t len);
 extern void arch_switch_pagedir(struct paging_directory *directory);

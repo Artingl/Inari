@@ -6,10 +6,10 @@
 
 #define ALIGN(val, alg) (((val) + (alg)-1) / (alg) * (alg))
 
-#define KERN_PAGE_SIZE 0x1000           // Size of a single page in memory
-#define KERN_VIRTUAL_ADDR 0xC0000000    // The physical memory address where kernel resides
+#define PAGE_SIZE 0x1000           // Size of a single page in memory
+#define VIRTUAL_ADDR 0xC0000000    // The physical memory address where kernel resides
 
-#define _lo_data __attribute__((used, section("._lo_kern_data"), aligned(KERN_PAGE_SIZE)))
+#define _lo_data __attribute__((used, section("._lo_kern_data"), aligned(PAGE_SIZE)))
 #define _lo_text __attribute__((used, section("._lo_kern_text")))
 
 #define fallthrough __attribute__ ((fallthrough))
@@ -36,7 +36,7 @@ extern bootinfo_t get_boot_info();
 extern int printk(const char *fmt, ...);
 extern void panic(const char *fmt, ...);
 
-#define KERN_ARG_MAX_LEN 64
+#define ARG_MAX_LEN 64
 
 extern int parse_cmdline_argument(const char *key, char *result);
 extern const char *get_cmdline();

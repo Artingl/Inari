@@ -31,7 +31,7 @@ int parse_cmdline_argument(const char *key, char *result)
 
             // Parse the arguments
             argument_start = (char*)cmdline + offset + key_len + 1;
-            while (*(cmdline + offset) != ' ' && *(cmdline + offset) != 0 && (cmdline + offset - argument_start) < KERN_ARG_MAX_LEN)
+            while (*(cmdline + offset) != ' ' && *(cmdline + offset) != 0 && (cmdline + offset - argument_start) < ARG_MAX_LEN)
                 offset++;
 
             memcpy(result, argument_start, offset);

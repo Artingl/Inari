@@ -3,6 +3,8 @@
 #include <kernel/console/console.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/mm/page.h>
+#include <kernel/mm/kmalloc.h>
 
 #include <arch/paging.h>
 #include <misc/string.h>
@@ -16,16 +18,16 @@ void kearly_init(bootinfo_t b)
     // Initialize the early console for atleast some output
     earlycon_init();
 
-    pmm_init();
-    vmm_init();
+    if (pmm_init() || vmm_init() || page_init() || kmalloc_init())
+        panic("Unable to initialize the memory subsystem.");
 
-    printk("kearly_init: done 0x%02x; 0x%08x 0x%08x");
+    printk("kearly_init: done");
 }
 
 void kmain(void)
 {
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
-    printk("Available memory %ldkb", (pmm_total() - pmm_usage()) * (KERN_PAGE_SIZE / 1024));
+    printk("Available memory %ldkb", (pmm_total() - pmm_usage()) * (PAGE_SIZE / 1024));
 
     if (console_init() != 0)
         panic("Couldn't initialize console");

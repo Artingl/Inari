@@ -8,18 +8,18 @@
 
 #define PMM_POOL_SIZE  262144
 
-#define PMM_FRAME_AVAILABLE (1 << 0)
-#define PMM_FRAME_DISABLED  (1 << 1)
-#define PMM_FRAME_USED      (1 << 2)
+#define PMM_PAGE_AVAILABLE (1 << 0)
+#define PMM_PAGE_DISABLED  (1 << 1)
+#define PMM_PAGE_USED      (1 << 2)
 
-typedef struct pmm_frame {
+typedef struct pmm_page {
     uint8_t flags;
-} pmm_frame_t;
+} pmm_page_t;
 
 extern int pmm_init(void);
 extern void pmm_reserve_memory(struct reserved_memory region);
-extern uintptr_t pmm_alloc_frames(size_t nframes);
-extern int pmm_free_frames(uintptr_t frames, size_t nframes);
+extern void *pmm_alloc_pages(size_t npages);
+extern int pmm_free_pages(void *base, size_t npages);
 extern size_t pmm_usage();
 extern size_t pmm_total();
 

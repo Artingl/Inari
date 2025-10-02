@@ -12,7 +12,7 @@ static earlycon_device_t *device_in_use = NULL;
 int earlycon_init()
 {
     earlycon_device_t *fallback;
-    char device[KERN_ARG_MAX_LEN];
+    char device[ARG_MAX_LEN];
     parse_cmdline_argument("earlycon", &device[0]);
 
     // Initialize any first available earlycon device specified in cmdline

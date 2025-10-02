@@ -5,13 +5,13 @@
 
 #include <misc/string.h>
 
-#define TABLE_PRESENT (1 << 0)
-#define TABLE_RW (1 << 1)
+#define _TABLE_PRESENT (1 << 0)
+#define _TABLE_RW (1 << 1)
 
-#define PAGE_PRESENT (1 << 0)
-#define PAGE_RW (1 << 1)
-#define PAGE_USR (1 << 2)
-#define PAGE_DIRTY (1 << 5)
+#define _PAGE_PRESENT (1 << 0)
+#define _PAGE_RW (1 << 1)
+#define _PAGE_USR (1 << 2)
+#define _PAGE_DIRTY (1 << 5)
 
 struct page_table
 {
@@ -41,22 +41,31 @@ static inline void *__alloc_table(size_t offset)
     return (struct page_table *)(dir->tables_phys[offset] & ~0xFFF);
 }
 
+void *arch_phys_page(void *vbase)
+{
+    struct page_table *table = __alloc_table((uintptr_t)vbase >> 22);
+    return (void*)(table->pages[(uintptr_t)vbase >> 12 & 0x03FF] & ~0xFFF);
+}
+
 void *arch_map_page(void *vbase, void *pbase, size_t len, uint32_t flags)
 {
-    uintptr_t i;
+    uintptr_t i, offset = (uintptr_t)pbase;
     uint32_t page_flags = 0;
     struct page_table *table = NULL;
 
-    if (flags & KERN_PAGE_USR)
-        page_flags |= PAGE_USR;
-    if (flags & KERN_PAGE_RW)
-        page_flags |= PAGE_RW;
+    if (flags & PAGE_USR)
+        page_flags |= _PAGE_USR;
+    if (flags & PAGE_RW)
+        page_flags |= _PAGE_RW;
+    if (flags & PAGE_PRESENT)
+        page_flags |= _PAGE_PRESENT;
 
-    for (i = (uintptr_t)vbase; i < (uintptr_t)vbase + len; i+=KERN_PAGE_SIZE)
+    for (i = (uintptr_t)vbase; i < (uintptr_t)vbase + len; i+=PAGE_SIZE)
     {
         table = __alloc_table(i >> 22);
-        table->pages[i >> 12 & 0x03FF] = (unsigned long)pbase | PAGE_PRESENT | page_flags;
-        pbase += KERN_PAGE_SIZE;
+        table->pages[i >> 12 & 0x03FF] = (unsigned long)offset | page_flags;
+        offset += PAGE_SIZE;
+        __native_flush_tlb_single((uintptr_t)i);
     }
 
     return vbase;
@@ -67,10 +76,10 @@ void arch_unmap_page(void *vbase, size_t len)
     uintptr_t i;
     struct page_table *table = NULL;
 
-    for (i = (uintptr_t)vbase; i < (uintptr_t)vbase + len; i+=KERN_PAGE_SIZE)
+    for (i = (uintptr_t)vbase; i < (uintptr_t)vbase + len; i+=PAGE_SIZE)
     {
         table = __alloc_table(i >> 22);
-        table->pages[i >> 12 & 0x03FF] &= ~PAGE_PRESENT;
+        table->pages[i >> 12 & 0x03FF] &= ~_PAGE_PRESENT;
         __native_flush_tlb_single((uintptr_t)i);
     }
 }

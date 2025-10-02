@@ -6,13 +6,13 @@
 #include <arch/x86/arch.h>
 #include <multiboot/multiboot.h>
 
-#define KERN_TABLE_PRESENT (1 << 0)
-#define KERN_TABLE_RW (1 << 1)
+#define _TABLE_PRESENT (1 << 0)
+#define _TABLE_RW (1 << 1)
 
-#define KERN_PAGE_PRESENT (1 << 0)
-#define KERN_PAGE_RW (1 << 1)
-#define KERN_PAGE_USR (1 << 2)
-#define KERN_PAGE_DIRTY (1 << 5)
+#define _PAGE_PRESENT (1 << 0)
+#define _PAGE_RW (1 << 1)
+#define _PAGE_USR (1 << 2)
+#define _PAGE_DIRTY (1 << 5)
 
 struct page_table
 {
@@ -37,13 +37,13 @@ _lo_text static inline void *_x86_memset(void *buf, int ch, size_t count)
 
 _lo_text static struct page_table *_x86_alloc_table(uintptr_t offset)
 {
-    struct page_table *table_pool = (struct page_table*)ALIGN((uintptr_t)&_arch_pagetable_area_start, KERN_PAGE_SIZE);
+    struct page_table *table_pool = (struct page_table*)ALIGN((uintptr_t)&_arch_pagetable_area_start, PAGE_SIZE);
 
-    if (!(tables_phys[offset] & KERN_TABLE_PRESENT))
+    if (!(tables_phys[offset] & _TABLE_PRESENT))
     {
-        struct page_table *table = (struct page_table*)ALIGN((uintptr_t)&table_pool[table_pool_offset++], KERN_PAGE_SIZE);
+        struct page_table *table = (struct page_table*)ALIGN((uintptr_t)&table_pool[table_pool_offset++], PAGE_SIZE);
         _x86_memset((void*)table, 0, sizeof(struct page_table));
-        tables_phys[offset] = ((uintptr_t)table) | KERN_TABLE_PRESENT | KERN_TABLE_RW;
+        tables_phys[offset] = ((uintptr_t)table) | _TABLE_PRESENT | _TABLE_RW;
     }
     return (struct page_table *)(tables_phys[offset] & ~0xFFF);
 }
@@ -55,11 +55,11 @@ _lo_text static void _x86_map_section(
     struct page_table *table = NULL;
     uintptr_t offset = p_start, i;
 
-    for (i = v_start; i < v_end; i+=KERN_PAGE_SIZE)
+    for (i = v_start; i < v_end; i+=PAGE_SIZE)
     {
         table = _x86_alloc_table(i >> 22);
-        table->pages[i >> 12 & 0x03FF] = (unsigned long)offset | KERN_PAGE_PRESENT | KERN_PAGE_RW;
-        offset += KERN_PAGE_SIZE;
+        table->pages[i >> 12 & 0x03FF] = (unsigned long)offset | _PAGE_PRESENT | _PAGE_RW;
+        offset += PAGE_SIZE;
     }
 }
 

@@ -45,7 +45,7 @@ int pc8250_serial_init()
     if (pc8250_is_initialized)
         return 0;
     
-    char device[KERN_ARG_MAX_LEN];
+    char device[ARG_MAX_LEN];
     parse_cmdline_argument("pc8250_port", &device[0]);
 
     // Set the port based on provided arguments

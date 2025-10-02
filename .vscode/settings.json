@@ -15,6 +15,7 @@
         "paging.h": "c",
         "page.h": "c",
         "multiboot.h": "c",
-        "vmm.h": "c"
+        "vmm.h": "c",
+        "kmalloc.h": "c"
     }
 }
