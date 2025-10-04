@@ -1,7 +1,5 @@
-#include <kernel/inari.h>
-#include <arch/sys.h>
-#include <kernel/console/console.h>
 
+#include <kernel/inari.h>
 #include <misc/string.h>
 #include <stdarg.h>
 
@@ -14,18 +12,18 @@
 #define PR_LZ 0x40
 #define PR_BUFLEN 32
 
-static int emit_char(void (*fn)(char), char c) {
+static inline int emit_char(void (*fn)(char), char c) {
     fn(c);
     return 1;
 }
 
-static int emit_string(void (*fn)(char), const char *s) {
+static inline int emit_string(void (*fn)(char), const char *s) {
     int n = 0;
     while (*s) n += emit_char(fn, *s++);
     return n;
 }
 
-static int printnum(void (*fn)(char),
+static inline int printnum(void (*fn)(char),
                     unsigned long num, unsigned radix, unsigned flags) {
     char buf[PR_BUFLEN];
     char *p = buf + sizeof(buf);
@@ -41,7 +39,7 @@ static int printnum(void (*fn)(char),
     return emit_string(fn, p);
 }
 
-static int do_printkn(const char *fmt, va_list args,
+static inline int do_printkn(const char *fmt, va_list args,
                       void (*fn)(char)) {
     int count = 0;
 
@@ -112,49 +110,4 @@ static int do_printkn(const char *fmt, va_list args,
         }
     }
     return count;
-}
-
-static inline void do_printf_handler(char c)
-{
-    console_printc(CONSOLE_PRINTK, &c, 1);
-}
-
-static inline int print(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    int c = do_printkn(fmt, args, &do_printf_handler);
-    va_end(args);
-    return c;
-}
-
-int printk(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    int c = 0;
-
-    c += do_printkn(fmt, args, &do_printf_handler);
-    c += print("\n");
-
-    va_end(args);
-    return c;
-}
-
-void panic(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    int c = 0;
-    
-    c += print("Panic:\n");
-    c += do_printkn(fmt, args, &do_printf_handler);
-    c += print("\n");
-
-    c += print("\n");
-    c += print("Kernel panic!");
-    
-    va_end(args);
-    while (1){}
-    // halt();
 }

@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <kernel/fault/panic.h>
+#include <kernel/printk.h>
+
 #define ALIGN(val, alg) (((val) + (alg)-1) / (alg) * (alg))
 
 #define PAGE_SIZE 0x1000           // Size of a single page in memory
@@ -33,8 +36,6 @@ extern void kearly_init(bootinfo_t bootinfo);
 extern void kmain(void);
 extern bootinfo_t get_boot_info();
 
-extern int printk(const char *fmt, ...);
-extern void panic(const char *fmt, ...);
 
 #define ARG_MAX_LEN 64
 

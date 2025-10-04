@@ -21,6 +21,7 @@
         "acpi.h": "c",
         "pic.h": "c",
         "irq.h": "c",
-        "sys.h": "c"
+        "sys.h": "c",
+        "spinlock.h": "c"
     }
 }

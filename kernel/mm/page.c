@@ -41,6 +41,9 @@ void page_unmap(void *vbase, size_t len)
 void *page_alloc(size_t npages, uint32_t flags)
 {
     void *vbase = vmm_alloc_pages(npages);
+
+    // TODO: Contiguous allocation in physical memory might fail.
+    //       Allow to allocate the pages in chunks
     void *pbase = pmm_alloc_pages(npages);
 
     return arch_map_page(vbase, pbase, npages * PAGE_SIZE, flags);

@@ -5,4 +5,5 @@ qemu-system-i386 \
     -cdrom build/boot.iso \
     -serial stdio \
     -m 1G \
+    -smp 4 \
     -s -S

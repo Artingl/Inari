@@ -3,5 +3,3 @@
 #define CONFIG_VGA_TEXT
 
 #define CONFIG_MAX_CORES 64
-
-#define CONFIG_CONSOLE_LINES    20000
