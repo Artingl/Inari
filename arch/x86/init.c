@@ -76,7 +76,7 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
     
     x86_cpu_init();
     
-    // Jump to kernel!
+    /* Jump to kernel! */
     kmain();
 }
 
@@ -87,15 +87,15 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 {
     size_t i;
 
-    // Alloc all 1024 page tables to avoid pain
+    /* Alloc all 1024 page tables to avoid pain */
     for (i = 0; i < 1024; i++)
         x86_alloc_table(i);
 
-    // Map crucial memory regions
+    /* Map crucial memory regions */
     x86_map_section((uintptr_t)&kern_phys_start, (uintptr_t)&kern_phys_end, (uintptr_t)&kern_phys_start);
     x86_map_section((uintptr_t)&kern_virt_start, (uintptr_t)&kern_virt_end, (uintptr_t)&kern_phys_end);
 
-    // Enable paging
+    /* Enable paging */
     uint32_t cr0;
     __asm__ volatile("mov %0, %%cr3" ::"r"(&tables_phys));
     __asm__ volatile("mov %%cr0, %0"
@@ -103,10 +103,10 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
     cr0 |= 0x80000000;
     __asm__ volatile("mov %0, %%cr0" ::"r"(cr0));
 
-    // Fix the stack
+    /* Fix the stack */
     __asm__ volatile("mov %0, %%esp" :: "r"(&_arch_stack_bsp));
 
-    // We can finally go further
+    /* We can finally go further */
     x86_entrypoint2(magic, multiboot);
 
     halt();

@@ -1,8 +1,7 @@
 #ifndef _INARI_PAGING_H
 #define _INARI_PAGING_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <misc/types.h>
 
 struct paging_directory;
 

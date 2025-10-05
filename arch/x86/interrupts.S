@@ -44,6 +44,15 @@ _arch_irq_base:
 	sti
 	iretd
 
+%macro SWI_HANDLER 1
+global _arch_irq%1
+_arch_irq%1:
+    cli
+    push dword 0
+    push dword %1
+    jmp _arch_irq_base
+%endmacro
+
 %macro IRQ_HANDLER 1
 global _arch_irq%1
 _arch_irq%1:
@@ -111,3 +120,5 @@ IRQ_HANDLER 12
 IRQ_HANDLER 13
 IRQ_HANDLER 14
 IRQ_HANDLER 15
+
+SWI_HANDLER 100

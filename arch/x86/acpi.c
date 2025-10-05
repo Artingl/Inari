@@ -22,7 +22,7 @@ static uintptr_t acpi_cpu_ioapic = (uintptr_t)NULL;
 static uint32_t acpi_cpu_count;
 static int acpi_initialized = 0;
 
-static int __acpi_signature(void *ptr, size_t size)
+static int acpi_signature(void *ptr, size_t size)
 {
     uint32_t checksum = 0, i;
     for (i = 0; i < size; i++)
@@ -40,7 +40,7 @@ int x86_acpi_init(void)
         return -ENODEV;
     }
 
-    // Try to find the signature of RSDP
+    /* Try to find the signature of RSDP */
     for (i = 0x000E0000; i < 0x000FFFFF; i+=8)
     {
         if (memcmp((char *)i, "RSD PTR ", 8) == 0)
@@ -50,7 +50,7 @@ int x86_acpi_init(void)
         }
     }
 
-    // TODO: also perform search in EBDA (https://wiki.osdev.org/RSDP)
+    /* TODO: also perform search in EBDA (https://wiki.osdev.org/RSDP) */
     if (!sdp)
     {
         printk("acpi: unable to find RSDP in memory.");
@@ -59,7 +59,7 @@ int x86_acpi_init(void)
 
     if (sdp->revision == 0)
     {
-        if (!(__acpi_signature(sdp, sizeof(struct RSDP))))
+        if (!(acpi_signature(sdp, sizeof(struct RSDP))))
         {
             printk("acpi: RSDP invalid checksum.");
             return -EINVAL;
@@ -70,7 +70,7 @@ int x86_acpi_init(void)
     }
     else if (sdp->revision == 2)
     {
-        if (!(__acpi_signature(sdp, sizeof(struct XSDP))))
+        if (!(acpi_signature(sdp, sizeof(struct XSDP))))
         {
             printk("acpi: XSDP invalid checksum.");
             return -EINVAL;
@@ -102,7 +102,7 @@ int x86_acpi_init(void)
         printk("acpi: r/xSDT invalid header length.");
         return -EINVAL;
     }
-    else if (!(__acpi_signature(root_sdt, root_sdt->header.length)))
+    else if (!(acpi_signature(root_sdt, root_sdt->header.length)))
     {
         panic("acpi: RootSDT invalid checksum.");
         return -EINVAL;
@@ -157,19 +157,19 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
     uint8_t *i;
     acpi_cpu_count = 0;
 
-    // Iterate thru all SDTs to find MADT
+    /* Iterate thru all SDTs to find MADT */
     ACPI_ITERATE(idx, pointer, {
         if (memcmp(pointer->signature, "APIC", 4) == 0)
         {
             madts++;
 
-            // Iterate thru all MADT entries to get all APICs on the system
+            /* Iterate thru all MADT entries to get all APICs on the system */
             struct MADT *madt = (struct MADT *)pointer;
 
-            if (!madt || !__acpi_signature(madt, madt->header.length))
+            if (!madt || !acpi_signature(madt, madt->header.length))
                 panic("acpi: unable to find MADT record; or got invalid record (bad checksum)");
 
-            // Iterate thru all MADT entries to get all APICs on the system
+            /* Iterate thru all MADT entries to get all APICs on the system */
             for (
                 i = ((uint8_t *)(madt)) + 0x2c;
                 i < ((uint8_t *)(madt)) + madt->header.length + 0x2c;)
@@ -181,6 +181,12 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                 if (entry->entry_type == APIC_LOCAL_PROCESSOR)
                 {
                     struct LAPIC_MADT *lapic_table = (struct LAPIC_MADT *)(entry);
+
+                    if (acpi_cpu_count + 1 >= CONFIG_MAX_CORES)
+                    {
+                        printk("acpi: ignoring out-of-bounds core id %u", lapic_table->acpi_proc_id);
+                        goto next;
+                    }
 
                     cpus_pool[lapic_table->acpi_proc_id].is_available = 1;
                     cpus_pool[lapic_table->acpi_proc_id].core_id = lapic_table->acpi_proc_id;
@@ -194,7 +200,7 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                 {
                     struct IOAPIC_MADT *io_apic_table = (struct IOAPIC_MADT *)(entry);
 
-                    // TODO: only one IO/APIC can be used right now
+                    /* TODO: only one IO/APIC can be used right now */
                     if (acpi_cpu_ioapic)
                     {
                         printk("acpi: another io/apic was found, which is not supported");

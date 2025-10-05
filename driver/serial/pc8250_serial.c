@@ -23,8 +23,7 @@
 static int pc8250_is_initialized = 0;
 static int pc8250_port = COM1;
 
-// static void serial_putc(char c)
-void serial_putc(const char *s, uint32_t count)
+static void serial_putc(const char *s, uint32_t count)
 {
     if (!pc8250_is_initialized)
         return;
@@ -48,7 +47,7 @@ int pc8250_serial_init()
     char device[ARG_MAX_LEN];
     parse_cmdline_argument("pc8250_port", &device[0]);
 
-    // Set the port based on provided arguments
+    /* Set the port based on provided arguments */
     pc8250_port = COM1;
     if (strcmp(device, "COM2") == 0) pc8250_port = COM2;
     if (strcmp(device, "COM3") == 0) pc8250_port = COM3;

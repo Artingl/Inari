@@ -19,18 +19,18 @@ static uint32_t phys_cpus;
 
 struct x86_cpu x86_cpus_pool[CONFIG_MAX_CORES];
 
-static void __core_idt_init(struct x86_cpu *core)
+static void cpu_arch_core_idt_init(struct x86_cpu *core)
 {
     core->idt_desc.size = (sizeof(struct x86_cpu_idt) * 256) - 1;
     core->idt_desc.base = (uintptr_t)core->idt;
 }
 
-static void __core_init(struct x86_cpu *core)
+static void cpu_core_init(struct x86_cpu *core)
 {
     if (!core->is_available)
         return;
     core->idt = kmalloc(sizeof(struct x86_cpu_idt) * 256);
-    __core_idt_init(core);
+    cpu_arch_core_idt_init(core);
 
     x86_exception_setup(core);
     x86_irq_setup(core);
@@ -48,14 +48,12 @@ int x86_cpu_init(void)
 
     x86_cpuid(0, &eax, &ebx, &features_ecx, &features_edx);
 
-    // get CPU vendor
     x86_cpuid(0, &eax, &ebx, &ecx, &edx);
     memcpy(&s_cpu_vendor[0], &ebx, 4);
     memcpy(&s_cpu_vendor[4], &edx, 4);
     memcpy(&s_cpu_vendor[8], &ecx, 4);
     s_cpu_vendor[12] = 0;
 
-    // Get cpu model
     x86_cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
     if (eax < 0x80000004)
     {
@@ -92,7 +90,7 @@ int x86_cpu_init(void)
     printk("cpu: available %u core(s)", phys_cpus);
 
     for (i = 0; i < phys_cpus; i++)
-        __core_init(&x86_cpus_pool[i]);
+        cpu_core_init(&x86_cpus_pool[i]);
     
     if (x86_pic_init())
         panic("cpu: cannot continue without pic.");

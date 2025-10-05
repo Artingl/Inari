@@ -13,7 +13,7 @@ int parse_cmdline_argument(const char *key, char *result)
 
     do
     {
-        // Check that we'll not overflow
+        /* Check that we'll not overflow */
         if (offset + key_len + 1 >= cmdline_len)
             return -1;
 
@@ -22,14 +22,14 @@ int parse_cmdline_argument(const char *key, char *result)
                 || *(cmdline + offset + key_len) == ' '
                 || *(cmdline + offset + key_len) == 0))
         {
-            // If the param was provided without arguments, just return none
+            /* If the param was provided without arguments, just return none */
             if (*(cmdline + offset + key_len) != '=')
             {
                 memcpy(result, "none\0", 5);
                 return 0;
             }
 
-            // Parse the arguments
+            /* Parse the arguments */
             argument_start = (char*)cmdline + offset + key_len + 1;
             while (*(cmdline + offset) != ' ' && *(cmdline + offset) != 0 && (cmdline + offset - argument_start) < ARG_MAX_LEN)
                 offset++;

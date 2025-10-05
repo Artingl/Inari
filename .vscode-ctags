@@ -328,8 +328,8 @@ __list_del	include/misc/list.h	/^static inline void __list_del(struct list_head 
 __mark_region	kernel/mm/vmm.c	/^static inline void __mark_region(uintptr_t start, uintptr_t end, uint8_t flags)$/;"	f	typeref:typename:void	file:
 __native_flush_tlb_single	arch/x86/paging.c	/^static inline void __native_flush_tlb_single(unsigned long addr)$/;"	f	typeref:typename:void	file:
 _arch_hlt	arch/x86/arch.c	/^void _arch_hlt()$/;"	f	typeref:typename:void
-_disable_int	arch/x86/arch.c	/^void _disable_int()$/;"	f	typeref:typename:void
-_enable_int	arch/x86/arch.c	/^void _enable_int()$/;"	f	typeref:typename:void
+_arch_disable_int	arch/x86/arch.c	/^void _arch_disable_int()$/;"	f	typeref:typename:void
+_arch_enable_int	arch/x86/arch.c	/^void _arch_enable_int()$/;"	f	typeref:typename:void
 _lo_data	include/kernel/inari.h	/^#define _lo_data /;"	d
 _lo_text	include/kernel/inari.h	/^#define _lo_text /;"	d
 _x86_alloc_table	arch/x86/init.c	/^_lo_text static struct page_table *_x86_alloc_table(uintptr_t offset)$/;"	f	typeref:typename:_lo_text struct page_table *	file:
@@ -395,7 +395,7 @@ cseg_16_len	include/multiboot/multiboot.h	/^  multiboot_uint16_t cseg_16_len;$/;
 cseg_len	include/multiboot/multiboot.h	/^  multiboot_uint16_t cseg_len;$/;"	m	struct:multiboot_apm_info	typeref:typename:multiboot_uint16_t
 depth	include/multiboot/multiboot.h	/^  multiboot_uint32_t depth;$/;"	m	struct:multiboot_header	typeref:typename:multiboot_uint32_t
 device_in_use	kernel/console/earlycon.c	/^static earlycon_device_t *device_in_use = NULL;$/;"	v	typeref:typename:earlycon_device_t *	file:
-disable_int	include/arch/sys.h	/^#define disable_int() _disable_int(/;"	d
+disable_int	include/arch/sys.h	/^#define disable_int() _arch_disable_int(/;"	d
 do_printf_handler	kernel/print.c	/^static inline void do_printf_handler(char c)$/;"	f	typeref:typename:void	file:
 do_printkn	kernel/print.c	/^static int do_printkn(const char *fmt, va_list args,$/;"	f	typeref:typename:int	file:
 double2buf	include/misc/string.h	/^static inline void double2buf(char *buf, double f) {$/;"	f	typeref:typename:void
@@ -411,7 +411,7 @@ earlycon_init	kernel/console/earlycon.c	/^int earlycon_init()$/;"	f	typeref:type
 elf_sec	include/multiboot/multiboot.h	/^    multiboot_elf_section_header_table_t elf_sec;$/;"	m	union:multiboot_info::__anon6e64d47b010a	typeref:typename:multiboot_elf_section_header_table_t
 emit_char	kernel/print.c	/^static int emit_char(void (*fn)(char), char c) {$/;"	f	typeref:typename:int	file:
 emit_string	kernel/print.c	/^static int emit_string(void (*fn)(char), const char *s) {$/;"	f	typeref:typename:int	file:
-enable_int	include/arch/sys.h	/^#define enable_int() _enable_int(/;"	d
+enable_int	include/arch/sys.h	/^#define enable_int() _arch_enable_int(/;"	d
 end	include/kernel/inari.h	/^    uintptr_t end;$/;"	m	struct:reserved_memory	typeref:typename:uintptr_t
 entry_addr	include/multiboot/multiboot.h	/^  multiboot_uint32_t entry_addr;$/;"	m	struct:multiboot_header	typeref:typename:multiboot_uint32_t
 even	include/misc/math.h	/^#define even(/;"	d

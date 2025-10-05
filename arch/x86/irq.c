@@ -1,16 +1,18 @@
 #include <kernel/inari.h>
-#include <kernel/irq/irq.h>
+#include <kernel/interrupts/interrupts.h>
+#include <kernel/interrupts/irq.h>
+#include <kernel/interrupts/swi.h>
 
 #include <arch/x86/cpu.h>
 #include <arch/x86/irq.h>
+#include <arch/x86/interrupts.h>
 
-#define DECL_IRQ(n) extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, 32 + n, 0x08, 0x8e)
-
-#define X86_IRQ_OFFSET 32
-#define X86_PIT_IRQ    (X86_IRQ_OFFSET + 0)
+#define DECL_DIRECT(n) extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, n, 0x08, 0x8e)
+#define DECL_IRQ(n)    extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, 32 + n, 0x08, 0x8e)
 
 void x86_irq_setup(struct x86_cpu *core)
 {
+    /* Note: don't forget to add the subroutines in interrupts.S !!! */
     DECL_IRQ(0);
     DECL_IRQ(1);
     DECL_IRQ(2);
@@ -27,6 +29,9 @@ void x86_irq_setup(struct x86_cpu *core)
     DECL_IRQ(13);
     DECL_IRQ(14);
     DECL_IRQ(15);
+
+    /* SWI */
+    DECL_DIRECT(100);  // SWI_RESCHEDULE
 }
 
 void x86_irq_handler(struct x86_regs32 regs)
@@ -34,10 +39,15 @@ void x86_irq_handler(struct x86_regs32 regs)
     uint32_t irq = regs.int_no;
 
     if (regs.int_no == X86_PIT_IRQ) irq = IRQ_TIMER_INTERRUPT;
+    else if (regs.int_no == X86_SWI_RESCHEDULE) irq = SWI_RESCHEDULE;
     else irq -= X86_IRQ_OFFSET;
 
-    irq_dispatch((struct interrupt_frame){
-        .int_no = irq
+    interrupt_dispatch((struct interrupt_frame){
+        .int_no = irq,
+        .registers = {
+            .base = &regs,
+            .size = sizeof(struct x86_regs32)
+        }
     });
     x86_cpu_acknowledge_irq(regs.int_no);
 }

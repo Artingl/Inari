@@ -1,4 +1,6 @@
 #include <kernel/inari.h>
+#include <kernel/sched/sched.h>
+#include <kernel/interrupts/swi.h>
 
 #include <arch/x86/cpu.h>
 #include <arch/x86/exception.h>
@@ -7,30 +9,31 @@
 
 static const char *EXCEPTIONS_NAMES[] =
 {
-    [ 0x0 ] = "DIVISION_ERROR_EXCEPTION",
-    [ 0x1 ] = "DEBUG_EXCEPTION",
-    [ 0x2 ] = "NON_MASKABLE_INTERRUPT_EXCEPTION",
-    [ 0x3 ] = "BREAKPOINT_EXCEPTION",
-    [ 0x4 ] = "OVERFLOW_EXCEPTION",
-    [ 0x5 ] = "BOUND_RAGE_EXCEEDED_EXCEPTION",
-    [ 0x6 ] = "INVALID_OPCODE_EXCEPTION",
-    [ 0x7 ] = "DEVICE_NOT_AVAILABLE_EXCEPTION",
-    [ 0x8 ] = "DOUBLE_FAULT_EXCEPTION",
-    [ 0x9 ] = "CROSS_SEGMENT_OVERRRUN_EXCEPTION",
-    [ 0xa ] = "INVALID_TSS_EXCEPTION",
-    [ 0xb ] = "SEGMENT_NOT_PRESENT_EXCEPTION",
-    [ 0xc ] = "STACK_SEGMENT_FAULT_EXCEPTION",
-    [ 0xd ] = "GENERAL_PROTECTION_FAULT_EXCEPTION",
-    [ 0xe ] = "PAGE_FAULT_EXCEPTION",
-    [ 0x10 ] = "x87_FLOATING_POINT_EXCEPTION",
-    [ 0x11 ] = "ALIGNMENT_CHECK_EXCEPTION",
-    [ 0x12 ] = "MACHINE_CHECK_EXCEPTION",
-    [ 0x13 ] = "SIMD_FLOATING_POINT_EXCEPTION",
-    [ 0x14 ] = "VIRTUALIZATION_EXCEPTION",
-    [ 0x15 ] = "CONTROL_PROTECTION_EXCEPTION",
-    [ 0x1d ] = "HYPERVISOR_INJECTION_EXCEPTION",
-    [ 0x1e ] = "SECURITY_EXCEPTION",
+    [ 0x0 ] = "Division_Error",
+    [ 0x1 ] = "Debug_Exception",
+    [ 0x2 ] = "Non_Maskable_Interrupt",
+    [ 0x3 ] = "Breakpoint_Triggered",
+    [ 0x4 ] = "Overflow_Error",
+    [ 0x5 ] = "Bound_Range_Exceeded",
+    [ 0x6 ] = "Invalid_Opcode",
+    [ 0x7 ] = "Device_Not_Available",
+    [ 0x8 ] = "Double_Fault",
+    [ 0x9 ] = "Cross_Segment_Overrun",
+    [ 0xa ] = "Invalid_TSS",
+    [ 0xb ] = "Segment_Not_Present",
+    [ 0xc ] = "Stack_Segment_Fault",
+    [ 0xd ] = "General_Protection_Fault",
+    [ 0xe ] = "Page_Fault",
+    [ 0x10 ] = "FP_Exception",
+    [ 0x11 ] = "Alignment_Check",
+    [ 0x12 ] = "Machine_Check",
+    [ 0x13 ] = "SIMD_Float_Exception",
+    [ 0x14 ] = "Virtualization_Fault",
+    [ 0x15 ] = "Control_Protection_Violation",
+    [ 0x1d ] = "Hypervisor_Injection",
+    [ 0x1e ] = "Security_Violation",
 };
+
 
 void x86_exception_setup(struct x86_cpu *core)
 {
@@ -62,6 +65,16 @@ void x86_exception_setup(struct x86_cpu *core)
 
 void x86_exception_handler(struct x86_regs32 regs)
 {
-    panic("exception %s", EXCEPTIONS_NAMES[regs.int_no]);
+    panic("x86: exception %s; fix scheduler recovering", EXCEPTIONS_NAMES[regs.int_no]);
+    sched_signal_task(sched_current_task(), SCHED_SIGNAL_TERM);
+
+    // Use interrupt dispatcher to reschedule
+    interrupt_dispatch((struct interrupt_frame){
+        .int_no = SWI_RESCHEDULE,
+        .registers = {
+            .base = &regs,
+            .size = sizeof(struct x86_regs32)
+        }
+    });
 }
 

@@ -1,0 +1,10 @@
+#ifndef _INARI_X86_INTERRUPTS_H
+#define _INARI_X86_INTERRUPTS_H
+
+#define X86_IRQ_OFFSET 32
+#define X86_PIT_IRQ    (X86_IRQ_OFFSET + 0)
+
+#define X86_SWI_OFFSET      100
+#define X86_SWI_RESCHEDULE  (X86_SWI_OFFSET + 0)
+
+#endif

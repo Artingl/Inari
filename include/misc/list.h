@@ -56,6 +56,11 @@ static inline void list_del(struct list_head *entry)
     entry->prev = (void *)0;
 }
 
+static inline int list_empty(const struct list_head *head)
+{
+    return head->next == head;
+}
+
 /* turn list_head pointer back into struct pointer */
 #define list_entry(ptr, type, member) \
     ((type *)((char *)(ptr) - (unsigned long)(&((type *)0)->member)))

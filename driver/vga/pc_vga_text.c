@@ -19,6 +19,25 @@
 static int pc_vga_text_is_initialized = 0;
 static int offset = 0, line = 0;
 
+static void vga_enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
+{
+	x86_outb(0x3D4, 0x0A);
+	x86_outb(0x3D5, (x86_inb(0x3D5) & 0xC0) | cursor_start);
+
+	x86_outb(0x3D4, 0x0B);
+	x86_outb(0x3D5, (x86_inb(0x3D5) & 0xE0) | cursor_end);
+}
+
+static void vga_update_cursor(int x, int y)
+{
+	uint16_t pos = y * VGA_WIDTH + x;
+
+	x86_outb(0x3D4, 0x0F);
+	x86_outb(0x3D5, (uint8_t) (pos & 0xFF));
+	x86_outb(0x3D4, 0x0E);
+	x86_outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+}
+
 static void vga_putc(const char *s, uint32_t count)
 {
     if (!pc_vga_text_is_initialized)
@@ -38,7 +57,7 @@ static void vga_putc(const char *s, uint32_t count)
                 break;
             }
             case '\t': {
-                line += 4;
+                offset += 4;
                 break;
             }
             default: {
@@ -62,6 +81,7 @@ static void vga_putc(const char *s, uint32_t count)
             line = VGA_HEIGHT - 1;
         }
     }
+    vga_update_cursor(offset, line);
 }
 
 static struct console_dev console_dev = {
@@ -76,11 +96,12 @@ int pc_vga_text_init()
     if (pc_vga_text_is_initialized)
         return 0;
 
-    // Clear the screen
+    /* Clear the screen */
     uint32_t *base = (uint32_t*)VGA_BASE;
     while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
         *base++ = 0x00;
     
+    // vga_enable_cursor(0, 1);
     pc_vga_text_is_initialized = 1;
     return 0;
 }

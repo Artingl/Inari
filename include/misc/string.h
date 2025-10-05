@@ -1,8 +1,7 @@
 #ifndef _INARI_STRING_H
 #define _INARI_STRING_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <misc/types.h>
 
 /* =========================
    Character helpers

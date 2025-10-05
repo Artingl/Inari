@@ -1,9 +1,7 @@
 #ifndef _INARI_X86_ACPI
 #define _INARI_X86_ACPI
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <misc/types.h>
 #include <arch/x86/cpu.h>
 
 /* Iterate through all ACPI SDTs

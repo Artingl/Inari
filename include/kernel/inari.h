@@ -1,8 +1,7 @@
 #ifndef _INARI_H
 #define _INARI_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <misc/types.h>
 
 #include <kernel/fault/panic.h>
 #include <kernel/printk.h>
@@ -29,13 +28,15 @@ typedef struct reserved_memory {
     uintptr_t end;
 } reserved_memory_t;
 
-// Performs all early initialization: earlycon device, etc.
+/* Performs all early initialization: earlycon device, etc. */
 extern void kearly_init(bootinfo_t bootinfo);
 
-// The main kernel entrypoint after the hardware was initialized
+/* The main kernel entrypoint after the hardware was initialized */
 extern void kmain(void);
 extern bootinfo_t get_boot_info();
 
+/* Current arch timer must implement this */
+extern void usdelay(size_t us);
 
 #define ARG_MAX_LEN 64
 

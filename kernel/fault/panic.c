@@ -1,13 +1,14 @@
 #include <kernel/inari.h>
 #include <arch/sys.h>
 #include <kernel/console/console.h>
+#include <kernel/sched/sched.h>
 
 #include <misc/print.h>
 #include <misc/string.h>
 
 static inline void do_printf_handler(char c)
 {
-    console_printc(CONSOLE_PRINTK, &c, 1);
+    console_printc(CONSOLE_PANIC, &c, 1);
 }
 
 static inline int print(const char *fmt, ...)
@@ -21,6 +22,8 @@ static inline int print(const char *fmt, ...)
 
 void panic(const char *fmt, ...)
 {
+    sched_stop();
+
     va_list args;
     va_start(args, fmt);
     int c = 0;

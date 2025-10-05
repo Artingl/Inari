@@ -22,6 +22,21 @@
         "pic.h": "c",
         "irq.h": "c",
         "sys.h": "c",
-        "spinlock.h": "c"
+        "spinlock.h": "c",
+        "mutex.h": "c",
+        "sched.h": "c",
+        "interrupts.h": "c",
+        "swi.h": "c",
+        "types.h": "c",
+        "mutex": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "ranges": "c",
+        "span": "c",
+        "atomic": "c",
+        "exception.h": "c",
+        "cstdlib": "c",
+        "module.h": "c"
     }
 }

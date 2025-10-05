@@ -1,9 +1,7 @@
 #ifndef _INARI_MATH_H
 #define _INARI_MATH_H
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <misc/types.h>
 
 #define reciprocal(n) (1 / (n))
 #define odd(x) ((x) % 2)

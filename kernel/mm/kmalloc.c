@@ -19,7 +19,7 @@ void *kmalloc(size_t size)
 {
     size = align_up(size, BLOCK_ALIGN);
 
-    // Large allocation: allocate whole pages
+    /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD)
     {
         size_t npages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -35,7 +35,7 @@ void *kmalloc(size_t size)
         return (void*)(b + 1);
     }
 
-    // Small allocation: try to reuse free blocks
+    /* Small allocation: try to reuse free blocks */
     struct block *curr = heap_start;
     while (curr)
     {
@@ -47,7 +47,7 @@ void *kmalloc(size_t size)
         curr = curr->next;
     }
 
-    // no free block found, allocate new page
+    /* No free block found, allocate new page */
     void *page = page_alloc(1, PAGE_PRESENT | PAGE_RW);
     if (!page) return NULL;
 
@@ -68,7 +68,7 @@ void kfree(void *ptr)
 
     if (b->large)
     {
-        // remove from list
+        /* Remove from list */
         struct block* *prev = &heap_start;
         while (*prev && *prev != b) prev = &(*prev)->next;
         if (*prev) *prev = b->next;

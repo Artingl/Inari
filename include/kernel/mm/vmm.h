@@ -1,9 +1,7 @@
 #ifndef _INARI_VMM_H
 #define _INARI_VMM_H
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <misc/types.h>
 #include <kernel/inari.h>
 
 #define VMM_PAGE_AVAILABLE     (1 << 0)

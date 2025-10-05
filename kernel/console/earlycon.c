@@ -15,12 +15,12 @@ int earlycon_init()
     char device[ARG_MAX_LEN];
     parse_cmdline_argument("earlycon", &device[0]);
 
-    // Initialize any first available earlycon device specified in cmdline
+    /* Initialize any first available earlycon device specified in cmdline */
     for (earlycon_device_t *dev = (earlycon_device_t *)&__start_earlycon;
          dev < (earlycon_device_t *)&__stop_earlycon;
          dev++)
     {
-        // Save the first found dev as fallback if none was specified in earlycon cmdline
+        /* Save the first found dev as fallback if none was specified in earlycon cmdline */
         if (!fallback)
             fallback = dev;
         
@@ -35,7 +35,7 @@ int earlycon_init()
         }
     }
 
-    // None earlycon device was used, check that we have fallback
+    /* None earlycon device was used, check that we have fallback */
     if (fallback && fallback->probe && fallback->probe() == 0)
     {
         device_in_use = fallback;

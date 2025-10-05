@@ -9,7 +9,7 @@
 static struct vmm_page *pages_pool;
 static uintptr_t vm_start;
 
-static inline void __mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
+static inline void vmm_mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
 {
     uintptr_t i;
     for (i = start; i < end; i += PAGE_SIZE)
@@ -21,22 +21,22 @@ static inline void __mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
 
 int vmm_init(void)
 {
-    // Allocate some memory for the VMM pages pool
+    /* Allocate some memory for the VMM pages pool */
     pages_pool = arch_map_page(
         (void*)VMM_VBASE,
         (void*)pmm_alloc_pages(VMM_SIZE_PAGES),
         VMM_SIZE_BYTES,
         PAGE_PRESENT | PAGE_RW);
 
-    // Mark the whole virtual memory as available at first
+    /* Mark the whole virtual memory as available at first */
     memset((void*)pages_pool, VMM_PAGE_AVAILABLE, VMM_SIZE_BYTES);
     
-    // Disable memory regions that are occupied by mapped kernel, or by identity mapping (below kern_phys_end)
+    /* Disable memory regions that are occupied by mapped kernel, or by identity mapping (below kern_phys_end) */
     extern char kern_phys_end;
     extern char kern_virt_end;
 
-    __mark_region(0, (uintptr_t)&kern_phys_end + PAGE_SIZE, VMM_PAGE_RESERVED);
-    __mark_region(VMM_VBASE, (uintptr_t)&kern_virt_end + PAGE_SIZE, VMM_PAGE_RESERVED);
+    vmm_mark_region(0, (uintptr_t)&kern_phys_end + PAGE_SIZE, VMM_PAGE_RESERVED);
+    vmm_mark_region(VMM_VBASE, (uintptr_t)&kern_virt_end + PAGE_SIZE, VMM_PAGE_RESERVED);
 
     vm_start = (uintptr_t)&kern_phys_end + PAGE_SIZE;
 
@@ -46,13 +46,13 @@ int vmm_init(void)
 
 int vmm_disable_region(struct reserved_memory region)
 {
-    __mark_region(region.start, region.end, VMM_PAGE_DISABLED);
+    vmm_mark_region(region.start, region.end, VMM_PAGE_DISABLED);
     return 0;
 }
 
 int vmm_enable_region(struct reserved_memory region)
 {
-    __mark_region(region.start, region.end, VMM_PAGE_AVAILABLE);
+    vmm_mark_region(region.start, region.end, VMM_PAGE_AVAILABLE);
     return 0;
 }
 
@@ -65,7 +65,7 @@ void *vmm_alloc_pages(size_t npages)
     if (npages == 0)
         return NULL;
 
-    // Find free page in the pool
+    /* Find free page in the pool */
     for (i = vm_start; i < 0xffff0fff; i += PAGE_SIZE)
     {
         page = &pages_pool[i / PAGE_SIZE];
@@ -87,7 +87,7 @@ void *vmm_alloc_pages(size_t npages)
         return NULL;
     }
 
-    // Flag all blocks as used
+    /* Flag all blocks as used */
     for (i = 0; i < block_size; i++) {
         pages_pool[block_offset + i].flags |= VMM_PAGE_USED;
     }

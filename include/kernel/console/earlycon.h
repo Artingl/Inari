@@ -1,9 +1,7 @@
 #ifndef _INARI_EARLY_DEBUG_H
 #define _INARI_EARLY_DEBUG_H
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <misc/types.h>
 #include <kernel/inari.h>
 
 typedef struct {

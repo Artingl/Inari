@@ -1,8 +1,9 @@
 #include <kernel/inari.h>
 #include <kernel/errno.h>
 #include <kernel/mm/kmalloc.h>
-#include <kernel/irq/irq.h>
+#include <kernel/interrupts/irq.h>
 
+#include <arch/sys.h>
 #include <misc/list.h>
 
 struct irq_handler_node
@@ -10,6 +11,7 @@ struct irq_handler_node
     irq_handler_t handler;
     uint32_t irq;
     void *dev_id;
+
     struct list_head list;
 };
 

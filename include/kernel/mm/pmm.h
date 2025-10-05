@@ -1,9 +1,7 @@
 #ifndef _INARI_PMM_H
 #define _INARI_PMM_H
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include <misc/types.h>
 #include <kernel/inari.h>
 
 #define PMM_POOL_SIZE  1048576
