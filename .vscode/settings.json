@@ -37,6 +37,11 @@
         "atomic": "c",
         "exception.h": "c",
         "cstdlib": "c",
-        "module.h": "c"
+        "module.h": "c",
+        "chrono": "c",
+        "text_encoding": "c",
+        "typeinfo": "c",
+        "pit.h": "c",
+        "time.h": "c"
     }
 }

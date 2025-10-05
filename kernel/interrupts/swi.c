@@ -35,11 +35,15 @@ int swi_free(uint32_t swi, void *dev_id)
 
     list_for_each_safe(pos, n, &swi_handlers_list) {
         entry = list_entry(pos, struct swi_handler_node, list);
-        list_del(pos);     // unlink
-        kfree(entry);      // and kfree
+        if (entry->swi == swi) {
+            list_del(pos);     // unlink
+            kfree(entry);      // and kfree
+
+            return 0;
+        }
     }
 
-    return 0;
+    return -1;
 }
 
 void swi_dispatch(struct interrupt_frame frame)

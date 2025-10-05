@@ -65,10 +65,19 @@ void x86_exception_setup(struct x86_cpu *core)
 
 void x86_exception_handler(struct x86_regs32 regs)
 {
-    panic("x86: exception %s; fix scheduler recovering", EXCEPTIONS_NAMES[regs.int_no]);
-    sched_signal_task(sched_current_task(), SCHED_SIGNAL_TERM);
+    panic("x86: exception %s", EXCEPTIONS_NAMES[regs.int_no]);
 
-    // Use interrupt dispatcher to reschedule
+    tid_t tid;
+    if (sched_current_task(&tid) == 0)
+        sched_signal_task(tid, SCHED_SIGNAL_TERM);
+    else {
+        /* Exception in kernel code */
+        panic("kernel exception");
+    }
+
+    /* TODO: fix scheduler recovering */
+
+    /* Use interrupt dispatcher to reschedule */
     interrupt_dispatch((struct interrupt_frame){
         .int_no = SWI_RESCHEDULE,
         .registers = {

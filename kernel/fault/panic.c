@@ -36,6 +36,5 @@ void panic(const char *fmt, ...)
     c += print("Kernel panic!");
     
     va_end(args);
-    while (1){}
-    // halt();
+    halt();
 }

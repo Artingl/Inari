@@ -43,6 +43,14 @@ typedef union
     } while (0)
 // ---
 
-double pow(double base, int exp);
+static inline double pow(double base, int exp)
+{
+   int res = 1;
+
+   while (exp--)
+      res *= base;
+
+   return res;
+}
 
 #endif

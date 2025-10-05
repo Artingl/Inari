@@ -106,23 +106,6 @@ void _arch_idle(void)
     }
 }
 
-void _arch_modify_register_array(void *array, uint16_t reg, uintptr_t data)
-{
-    struct x86_regs32 *regs = (struct x86_regs32 *)array;
-
-    switch (reg)
-    {
-        case REGISTER_IP:
-            regs->eip = (uint32_t)data;
-            return;
-        case REGISTER_SP:
-            regs->esp = (uint32_t)data;
-            return;
-        default:
-            panic("x86: invalid register %u", reg);
-    }
-}
-
 void _arch_trigger_interrupt(uint32_t interrupt)
 {
     switch (interrupt)

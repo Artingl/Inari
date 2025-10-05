@@ -24,7 +24,7 @@ int earlycon_init()
         if (!fallback)
             fallback = dev;
         
-        if (!dev || strcmp(dev->name, device))
+        if (strcmp(dev->name, device))
             continue;
         
         if (dev->probe && dev->probe() == 0)
@@ -35,7 +35,7 @@ int earlycon_init()
         }
     }
 
-    /* None earlycon device was used, check that we have fallback */
+    /* None earlycon device was probed, check that we have fallback */
     if (fallback && fallback->probe && fallback->probe() == 0)
     {
         device_in_use = fallback;
@@ -44,5 +44,15 @@ int earlycon_init()
     }
     
     return -EINVAL;
+}
+
+void earlycom_cleanup()
+{
+    if (device_in_use)
+    {
+        printk("earlycon: cleaning up device %s", device_in_use->name);
+        device_in_use->cleanup();
+        device_in_use = (earlycon_device_t *)NULL;
+    }
 }
 

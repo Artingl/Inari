@@ -35,11 +35,15 @@ int irq_free(uint32_t irq, void *dev_id)
 
     list_for_each_safe(pos, n, &irq_handlers_list) {
         entry = list_entry(pos, struct irq_handler_node, list);
-        list_del(pos);     // unlink
-        kfree(entry);      // and kfree
+        if (entry->irq == irq) {
+            list_del(pos);     // unlink
+            kfree(entry);      // and kfree
+
+            return 0;
+        }
     }
 
-    return 0;
+    return -1;
 }
 
 void irq_dispatch(struct interrupt_frame frame)

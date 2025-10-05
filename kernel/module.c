@@ -16,9 +16,6 @@ int modules_init()
          dev < (module_t *)&__stop_modules;
          dev++)
     {
-        if (!dev)
-            continue;
-        
         if (dev->probe && (ret = dev->probe()) != 0)
         {
 #ifdef CONFIG_DEBUG

@@ -5,6 +5,7 @@
 
 #include <arch/x86/acpi.h>
 #include <arch/x86/pic.h>
+#include <arch/x86/pit.h>
 #include <arch/x86/irq.h>
 #include <arch/x86/exception.h>
 #include <arch/x86/cpu.h>
@@ -19,7 +20,7 @@ static uint32_t phys_cpus;
 
 struct x86_cpu x86_cpus_pool[CONFIG_MAX_CORES];
 
-static void cpu_arch_core_idt_init(struct x86_cpu *core)
+static void cpu_core_idt_init(struct x86_cpu *core)
 {
     core->idt_desc.size = (sizeof(struct x86_cpu_idt) * 256) - 1;
     core->idt_desc.base = (uintptr_t)core->idt;
@@ -30,7 +31,7 @@ static void cpu_core_init(struct x86_cpu *core)
     if (!core->is_available)
         return;
     core->idt = kmalloc(sizeof(struct x86_cpu_idt) * 256);
-    cpu_arch_core_idt_init(core);
+    cpu_core_idt_init(core);
 
     x86_exception_setup(core);
     x86_irq_setup(core);
@@ -93,13 +94,15 @@ int x86_cpu_init(void)
         cpu_core_init(&x86_cpus_pool[i]);
     
     if (x86_pic_init())
-        panic("cpu: cannot continue without pic.");
+        panic("cpu: pic init failed");
+    
+    if (x86_pit_init())
+        panic("cpu: pit init failed");
 
-    enable_int();
     return 0;
 }
 
-void x86_cpu_acknowledge_irq(uint8_t irq)
+void x86_cpu_ack_irq(uint8_t irq)
 {
     x86_pic_acknowledge(irq);
 }

@@ -35,9 +35,6 @@ extern void kearly_init(bootinfo_t bootinfo);
 extern void kmain(void);
 extern bootinfo_t get_boot_info();
 
-/* Current arch timer must implement this */
-extern void usdelay(size_t us);
-
 #define ARG_MAX_LEN 64
 
 extern int parse_cmdline_argument(const char *key, char *result);

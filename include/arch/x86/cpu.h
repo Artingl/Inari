@@ -1,6 +1,8 @@
 #ifndef _INARI_X86_CPU
 #define _INARI_X86_CPU
 
+#include <misc/types.h>
+
 enum {
     CPU_FEATURE_ECX_SSE3         = 1 << 0, 
     CPU_FEATURE_ECX_PCLMUL       = 1 << 1,
@@ -68,6 +70,8 @@ enum {
 
 struct x86_regs32
 {
+    uint32_t task_esp;
+
     uint32_t gs, fs, es, ds;
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
     uint32_t int_no, err_code;
@@ -106,7 +110,7 @@ extern const char *x86_cpu_vendor(void);
 extern const char *x86_cpu_model(void);
 extern uint32_t x86_cpu_features_ecx(void);
 extern uint32_t x86_cpu_features_edx(void);
-extern void x86_cpu_acknowledge_irq(uint8_t irq);
+extern void x86_cpu_ack_irq(uint8_t irq);
 
 static inline void x86_cpu_install_idt(uint32_t core_id, uintptr_t base, uint8_t num, uint16_t sel, uint8_t flags)
 {

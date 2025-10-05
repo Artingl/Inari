@@ -20,5 +20,6 @@ typedef struct {
 
 
 extern int earlycon_init();
+extern void earlycom_cleanup();
 
 #endif

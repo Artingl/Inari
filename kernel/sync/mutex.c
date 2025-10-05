@@ -2,6 +2,8 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/sched/sched.h>
 
+/* TODO: implement proper mutex with tasks's sleeping and waiting for it to release */
+
 void mutex_init(mutex_t *lock)
 {
     if (!lock) return;

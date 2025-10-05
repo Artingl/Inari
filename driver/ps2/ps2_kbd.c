@@ -2,6 +2,7 @@
 #ifdef CONFIG_PS2_KBD
 
 #include <kernel/inari.h>
+#include <kernel/time.h>
 #include <kernel/console/console.h>
 #include <kernel/errno.h>
 #include <kernel/module.h>
@@ -162,7 +163,7 @@ int ps2_kbd_probe()
     /* Check that we have PS/2 keyboard */
     x86_outb(0x60, 0xEE);
     while ((in = x86_inb(0x60)) == 0xFE)
-        usdelay(0x1000);
+        usleep(0x1000);
     if (in != 0xEE) {
         printk("ps2: keyboard not found");
         return -ENODEV;
@@ -171,21 +172,21 @@ int ps2_kbd_probe()
     /* Identify keyboard */
     x86_outb(0x60, 0xF5);
     while ((in = x86_inb(0x60)) == 0xFE) {
-        usdelay(0x1000);
+        usleep(0x1000);
         x86_outb(0x60, 0xF5);
     }
     x86_outb(0x60, 0xF2);
     while ((in = x86_inb(0x60)) == 0xFE) {
-        usdelay(0x1000);
+        usleep(0x1000);
         x86_outb(0x60, 0xF2);
     }
     b0 = x86_inb(0x60);
-    usdelay(0x1000);
+    usleep(0x1000);
     b1 = x86_inb(0x60);
-    usdelay(0x1000);
+    usleep(0x1000);
     x86_outb(0x60, 0xF4);
     while ((in = x86_inb(0x60)) == 0xFE) {
-        usdelay(0x1000);
+        usleep(0x1000);
         x86_outb(0x60, 0xF4);
     }
 
@@ -210,11 +211,11 @@ void ps2_kbd_cleanup()
 {
 }
 
-module_register(
-    "ps2_kbd",
-    ps2_kbd_probe,
-    ps2_kbd_cleanup
-);
+// module_register(
+//     "ps2_kbd",
+//     ps2_kbd_probe,
+//     ps2_kbd_cleanup
+// );
 
 #endif
 #endif

@@ -16,7 +16,29 @@
 typedef size_t tid_t;
 typedef void (*task_entrypoint_t)();
 
+struct sched_task
+{
+    tid_t task_id;
+    task_entrypoint_t entrypoint;
+    uint8_t state;
+    void *stack_pointer;
+    uint32_t saved_sp;
+
+    struct list_head list;
+};
+
+struct sched_core
+{
+    uint8_t active;
+    uint32_t core_id;
+    struct sched_task *task;
+    struct sched_task *prev_task;
+};
+
+extern void sched_task_preentry();
+
 extern int sched_init();
+extern int sched_is_running();
 extern int sched_add_task(tid_t *tid, task_entrypoint_t entrypoint);
 extern int sched_remove_task(tid_t tid);
 extern int sched_signal_task(tid_t tid, uint32_t signal);
@@ -24,6 +46,6 @@ extern void sched_yield();
 extern void sched_enter_core();
 extern void sched_stop();
 extern void sched_call();
-extern tid_t sched_current_task();
+extern int sched_current_task(tid_t *tid);
 
 #endif

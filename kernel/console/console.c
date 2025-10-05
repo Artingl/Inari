@@ -95,8 +95,9 @@ static void console_print_dev(int type, const char *s, uint32_t count)
  */
 static void console_thread(void)
 {
-    printk("console: early console disabled");
+    earlycom_cleanup();
     console_is_early = 0;
+    printk("console: early console disabled");
 
     while (1)
     {

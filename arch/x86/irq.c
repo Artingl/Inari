@@ -3,6 +3,7 @@
 #include <kernel/interrupts/irq.h>
 #include <kernel/interrupts/swi.h>
 
+#include <arch/x86/pit.h>
 #include <arch/x86/cpu.h>
 #include <arch/x86/irq.h>
 #include <arch/x86/interrupts.h>
@@ -38,7 +39,11 @@ void x86_irq_handler(struct x86_regs32 regs)
 {
     uint32_t irq = regs.int_no;
 
-    if (regs.int_no == X86_PIT_IRQ) irq = IRQ_TIMER_INTERRUPT;
+    if (regs.int_no == X86_PIT_IRQ)
+    {
+        x86_pit_irq();
+        irq = IRQ_TIMER_INTERRUPT;
+    }
     else if (regs.int_no == X86_SWI_RESCHEDULE) irq = SWI_RESCHEDULE;
     else irq -= X86_IRQ_OFFSET;
 
@@ -49,6 +54,6 @@ void x86_irq_handler(struct x86_regs32 regs)
             .size = sizeof(struct x86_regs32)
         }
     });
-    x86_cpu_acknowledge_irq(regs.int_no);
+    x86_cpu_ack_irq(regs.int_no);
 }
 

@@ -12,29 +12,10 @@
 
 LIST_HEAD(sched_task_list);
 
-struct sched_task
-{
-    tid_t task_id;
-    task_entrypoint_t entrypoint;
-    uint8_t state;
-    void *stack_pointer;
-    void *registers;
-
-    struct list_head list;
-};
-
-struct sched_core
-{
-    uint8_t active;
-    uint32_t core_id;
-    struct sched_task *task;
-    struct sched_task *prev_task;
-};
-
 static tid_t sched_last_id = 0xff;
 static struct sched_core sched_cores[CONFIG_MAX_CORES];
-
 static struct sched_task sched_idle_task;
+static int sched_initialized = 0;
 
 static void __sched_idle()
 {
@@ -52,7 +33,7 @@ static struct sched_task *__sched_current_task()
     return sched_cores[core_id].task;
 }
 
-static void sched_task_preentry()
+void sched_task_preentry()
 {
     struct sched_task *task = __sched_current_task();
     if (!task)
@@ -60,6 +41,7 @@ static void sched_task_preentry()
 
     if (task->entrypoint)
         task->entrypoint();
+    panic("sched: debug task died");
     task->state = SCHED_TASK_DEAD;
 end:
     sched_yield();
@@ -80,41 +62,8 @@ static struct sched_task *sched_get_task(tid_t task_id)
     return NULL;
 }
 
-static void sched_save(struct sched_task *task)
-{
-    /* TODO: move this code to the architecture-specific code */
-    struct interrupt_frame *frame = interrupt_frame();
-    if (!frame || !task || !task->registers)
-        return;
-    
-    /* Do not save idle task */
-    if (task->task_id == SCHED_IDLE_TASK_ID)
-        return;
-
-    memcpy(task->registers, frame->registers.base, frame->registers.size);
-}
-
-static void sched_enter(struct sched_task *task)
-{
-    /* TODO: move this code to the architecture-specific code */
-    struct interrupt_frame *frame = interrupt_frame();
-    if (!frame || !task)
-        return;
-    
-    if (!task->registers)
-    {
-        if (task->stack_pointer == NULL)
-            task->stack_pointer = kmalloc(CONFIG_STACK_SIZE);
-
-        /* If the registers array is not initialized, that's the first time this task is scheduled */
-        task->registers = kmalloc(frame->registers.size);
-        memcpy(task->registers, frame->registers.base, frame->registers.size);
-        modify_register_array(task->registers, REGISTER_IP, &sched_task_preentry);
-        modify_register_array(task->registers, REGISTER_SP, (void*)((uintptr_t)task->stack_pointer + (uintptr_t)CONFIG_STACK_SIZE));
-    }
-
-    memcpy(frame->registers.base, task->registers, frame->registers.size);
-}
+extern void arch_sched_save(struct sched_task *task);
+extern void arch_sched_load(struct sched_task *task);
 
 static void sched_reschedule(struct sched_core *core)
 {
@@ -137,7 +86,7 @@ static void sched_reschedule(struct sched_core *core)
 
     core->prev_task = core->task;
     if (core->task)
-        sched_save(core->task);
+        arch_sched_save(core->task);
 
     list_for_each(pos, &sched_task_list) {
         entry = list_entry(pos, struct sched_task, list);
@@ -181,14 +130,19 @@ int sched_init()
 
     sched_idle_task.task_id = SCHED_IDLE_TASK_ID;
     sched_idle_task.entrypoint = &__sched_idle;
-    sched_idle_task.registers = NULL;
     sched_idle_task.stack_pointer = NULL;
     sched_idle_task.state = SCHED_TASK_ACTIVE;
 
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
-    if (!ret) return ret;
+    if (ret != 0) return ret;
     ret = swi_request(SWI_RESCHEDULE, &sched_swi, NULL);
+    sched_initialized = 1;
     return ret;
+}
+
+int sched_is_running()
+{
+    return sched_initialized;
 }
 
 void sched_yield()
@@ -199,7 +153,7 @@ void sched_yield()
 void sched_call()
 {
     uint32_t core_id = core_id();
-    if (!sched_cores[core_id].active)
+    if (!sched_cores[core_id].active || !sched_initialized)
         return;
     
     sched_reschedule(&sched_cores[core_id]);
@@ -208,9 +162,9 @@ void sched_call()
         if (sched_cores[core_id].prev_task != &sched_idle_task)
             printk("sched: no tasks to schedule cpu%u", core_id);
         sched_cores[core_id].task = &sched_idle_task;
-        sched_enter(&sched_idle_task);
+        arch_sched_load(&sched_idle_task);
     }
-    else sched_enter(sched_cores[core_id].task);
+    else arch_sched_load(sched_cores[core_id].task);
 }
 
 int sched_add_task(tid_t *tid, task_entrypoint_t entrypoint)
@@ -219,7 +173,6 @@ int sched_add_task(tid_t *tid, task_entrypoint_t entrypoint)
     if (!node) return -ENOMEM;
     node->task_id = sched_last_id++;
     node->entrypoint = entrypoint;
-    node->registers = NULL;
     node->stack_pointer = NULL;
     node->state = SCHED_TASK_ACTIVE;
     list_add_tail(&node->list, &sched_task_list);
@@ -240,7 +193,6 @@ int sched_remove_task(tid_t tid)
             list_del(pos);     // unlink
 
             /* Deallocate the registers and the entry itself */
-            kfree(entry->registers);
             kfree(entry->stack_pointer);
             kfree(entry);
             return 0;
@@ -269,11 +221,12 @@ int sched_signal_task(tid_t tid, uint32_t signal)
     return 0;
 }
 
-tid_t sched_current_task()
+int sched_current_task(tid_t *tid)
 {
     struct sched_task *task = __sched_current_task();
-    if (!task) return 0;
-    return task->task_id;
+    if (!task || !tid) return -1;
+    *tid = task->task_id;
+    return 0;
 }
 
 void sched_stop()
