@@ -1,7 +1,7 @@
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
-#include <kernel/time.h>
+#include <kernel/timer.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/page.h>
@@ -63,8 +63,26 @@ void test_task2()
     int i = 0;
     while (1)
     {
-        usleep(1000000);
+        usleep(500000);
         printk("task 2 %d", i++);
+    }
+}
+
+void cpu_usage_task()
+{
+    while (1)
+    {
+        usleep(2000000);
+        for (size_t i = 0; i < 10000; i++)
+        {
+            struct sched_task *task;
+            if (sched_get_task(i, &task) == 0)
+            {
+                if (task->reschedules_count > 0 && task->cpu_time > 0)
+                    printk("cpu_usage: tid %lu time %lu count %lu", i,
+                        task->cpu_time, task->reschedules_count);
+            }
+        }
     }
 }
 
@@ -73,6 +91,7 @@ void test()
     tid_t task_id;
     sched_add_task(&task_id, &test_task1);
     sched_add_task(&task_id, &test_task2);
+    sched_add_task(&task_id, &cpu_usage_task);
     printk("test: task %u", task_id);
 }
 

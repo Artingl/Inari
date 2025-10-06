@@ -1,6 +1,7 @@
 #include <kernel/inari.h>
 #include <kernel/sched/sched.h>
 #include <kernel/interrupts/swi.h>
+#include <kernel/sched/signals.h>
 
 #include <arch/x86/cpu.h>
 #include <arch/x86/exception.h>
@@ -65,17 +66,26 @@ void x86_exception_setup(struct x86_cpu *core)
 
 void x86_exception_handler(struct x86_regs32 regs)
 {
-    panic("x86: exception %s", EXCEPTIONS_NAMES[regs.int_no]);
-
     tid_t tid;
+    uint32_t signo = SIGTERM;
     if (sched_current_task(&tid) == 0)
-        sched_signal_task(tid, SCHED_SIGNAL_TERM);
+    {
+        switch (regs.int_no)
+        {
+            case 0xe:  signo = SIGSEGV; break;
+            case 0x10: signo = SIGFPE; break;
+            case 0x6:  signo = SIGILL; break;
+            case 0x0:  signo = SIGILL; break;
+            default:
+                printk("x86: exception %s", EXCEPTIONS_NAMES[regs.int_no]);
+        }
+        
+        sched_signal_task(tid, signo);
+    }
     else {
         /* Exception in kernel code */
-        panic("kernel exception");
+        panic("kernel exception %s", EXCEPTIONS_NAMES[regs.int_no]);
     }
-
-    /* TODO: fix scheduler recovering */
 
     /* Use interrupt dispatcher to reschedule */
     interrupt_dispatch((struct interrupt_frame){

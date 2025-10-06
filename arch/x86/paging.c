@@ -80,7 +80,6 @@ void arch_unmap_page(void *vbase, size_t len)
     {
         table = paging_alloc_table(i >> 22);
         table->pages[i >> 12 & 0x03FF] &= ~_PAGE_PRESENT;
-        paging_flush_tlb((uintptr_t)i);
     }
 }
 

@@ -42,6 +42,7 @@
         "text_encoding": "c",
         "typeinfo": "c",
         "pit.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "list": "c"
     }
 }

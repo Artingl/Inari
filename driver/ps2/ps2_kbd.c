@@ -2,7 +2,7 @@
 #ifdef CONFIG_PS2_KBD
 
 #include <kernel/inari.h>
-#include <kernel/time.h>
+#include <kernel/timer.h>
 #include <kernel/console/console.h>
 #include <kernel/errno.h>
 #include <kernel/module.h>

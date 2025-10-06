@@ -1,5 +1,5 @@
 #include <kernel/inari.h>
-#include <kernel/time.h>
+#include <kernel/timer.h>
 
 #include <arch/x86/arch.h>
 #include <arch/x86/pit.h>
@@ -49,11 +49,11 @@ int x86_pit_init()
 	x86_outb(PIT_CHANNEL0, PIT_DIVIDER & 0xFF);
 	x86_outb(PIT_CHANNEL0, (PIT_DIVIDER >> 8) & 0xff);
 
-    time_resolution(PIT_FREQUENCY_HZ / PIT_DIVIDER);
+    timer_init(PIT_FREQUENCY_HZ / PIT_DIVIDER);
     return 0;
 }
 
 void x86_pit_irq()
 {
-    time_tick();
+    timer_tick();
 }

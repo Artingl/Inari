@@ -5,6 +5,7 @@
 #include <kernel/console/earlycon.h>
 #include <kernel/sched/sched.h>
 #include <kernel/errno.h>
+#include <kernel/timer.h>
 
 #include <misc/string.h>
 #include <misc/list.h>
@@ -141,9 +142,9 @@ static void console_thread(void)
             console_buffer_free(entry);
         }
 
-        /* If there's nothing to do, yield a bit to avoid busy spin. */
+        /* If there's nothing to do, wait a bit to avoid busy spin. */
         if (list_empty(&local_list)) {
-            sched_yield();
+            usleep(100000);
         }
     }
 }

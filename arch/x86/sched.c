@@ -13,11 +13,6 @@ void arch_sched_save(struct sched_task *task)
     if (!frame || !task || !task->stack_pointer)
         return;
     regs = (struct x86_regs32 *)frame->registers.base;
-    
-    /* Do not save idle task */
-    if (task->task_id == SCHED_IDLE_TASK_ID)
-        return;
-
     task->saved_sp = regs->task_esp;
 }
 
