@@ -43,6 +43,11 @@
         "typeinfo": "c",
         "pit.h": "c",
         "time.h": "c",
-        "list": "c"
+        "list": "c",
+        "ata.h": "c",
+        "algorithm": "c",
+        "format": "c",
+        "initializer_list": "c",
+        "cstdint": "cpp"
     }
 }

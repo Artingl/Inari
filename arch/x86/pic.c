@@ -4,6 +4,7 @@
 
 #include <arch/x86/acpi.h>
 #include <arch/x86/cpu.h>
+#include <arch/x86/pic.h>
 #include <arch/x86/arch.h>
 
 #define PIC1_OFFSET 0x20
@@ -33,35 +34,38 @@ static uint8_t pic_initialized;
 
 int x86_pic_init(void)
 {
-    // Reset PICs
+    /* Reset PICs */
     x86_outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
     x86_io_wait();
     x86_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
     x86_io_wait();
 
-    // Set PIC offsets
+    /* Set PIC offsets */
     x86_outb(PIC1_DATA, PIC1_OFFSET);
     x86_io_wait();
     x86_outb(PIC2_DATA, PIC2_OFFSET);
     x86_io_wait();
 
-    // Tell PICs whose of them is slave and master
+    /* Tell PICs whose of them is slave and master */
     x86_outb(PIC1_DATA, 4);
     x86_io_wait();
     x86_outb(PIC2_DATA, 2);
     x86_io_wait();
 
-    // Tell them to be in 8086 mode
+    /* Tell them to be in 8086 mode */
     x86_outb(PIC1_DATA, ICW4_8086);
     x86_io_wait();
     x86_outb(PIC2_DATA, ICW4_8086);
     x86_io_wait();
 
-    // Set masks
+    /* Set masks */
     x86_outb(PIC1_DATA, 0x00);
     x86_io_wait();
     x86_outb(PIC2_DATA, 0x00);
     x86_io_wait();
+
+    x86_pic_irq_mask(14);
+    x86_pic_irq_mask(15);
 
     pic_initialized = 1;
 

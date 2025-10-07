@@ -1,10 +1,11 @@
 #ifdef CONFIG_ARCH_X86
-#ifdef CONFIG_VGA_TEXT
+#ifdef CONFIG_DRV_VGA_TEXT
 
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
 #include <kernel/errno.h>
+#include <kernel/module.h>
 
 #include <misc/string.h>
 #include <arch/x86/arch.h>
@@ -106,21 +107,29 @@ int pc_vga_text_init()
     return 0;
 }
 
-int pc_vga_text_early_probe()
+int pc_vga_text_probe()
 {
     if (pc_vga_text_init() != 0)
         return -ENODEV;
     return console_register(&console_dev);
 }
 
-void pc_vga_text_early_cleanup()
+void pc_vga_text_cleanup()
 {
 }
 
 earlycon_device(
     "pc_vga_text",
-    pc_vga_text_early_probe,
-    pc_vga_text_early_cleanup
+    pc_vga_text_probe,
+    pc_vga_text_cleanup
+);
+
+/* This would allow to register this device as normal console after early stage.
+ * If it was already initialized, nothing should happen. */
+module_register(
+    "pc_vga_text",
+    pc_vga_text_probe,
+    pc_vga_text_cleanup
 );
 
 #endif

@@ -1,9 +1,10 @@
 #ifdef CONFIG_ARCH_X86
-#ifdef CONFIG_PC8250_SERIAL
+#ifdef CONFIG_DRV_PC8250_SERIAL
 
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
+#include <kernel/module.h>
 #include <kernel/errno.h>
 
 #include <misc/string.h>
@@ -77,7 +78,7 @@ int pc8250_serial_init()
     return 0;
 }
 
-int pc8250_serial_early_probe()
+int pc8250_serial_probe()
 {
     if (pc8250_serial_init() != 0)
         return -ENODEV;
@@ -85,14 +86,22 @@ int pc8250_serial_early_probe()
     return console_register(&console_dev);
 }
 
-void pc8250_serial_early_cleanup()
+void pc8250_serial_cleanup()
 {
 }
 
 earlycon_device(
     "pc8250",
-    pc8250_serial_early_probe,
-    pc8250_serial_early_cleanup
+    pc8250_serial_probe,
+    pc8250_serial_cleanup
+);
+
+/* This would allow to register this device as normal console after early stage.
+ * If it was already initialized, nothing should happen. */
+module_register(
+    "pc8250",
+    pc8250_serial_probe,
+    pc8250_serial_cleanup
 );
 
 #endif

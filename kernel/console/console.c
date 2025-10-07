@@ -163,8 +163,19 @@ int console_init(void)
 
 int console_register(struct console_dev *dev)
 {
+    struct console_dev *entry;
+    struct list_head *pos;
+
     if (!dev)
         return -EINVAL;
+    /* Check that we don't already have such device */
+    if (dev->name)
+        list_for_each(pos, &consoles_list) {
+            entry = list_entry(pos, struct console_dev, list);
+            if (strcmp(dev->name, entry->name) == 0)
+                return -EBUSY;
+        }
+
     list_add(&dev->list, &consoles_list);
     return 0;
 }

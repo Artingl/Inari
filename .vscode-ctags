@@ -84,10 +84,10 @@ COM8	driver/serial/pc8250_serial.c	/^#define COM8 /;"	d	file:
 CONFIG_ARCH_X86	build/config.h	/^#define CONFIG_ARCH_X86$/;"	d
 CONFIG_CONSOLE_LINES	build/config.h	/^#define CONFIG_CONSOLE_LINES /;"	d
 CONFIG_CONSOLE_LINES	config.h	/^#define CONFIG_CONSOLE_LINES /;"	d
-CONFIG_PC8250_SERIAL	build/config.h	/^#define CONFIG_PC8250_SERIAL$/;"	d
-CONFIG_PC8250_SERIAL	config.h	/^#define CONFIG_PC8250_SERIAL$/;"	d
-CONFIG_VGA_TEXT	build/config.h	/^#define CONFIG_VGA_TEXT$/;"	d
-CONFIG_VGA_TEXT	config.h	/^#define CONFIG_VGA_TEXT$/;"	d
+CONFIG_DRV_PC8250_SERIAL	build/config.h	/^#define CONFIG_DRV_PC8250_SERIAL$/;"	d
+CONFIG_DRV_PC8250_SERIAL	config.h	/^#define CONFIG_DRV_PC8250_SERIAL$/;"	d
+CONFIG_DRV_VGA_TEXT	build/config.h	/^#define CONFIG_DRV_VGA_TEXT$/;"	d
+CONFIG_DRV_VGA_TEXT	config.h	/^#define CONFIG_DRV_VGA_TEXT$/;"	d
 CONSOLE_DEBUG	include/kernel/console/console.h	/^#define CONSOLE_DEBUG /;"	d
 CONSOLE_EARLY	include/kernel/console/console.h	/^#define CONSOLE_EARLY /;"	d
 CONSOLE_MESSAGE_DEBUG	include/kernel/console/console.h	/^#define CONSOLE_MESSAGE_DEBUG /;"	d

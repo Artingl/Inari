@@ -34,16 +34,16 @@ void kearly_init(bootinfo_t b)
 
 void kmain(void)
 {
-    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
-
     assert(console_init() == 0, "console init failed.");
     assert(sched_init() == 0, "scheduler init failed.");
 
+    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
+
     void test();
     test();
-    
-    modules_init();
+
     enable_int();
+    modules_init();
     sched_enter_core();
     panic("Reached end of kmain");
 }
@@ -89,8 +89,8 @@ void cpu_usage_task()
 void test()
 {
     tid_t task_id;
-    sched_add_task(&task_id, &test_task1);
-    sched_add_task(&task_id, &test_task2);
+    // sched_add_task(&task_id, &test_task1);
+    // sched_add_task(&task_id, &test_task2);
     sched_add_task(&task_id, &cpu_usage_task);
     printk("test: task %u", task_id);
 }

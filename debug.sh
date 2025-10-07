@@ -6,4 +6,7 @@ qemu-system-i386 \
     -serial stdio \
     -m 1G \
     -smp 4 \
+    -drive file=disk.img,if=ide \
+    -machine pc \
+    -boot d \
     -s -S

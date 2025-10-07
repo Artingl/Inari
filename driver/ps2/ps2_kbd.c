@@ -1,5 +1,5 @@
 #ifdef CONFIG_ARCH_X86
-#ifdef CONFIG_PS2_KBD
+#ifdef CONFIG_DRV_PS2_KBD
 
 #include <kernel/inari.h>
 #include <kernel/timer.h>
@@ -211,11 +211,11 @@ void ps2_kbd_cleanup()
 {
 }
 
-// module_register(
-//     "ps2_kbd",
-//     ps2_kbd_probe,
-//     ps2_kbd_cleanup
-// );
+module_register(
+    "ps2_kbd",
+    ps2_kbd_probe,
+    ps2_kbd_cleanup
+);
 
 #endif
 #endif
