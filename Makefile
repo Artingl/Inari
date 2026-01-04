@@ -38,8 +38,6 @@ clean:
 	make -C arch/${TARGET} clean
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
-	mkdir -p build/grub/boot/grub && \
-	cp grub.cfg build/grub/boot/grub && \
 	make -C arch/${TARGET} build_ld && \
-	cp arch/${TARGET}/kernel.elf build/grub/kernel && \
-	$(GRUB_MKRESCUE) -o build/boot.iso build/grub
+	cp arch/${TARGET}/kernel.elf build/kernel.elf && \
+	bash mkimg.sh

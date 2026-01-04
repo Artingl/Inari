@@ -15,6 +15,7 @@ struct block_ops
 {
     int (*read_blocks)(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks);
     int (*write_blocks)(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks);
+    int (*ioctl)(struct block_device *bdev, unsigned long req, void *arg);
 };
 
 struct block_device

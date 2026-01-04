@@ -3,6 +3,8 @@
 
 #define BLOCK_ALIGN 8
 
+#include <misc/types.h>
+
 struct block {
     size_t size;
     struct block *next;

@@ -2,17 +2,13 @@
     "configurations": [
         {
             "name": "Linux",
-            "includePath": [
+            "defines": [],
+            "forcedInclude": [
                 "${workspaceFolder}/build/config.h",
                 "${workspaceFolder}/config.h",
                 "${workspaceFolder}/include",
                 "stdint.h",
                 "stddef.h"
-            ],
-            "defines": [],
-            "forcedInclude": [
-                "${workspaceFolder}/build/config.h",
-                "${workspaceFolder}/config.h"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "gnu99",
@@ -20,6 +16,10 @@
             "intelliSenseMode": "linux-gcc-x64",
             "compilerArgs": [
                 "-m32"
+            ],
+            "includePath": [
+                "${default}",
+                "${workspaceFolder}/include"
             ]
         }
     ],

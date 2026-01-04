@@ -90,26 +90,26 @@ static void handle_block_dev_load(dev_t dev)
     struct gpt_entry entry;
     struct gpt_header header;
     struct block_device *bdev = block_get(dev);
-    uint8_t lba[512];
+    uint8_t *lba = (uint8_t*)kmalloc(bdev->group->block_size);
     size_t offset = 0, lba_offset = 0, i, partitions = 0;
 
-    if (!bdev) return;
+    if (!bdev) goto end;
 
     if (bdev->ops->read_blocks(bdev, 1, (void*)&lba[0], 1) != 0)
     {
-        printk("gpt: failed to read lba1 for bdev %s%d", bdev->group->name, DEVID(dev));
-        return;
+        lba_offset = 1;
+        goto read_err;
     }
     memcpy((void*)&header, &lba[0], sizeof(header));
 
     /* Check magic */
-    if (memcmp(GPT_MAGIC, (void*)&header.magic[0], 8) != 0) return 0;
+    if (memcmp(GPT_MAGIC, (void*)&header.magic[0], 8) != 0) goto end;
 
     /* Read lba of partition entries */
     if (bdev->ops->read_blocks(bdev, header.entries_lba, (void*)&lba[0], 1) != 0)
     {
-        printk("gpt: failed to read lba%d for bdev %s%d", header.entries_lba, bdev->group->name, DEVID(dev));
-        return;
+        lba_offset = header.entries_lba;
+        goto read_err;
     }
     memcpy((void*)&entry, &lba[0], sizeof(entry));
 
@@ -122,12 +122,12 @@ static void handle_block_dev_load(dev_t dev)
         partition = (gpt_partition_t*)kmalloc(sizeof(gpt_partition_t));
         partition->entry = entry;
         partition->header = header;
-        partition->disk_bdev = bdev;
+        partition->disk_bdev = dev;
 
         register_blkdev_ops(
             MKDEV(GPT_DRIVER, partitions),
             &gpt_block_ops,
-            (entry.end_lba - entry.start_lba) * 512,
+            (entry.end_lba - entry.start_lba) * bdev->group->block_size,
             (void*)partition);
 
         partitions++;
@@ -138,19 +138,19 @@ static void handle_block_dev_load(dev_t dev)
             entry.name,
             bdev->group->name,
             DEVID(dev),
-            (entry.end_lba - entry.start_lba) * 512 / 1024);
+            (entry.end_lba - entry.start_lba) * bdev->group->block_size / 1024);
 #endif
 
     next:
         /* Ensure we don't overrun lba buffer */
-        if (offset + header.entry_sz >= 512)
+        if (offset + header.entry_sz >= bdev->group->block_size)
         {
             /* Request more info */
             lba_offset++;
             if (bdev->ops->read_blocks(bdev, header.entries_lba + lba_offset, (void*)&lba[0], 1) != 0)
             {
-                printk("gpt: failed to read lba%d for bdev %s%d", header.entries_lba + lba_offset, bdev->group->name, DEVID(dev));
-                return;
+                lba_offset = header.entries_lba + lba_offset;
+                goto read_err;
             }
 
             offset = 0;
@@ -160,6 +160,11 @@ static void handle_block_dev_load(dev_t dev)
     }
 
     printk("gpt: found %u partitions on bdev %s%d", partitions, bdev->group->name, DEVID(dev));
+    goto end;
+read_err:
+    printk("gpt: failed to read lba%d for bdev %s%d", lba_offset, bdev->group->name, DEVID(dev));
+end:
+    kfree((void*)lba);
 }
 
 int gpt_probe()

@@ -10,7 +10,7 @@
 #include <kernel/sys/driver.h>
 #include <kernel/sched/sched.h>
 #include <kernel/module.h>
-#include <kernel/vfs/vfs.h>
+#include <kernel/sys/vfs.h>
 #include <kernel/event.h>
 
 #include <arch/sys.h>
@@ -57,17 +57,17 @@ void kmain(void)
 
 void test_task()
 {
-    struct block_device *device = block_get(MKDEV(GPT_DRIVER, 1));
-    if (!device)
-    {
-        printk("test: partition not found");
-        return;
-    }
+    // struct block_device *device = block_get(MKDEV(GPT_DRIVER, 1));
+    // if (!device)
+    // {
+    //     printk("test: partition not found");
+    //     return;
+    // }
 
-    uint8_t buffer[512];
-    device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
+    // uint8_t buffer[512];
+    // device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
 
-    printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
+    // printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
 }
 
 void cpu_usage_task()

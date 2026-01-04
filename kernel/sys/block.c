@@ -1,6 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/sys/block.h>
-#include <kernel/vfs/vfs.h>
+#include <kernel/sys/vfs.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/errno.h>
 #include <kernel/sys/driver.h>
