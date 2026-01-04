@@ -4,16 +4,21 @@
 #include <misc/types.h>
 #include <misc/list.h>
 
-struct vfs_node;
+#include <kernel/sys/block.h>
 
-struct vfs_ops {
-    int (*read)(struct vfs_node *node, void *buf, size_t len, size_t offset);
-    int (*write)(struct vfs_node *node, const void *buf, size_t len, size_t offset);
-    int (*open)(struct vfs_node *node);
-    int (*close)(struct vfs_node *node);
-    int (*readdir)(struct vfs_node *node, struct vfs_node **out);
-    int (*ioctl)(struct vfs_node *node, unsigned long req, void *arg);
-};
+#define	VFS_READ			0x01
+#define	VFS_WRITE			0x02
+#define	VFS_OPEN_EXISTING	0x00
+#define	VFS_CREATE_NEW		0x04
+#define	VFS_CREATE_ALWAYS	0x08
+#define	VFS_OPEN_ALWAYS		0x10
+#define	VFS_OPEN_APPEND		0x30
+
+struct vfs_node;
+struct vfs_mount_point;
+struct vfs_layer;
+
+typedef int64_t vfs_handle_t;
 
 struct vfs_node {
     char name[CONFIG_VFS_NAME_MAX];
@@ -27,9 +32,56 @@ struct vfs_node {
     struct list_head children;  // If directory
 };
 
+struct vfs_layer_ops {
+    int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);
+    int (*close)(struct vfs_mount_point *mount, vfs_handle_t handle);
+
+    int (*read)(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
+    int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t len);
+
+    int (*seek)(struct vfs_mount_point *mount, size_t offset);
+    // int (*readdir)(struct vfs_mount_point *mount);
+    // int (*ioctl)(struct vfs_mount_point *mount, unsigned long req, void *arg);
+};
+
+struct vfs_layer
+{
+    int (*mount)(struct vfs_mount_point*);
+    int (*unmount)(struct vfs_mount_point*);
+
+    const char *name;
+    struct vfs_layer_ops *ops;
+
+    struct list_head list;
+};
+
+struct vfs_mount_point
+{
+    const char *fs_name; // e.g. FAT32, EXT2
+    const char *mount_point;
+
+    dev_t bdev;
+
+    void *fs_data;
+    struct vfs_layer *layer;
+
+    struct list_head list;
+};
+
 int vfs_init();
 
-// extern int vfs_register_blkdev(dev_t dev, struct vfs_ops *ops);
-// extern int vfs_unregister_blkdev(dev_t dev);
+int vfs_mount(dev_t dev, const char* path);
+int vfs_unmount(const char* path);
+
+int vfs_add_layer(struct vfs_layer *layer);
+int vfs_remove_layer(struct vfs_layer *layer);
+
+int vfs_open(vfs_handle_t *file, const char *path, int flags);
+int vfs_close(vfs_handle_t handle);
+int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
+
+int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
+void *vfs_handle_data(vfs_handle_t handle);
+void vfs_kill_handle(vfs_handle_t handle);
 
 #endif

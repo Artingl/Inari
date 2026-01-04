@@ -133,7 +133,7 @@ static void handle_block_dev_load(dev_t dev)
         partitions++;
 
 #ifdef CONFIG_DEBUG
-        printk("gpt: %u %u found partition '%s' on bdev %s%d; size %uKiB",
+        printk("gpt: %u %u found partition '%s' on dev:%s%d; size %uKiB",
             header.entry_sz, offset,
             entry.name,
             bdev->group->name,
@@ -159,10 +159,10 @@ static void handle_block_dev_load(dev_t dev)
         memcpy((void*)&entry, &lba[offset], sizeof(entry));
     }
 
-    printk("gpt: found %u partitions on bdev %s%d", partitions, bdev->group->name, DEVID(dev));
+    printk("gpt: found %u partitions on dev:%s%d", partitions, bdev->group->name, DEVID(dev));
     goto end;
 read_err:
-    printk("gpt: failed to read lba%d for bdev %s%d", lba_offset, bdev->group->name, DEVID(dev));
+    printk("gpt: failed to read lba%d for dev:%s%d", lba_offset, bdev->group->name, DEVID(dev));
 end:
     kfree((void*)lba);
 }

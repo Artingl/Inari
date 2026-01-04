@@ -68,6 +68,29 @@ void test_task()
     // device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
 
     // printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
+
+    usleep(100000);
+
+    int res;
+    vfs_handle_t file;
+    char buf[128];
+
+    res = vfs_mount(MKDEV(GPT_DRIVER, 1), "/");
+    printk("test: mount result %d", res);
+
+    res = vfs_open(&file, "/boot/grub/grub.cfg", VFS_READ);
+    printk("test: open result %d; hndl %d", res, file);
+
+    res = vfs_read(file, &buf[0], 64, NULL);
+    buf[64] = 0;
+    printk("test: read result:\n%s", buf);
+
+    res = vfs_close(file);
+    printk("test: close result %d", res);
+
+    res = vfs_unmount("/");
+    printk("test: unmount result %d", res);
+
 }
 
 void cpu_usage_task()
@@ -92,7 +115,7 @@ void test()
 {
     tid_t task_id;
     sched_add_task(&task_id, &test_task);
-    sched_add_task(&task_id, &cpu_usage_task);
+    // sched_add_task(&task_id, &cpu_usage_task);
 }
 
 bootinfo_t get_boot_info()

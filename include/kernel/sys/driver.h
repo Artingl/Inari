@@ -1,6 +1,8 @@
 #ifndef _INARI_DRIVER_H
 #define _INARI_DRIVER_H
 
+#include <misc/types.h>
+
 #define DRIVER_SYS_GROUP           0x00
 #define DRIVER_DISKS_GROUP         0x01
 #define DRIVER_VOLUME_GROUP        0x02

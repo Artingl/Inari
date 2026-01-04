@@ -211,7 +211,7 @@
 /  1024, 2048 or 4096) Always set both 512 for most systems, generic memory card and
 /  harddisk, but a larger value may be required for on-board flash memory and some
 /  type of optical media. When FF_MAX_SS is larger than FF_MIN_SS, FatFs is
-/  configured for variable sector size mode and disk_ioctl() needs to implement
+/  configured for variable sector size mode and ff_disk_ioctl() needs to implement
 /  GET_SECTOR_SIZE command. */
 
 
@@ -228,7 +228,7 @@
 #define FF_USE_TRIM		0
 /* This option switches support for ATA-TRIM. (0:Disable or 1:Enable)
 /  To enable this feature, also CTRL_TRIM command should be implemented to
-/  the disk_ioctl(). */
+/  the ff_disk_ioctl(). */
 
 
 

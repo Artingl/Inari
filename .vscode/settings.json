@@ -52,5 +52,8 @@
         "block.h": "c",
         "print.h": "c",
         "vfs.h": "c"
-    }
+    },
+    "cSpell.words": [
+        "EINVFS"
+    ]
 }

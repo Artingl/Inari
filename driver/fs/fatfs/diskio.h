@@ -5,6 +5,8 @@
 #ifndef _DISKIO_DEFINED
 #define _DISKIO_DEFINED
 
+#include <kernel/sys/driver.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,11 +28,11 @@ typedef enum {
 /* Prototypes for disk control functions */
 
 
-DSTATUS disk_initialize (BYTE pdrv);
-DSTATUS disk_status (BYTE pdrv);
-DRESULT disk_read (BYTE pdrv, BYTE* buff, LBA_t sector, UINT count);
-DRESULT disk_write (BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count);
-DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff);
+DSTATUS ff_disk_initialize (dev_t pdrv);
+DSTATUS ff_disk_status (dev_t pdrv);
+DRESULT ff_disk_read (dev_t pdrv, BYTE* buff, LBA_t sector, UINT count);
+DRESULT ff_disk_write (dev_t pdrv, const BYTE* buff, LBA_t sector, UINT count);
+DRESULT ff_disk_ioctl (dev_t pdrv, BYTE cmd, void* buff);
 
 
 /* Disk Status Bits (DSTATUS) */

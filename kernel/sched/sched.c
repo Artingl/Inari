@@ -348,10 +348,10 @@ void sched_enter_core()
         halt();
     }
 
+    printk("sched: running on cpu%u", core_id);
+
     sched_cores[core_id].core_id = core_id;
     sched_cores[core_id].active = 1;
     sched_cores[core_id].task = (struct sched_task*)NULL;
-    
-    printk("sched: running on cpu%u", core_id);
     idle();
 }

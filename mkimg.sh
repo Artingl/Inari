@@ -97,5 +97,6 @@ losetup -d $LOOP_DEV
 rm -rf $MOUNT_DIR
 
 chown -R artingl:artingl $IMAGE_NAME
+chown -R artingl:artingl build
 
 echo ">>> Done! $IMAGE_NAME is ready."
