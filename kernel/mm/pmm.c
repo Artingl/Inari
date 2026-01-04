@@ -6,9 +6,7 @@
 /* TODO: The pmm should be bootloader-agnostic */
 #include <multiboot/multiboot.h>
 
-/* TODO: That's not ideal. It'd be better if we allocated the pool dynamically.
- *       Right now with the current pool size only 1gig of memory is addressable.
- */
+/* TODO: That's not ideal. It'd be better if we allocated the pool dynamically. */
 static struct pmm_page pages_pool[PMM_POOL_SIZE];
 static size_t available_pages = 0, pages_used = 0, first_good_page = 0;
 

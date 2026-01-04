@@ -1,5 +1,5 @@
-#ifndef _INARI_STRING_H
-#define _INARI_STRING_H
+#ifndef _INARI_MISC_STRING_H
+#define _INARI_MISC_STRING_H
 
 #include <misc/types.h>
 

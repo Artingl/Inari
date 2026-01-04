@@ -211,10 +211,14 @@ void ps2_kbd_cleanup()
 {
 }
 
+module_t ps2_module = {
+    .probe = ps2_kbd_probe,
+    .cleanup = ps2_kbd_cleanup
+};
+
 module_register(
     "ps2_kbd",
-    ps2_kbd_probe,
-    ps2_kbd_cleanup
+    ps2_module
 );
 
 #endif

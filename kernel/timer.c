@@ -2,8 +2,8 @@
 #include <kernel/timer.h>
 #include <kernel/sched/sched.h>
 
-static size_t timer_resolution = 1;
-static size_t timer_ticks;
+static volatile size_t timer_resolution = 1;
+static volatile size_t timer_ticks;
 
 int timer_init(size_t resolution)
 {

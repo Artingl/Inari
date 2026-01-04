@@ -207,15 +207,18 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                         goto next;
                     }
 
+#ifdef CONFIG_DEBUG
                     printk("acpi: io/apic found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
+#endif
                     acpi_cpu_ioapic = io_apic_table->io_apic_address;
                 }
                 else if (entry->entry_type == APIC_IO_INT_SRC_OVERRIDE)
                 {
                     struct IOAPIC_INTSRCO_MADT *int_overrd = (struct IOAPIC_INTSRCO_MADT *)(entry);
-
+#ifdef CONFIG_DEBUG
                     printk("acpi: io/apic ISO: bus = 0x%x, irq = 0x%x, gsi = 0x%x, flags = 0x%x",
                         int_overrd->bus, int_overrd->irq, int_overrd->gsi, int_overrd->flags);
+#endif
                 }
                 
             next:

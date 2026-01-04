@@ -1,3 +1,5 @@
+#ifndef _INARI_MISC_PRINT_H
+#define _INARI_MISC_PRINT_H
 
 #include <kernel/inari.h>
 #include <misc/string.h>
@@ -12,19 +14,19 @@
 #define PR_LZ 0x40
 #define PR_BUFLEN 32
 
-static inline int emit_char(void (*fn)(char), char c) {
-    fn(c);
+static inline int emit_char(void (*fn)(char, void *), void *ud, char c) {
+    fn(c, ud);
     return 1;
 }
 
-static inline int emit_string(void (*fn)(char), const char *s) {
+static inline int emit_string(void (*fn)(char, void *), void *ud, const char *s) {
     int n = 0;
-    while (*s) n += emit_char(fn, *s++);
+    while (*s) n += emit_char(fn, ud, *s++);
     return n;
 }
 
-static inline int printnum(void (*fn)(char),
-                    unsigned long num, unsigned radix, unsigned flags) {
+static inline int printnum(void (*fn)(char, void *), void *ud,
+                           unsigned long num, unsigned radix, unsigned flags) {
     char buf[PR_BUFLEN];
     char *p = buf + sizeof(buf);
 
@@ -36,16 +38,16 @@ static inline int printnum(void (*fn)(char),
                         : ((flags & PR_CA) ? 'A' + d - 10 : 'a' + d - 10);
     } while (num);
 
-    return emit_string(fn, p);
+    return emit_string(fn, ud, p);
 }
 
 static inline int do_printkn(const char *fmt, va_list args,
-                      void (*fn)(char)) {
+                             void (*fn)(char, void *), void *ud) {
     int count = 0;
 
     for (; *fmt; fmt++) {
         if (*fmt != '%') {
-            count += emit_char(fn, *fmt);
+            count += emit_char(fn, ud, *fmt);
             continue;
         }
 
@@ -73,41 +75,42 @@ static inline int do_printkn(const char *fmt, va_list args,
         unsigned long num;
         switch (*fmt) {
         case 'c':
-            count += emit_char(fn, (char)va_arg(args, int));
+            count += emit_char(fn, ud, (char)va_arg(args, int));
             break;
         case 's':
-            count += emit_string(fn, va_arg(args, const char *));
+            count += emit_string(fn, ud, va_arg(args, const char *));
             break;
-        case 'd': case 'i': flags |= PR_SG; fallthrough;
+        case 'd': case 'i': flags |= PR_SG; __attribute__((fallthrough));
         case 'u':
             num = (flags & PR_32) ? va_arg(args, unsigned long) :
                   (flags & PR_16) ? (unsigned short)va_arg(args, unsigned int) :
                                     va_arg(args, unsigned int);
             if (flags & PR_SG) {
                 long sn = (long)num;
-                if (sn < 0) { count += emit_char(fn, '-'); num = -sn; }
+                if (sn < 0) { count += emit_char(fn, ud, '-'); num = -sn; }
             }
-            count += printnum(fn, num, 10, flags);
+            count += printnum(fn, ud, num, 10, flags);
             break;
         case 'x': case 'X':
             if (*fmt == 'X') flags |= PR_CA;
             num = (flags & PR_32) ? va_arg(args, unsigned long) :
                   (flags & PR_16) ? (unsigned short)va_arg(args, unsigned int) :
                                     va_arg(args, unsigned int);
-            count += printnum(fn, num, 16, flags);
+            count += printnum(fn, ud, num, 16, flags);
             break;
         case 'o':
             num = va_arg(args, unsigned int);
-            count += printnum(fn, num, 8, flags);
+            count += printnum(fn, ud, num, 8, flags);
             break;
         case '%':
-            count += emit_char(fn, '%');
+            count += emit_char(fn, ud, '%');
             break;
         default:
-            // unknown specifier, print literally
-            count += emit_char(fn, *fmt);
+            count += emit_char(fn, ud, *fmt);
             break;
         }
     }
     return count;
 }
+
+#endif

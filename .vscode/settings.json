@@ -48,6 +48,9 @@
         "algorithm": "c",
         "format": "c",
         "initializer_list": "c",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "block.h": "c",
+        "print.h": "c",
+        "vfs.h": "c"
     }
 }

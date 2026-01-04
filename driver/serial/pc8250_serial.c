@@ -96,12 +96,16 @@ earlycon_device(
     pc8250_serial_cleanup
 );
 
+module_t pc8250_module = {
+    .probe = pc8250_serial_probe,
+    .cleanup = pc8250_serial_cleanup,
+};
+
 /* This would allow to register this device as normal console after early stage.
  * If it was already initialized, nothing should happen. */
 module_register(
     "pc8250",
-    pc8250_serial_probe,
-    pc8250_serial_cleanup
+    pc8250_module
 );
 
 #endif

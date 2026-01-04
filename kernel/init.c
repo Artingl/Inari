@@ -6,8 +6,12 @@
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/page.h>
 #include <kernel/mm/kmalloc.h>
+#include <kernel/sys/block.h>
+#include <kernel/sys/driver.h>
 #include <kernel/sched/sched.h>
 #include <kernel/module.h>
+#include <kernel/vfs/vfs.h>
+#include <kernel/event.h>
 
 #include <arch/sys.h>
 #include <arch/paging.h>
@@ -35,7 +39,10 @@ void kearly_init(bootinfo_t b)
 void kmain(void)
 {
     assert(console_init() == 0, "console init failed.");
+    assert(event_bus_init() == 0, "event bus init failed.");
+    assert(blkdev_init() == 0, "block device init failed.");
     assert(sched_init() == 0, "scheduler init failed.");
+    assert(vfs_init() == 0, "vfs init failed.");
 
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
@@ -48,24 +55,19 @@ void kmain(void)
     panic("Reached end of kmain");
 }
 
-void test_task1()
+void test_task()
 {
-    int i = 0;
-    while (1)
+    struct block_device *device = block_get(MKDEV(GPT_DRIVER, 1));
+    if (!device)
     {
-        usleep(1000000);
-        printk("task 1 %d", i++);
+        printk("test: partition not found");
+        return;
     }
-}
 
-void test_task2()
-{
-    int i = 0;
-    while (1)
-    {
-        usleep(500000);
-        printk("task 2 %d", i++);
-    }
+    uint8_t buffer[512];
+    device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
+
+    printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
 }
 
 void cpu_usage_task()
@@ -89,10 +91,8 @@ void cpu_usage_task()
 void test()
 {
     tid_t task_id;
-    // sched_add_task(&task_id, &test_task1);
-    // sched_add_task(&task_id, &test_task2);
+    sched_add_task(&task_id, &test_task);
     sched_add_task(&task_id, &cpu_usage_task);
-    printk("test: task %u", task_id);
 }
 
 bootinfo_t get_boot_info()

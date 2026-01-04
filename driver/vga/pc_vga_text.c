@@ -124,12 +124,17 @@ earlycon_device(
     pc_vga_text_cleanup
 );
 
+module_t pc_vga_text_module = {
+    .probe = pc_vga_text_probe,
+    .cleanup = pc_vga_text_cleanup
+};
+
+
 /* This would allow to register this device as normal console after early stage.
  * If it was already initialized, nothing should happen. */
 module_register(
     "pc_vga_text",
-    pc_vga_text_probe,
-    pc_vga_text_cleanup
+    pc_vga_text_module
 );
 
 #endif

@@ -67,6 +67,8 @@
 #define ATA_IDENT_COMMANDSETS  164
 #define ATA_IDENT_MAX_LBA_EXT  200
 
+#define ATA_BLOCK_SIZE 512
+
 struct ata_drive;
 
 typedef int (*ata_io_t)(struct ata_drive *drive, uint32_t lba, void *buf, size_t nsects);

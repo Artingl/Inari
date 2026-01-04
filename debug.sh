@@ -1,5 +1,6 @@
 #!/bin/sh
-
+unset GTK_PATH
+unset GIO_MODULE_DIR
 make clean && make build
 qemu-system-i386 \
     -cdrom build/boot.iso \

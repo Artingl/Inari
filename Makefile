@@ -1,6 +1,7 @@
 TARGET=x86
 CC = gcc
 LD = ld
+GRUB_MKRESCUE := $(shell if command -v grub-mkrescue >/dev/null 2>&1; then echo grub-mkrescue; else echo grub2-mkrescue; fi)
 
 CFLAGS = --include "build/config.h" -I include/ $(shell cat arch/$(TARGET)/cflags.txt) $(shell cat cflags.txt)
 
@@ -41,4 +42,4 @@ build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	cp grub.cfg build/grub/boot/grub && \
 	make -C arch/${TARGET} build_ld && \
 	cp arch/${TARGET}/kernel.elf build/grub/kernel && \
-	grub2-mkrescue -o build/boot.iso build/grub
+	$(GRUB_MKRESCUE) -o build/boot.iso build/grub

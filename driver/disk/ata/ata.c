@@ -4,7 +4,8 @@
 #include <kernel/inari.h>
 #include <kernel/module.h>
 #include <kernel/errno.h>
-#include <kernel/block/block.h>
+#include <kernel/sys/driver.h>
+#include <kernel/sys/block.h>
 
 #include <driver/disk/ata/ata.h>
 
@@ -16,22 +17,22 @@ static struct ata_drive ata_drives[ATA_MAX_DRIVES];
 
 static int ata_read_blocks(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks)
 {
-    return 0;
+    struct ata_drive *drive = bdev->driver_data;
+    if (!drive) return -ENODEV;
+    return drive->ops->read(drive, lba, buf, nblocks);
 }
 
 static int ata_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
 {
-    return 0;
+    struct ata_drive *drive = bdev->driver_data;
+    if (!drive) return -ENODEV;
+    return drive->ops->write(drive, lba, buf, nblocks);
 }
 
-static struct block_ops ata_block_ops =
-{
+static struct block_ops ata_block_ops = {
     .read_blocks = &ata_read_blocks,
     .write_blocks = &ata_write_blocks
 };
-
-// ‘int (*)(struct block_device *, uint64_t,  const void *, size_t)’ {aka ‘int (*)(struct block_device *, long long unsigned int,  const void *, unsigned int)’
-// ‘int (*)(struct block_device *, uint64_t,  const void *, size_t)’ {aka ‘int (*)(struct block_device *, long long unsigned int,  const void *, unsigned int)’
 
 static int ata_identify(uint8_t drive_id)
 {
@@ -120,9 +121,12 @@ static int ata_identify(uint8_t drive_id)
     
     /* We support only pio mode for now */
     ata_pio_init(drive);
-    block_register_device(
-        "hda", 0, 0, &ata_block_ops, (void*)drive
-    );
+
+    register_blkdev_ops(
+        MKDEV(ATA_DRIVER, 64 * drive_id),
+        &ata_block_ops,
+        drive->size * 512,
+        (void*)drive);
 
     drive->present = 1;
     return 0;
@@ -130,29 +134,32 @@ static int ata_identify(uint8_t drive_id)
 
 int ata_probe()
 {
-    int ret;
+    int ret = 0;
+
+    register_blkdev_group(ATA_DRIVER, ATA_BLOCK_SIZE, "hd");
     
     /* Identify all drives */
     ata_identify(0);
     ata_identify(1);
     ata_identify(2);
     ata_identify(3);
-
-    // uint8_t buffer[512];
-    // ata_drives[0].ops.read(&ata_drives[0], 0, (void*)&buffer, 1);
-    // printk("ata: 0x%08x 0x%08x 0x%08x", (unsigned long)buffer[0], (unsigned long)buffer[1], (unsigned long)buffer[2]);
-
+    
     return ret;
 }
 
 void ata_cleanup()
 {
+    unregister_blkdev_group(ATA_DRIVER);
 }
+
+module_t ata_module = {
+    .probe = ata_probe,
+    .cleanup = ata_cleanup
+};
 
 module_register(
     "ata",
-    ata_probe,
-    ata_cleanup
+    ata_module
 );
 
 #endif

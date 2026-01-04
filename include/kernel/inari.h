@@ -14,8 +14,6 @@
 #define _lo_data __attribute__((used, section("._lo_kern_data"), aligned(PAGE_SIZE)))
 #define _lo_text __attribute__((used, section("._lo_kern_text")))
 
-#define fallthrough __attribute__ ((fallthrough))
-
 typedef struct
 {
     uint32_t bootloader_magic;

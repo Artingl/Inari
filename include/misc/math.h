@@ -1,5 +1,5 @@
-#ifndef _INARI_MATH_H
-#define _INARI_MATH_H
+#ifndef _INARI_MISC_MATH_H
+#define _INARI_MISC_MATH_H
 
 #include <misc/types.h>
 
