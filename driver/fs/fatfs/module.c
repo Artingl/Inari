@@ -128,48 +128,6 @@ static struct vfs_layer fatfs_layer = {
 
 int fatfs_probe()
 {
-    // FATFS fs;
-    // FRESULT res;
-    // DIR dp;
-    // FIL fp;
-    // FILINFO fno;
-
-    // fs.pdrv = MKDEV(GPT_DRIVER, 1);
-    // res = f_mount(&fs, "/", 1);
-    // printk("fatfs: mount %d", res);
-
-    // res = f_opendir(&dp, &fs, "/");
-    // printk("fatfs: opendir %d", res);
-
-    // for (;;) {
-    //     res = f_readdir(&dp, &fs, &fno);            /* Read a directory item */
-    //     if (fno.fname[0] == 0) break;          /* Error or end of dir */
-    //     if (fno.fattrib & AM_DIR) {            /* It is a directory */
-    //         printk("   <DIR>   %s", fno.fname);
-    //     } else {                               /* It is a file */
-    //         printk("   <FIL>   %10u %s", fno.fsize, fno.fname);
-    //     }
-    // }
-
-    // char buff[128];
-    // uint32_t b;
-
-    // res = f_open(&fp, &fs, "/boot/grub/grub.cfg", FA_READ);
-    // f_read(&fp, &fs, &buff[0], 128, &b);
-    // printk("fatfs: open %d %s", res, buff);
-
-    // struct block_device *device = block_get(MKDEV(GPT_DRIVER, 1));
-    // if (!device)
-    // {
-    //     printk("fatfs: partition not found");
-    //     return;
-    // }
-
-    // uint8_t buffer[512];
-    // device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
-
-    // printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
-
     return vfs_add_layer(&fatfs_layer);
 }
 

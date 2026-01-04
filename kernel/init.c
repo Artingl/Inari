@@ -12,12 +12,16 @@
 #include <kernel/module.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/event.h>
+#include <kernel/errno.h>
 
 #include <arch/sys.h>
 #include <arch/paging.h>
 #include <misc/string.h>
+#include <misc/format.h>
 
 bootinfo_t bootinfo;
+int init_task();
+int mount_root();
 
 #define assert(cond, fmt, ...) {if (!(cond)) {panic(fmt, ##__VA_ARGS__);}}
 
@@ -46,58 +50,19 @@ void kmain(void)
 
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
-    void test();
-    test();
-
     enable_int();
     modules_init();
+    assert(mount_root() == 0, "no root found.");
+    assert(init_task() == 0, "unable to launch init.");
     sched_enter_core();
     panic("Reached end of kmain");
-}
-
-void test_task()
-{
-    // struct block_device *device = block_get(MKDEV(GPT_DRIVER, 1));
-    // if (!device)
-    // {
-    //     printk("test: partition not found");
-    //     return;
-    // }
-
-    // uint8_t buffer[512];
-    // device->ops->read_blocks(device, 0, (void*)&buffer[0], 1);
-
-    // printk("test: 0x%08x 0x%08x 0x%08x", buffer[0], buffer[1], buffer[2]);
-
-    usleep(100000);
-
-    int res;
-    vfs_handle_t file;
-    char buf[128];
-
-    res = vfs_mount(MKDEV(GPT_DRIVER, 1), "/");
-    printk("test: mount result %d", res);
-
-    res = vfs_open(&file, "/boot/grub/grub.cfg", VFS_READ);
-    printk("test: open result %d; hndl %d", res, file);
-
-    res = vfs_read(file, &buf[0], 64, NULL);
-    buf[64] = 0;
-    printk("test: read result:\n%s", buf);
-
-    res = vfs_close(file);
-    printk("test: close result %d", res);
-
-    res = vfs_unmount("/");
-    printk("test: unmount result %d", res);
-
 }
 
 void cpu_usage_task()
 {
     while (1)
     {
-        usleep(2000000);
+        usleep(5000000);
         for (size_t i = 0; i < 10000; i++)
         {
             struct sched_task *task;
@@ -111,11 +76,46 @@ void cpu_usage_task()
     }
 }
 
-void test()
+int mount_root()
+{
+    int res;
+    vfs_handle_t file;
+    
+
+    char name_buff[ARG_MAX_LEN];
+    char device[ARG_MAX_LEN];
+    parse_cmdline_argument("root", &device[0]);
+
+    /* Iterate through all block devices to find the required one */
+    struct block_device *bdev;
+    dev_t devs[128];
+    int offset = 0, count = 0;
+    while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
+    {
+        for (; count > 0; count--)
+        {
+            bdev = block_get(devs[count - 1]);
+            if (bdev)
+            {
+                sprintf(&name_buff[0], "%s%d", bdev->group->name, DEVID(bdev->dev));
+                if (strcmp(name_buff, device) == 0)
+                    goto found_dev;
+            }
+        }
+        offset += 128;
+    }
+
+    return -ENODEV;
+found_dev:
+    printk("root: mounting %s as /", name_buff);
+    return vfs_mount(bdev->dev, "/");
+}
+
+int init_task()
 {
     tid_t task_id;
-    sched_add_task(&task_id, &test_task);
-    // sched_add_task(&task_id, &cpu_usage_task);
+    sched_add_task(&task_id, &cpu_usage_task);
+    return 0;
 }
 
 bootinfo_t get_boot_info()

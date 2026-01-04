@@ -5,7 +5,7 @@ int parse_cmdline_argument(const char *key, char *result)
 {
     const char *cmdline = get_cmdline();
     char *argument_start = NULL;
-    size_t offset = 0;
+    size_t offset = 0, sz = 0;
     size_t key_len = strlen(key), cmdline_len = strlen(cmdline);
 
     if (result == NULL)
@@ -31,11 +31,18 @@ int parse_cmdline_argument(const char *key, char *result)
 
             /* Parse the arguments */
             argument_start = (char*)cmdline + offset + key_len + 1;
-            while (*(cmdline + offset) != ' ' && *(cmdline + offset) != 0 && (cmdline + offset - argument_start) < ARG_MAX_LEN)
-                offset++;
+            sz = 0;
+            while (*(cmdline + offset + key_len + 1) != ' ' &&
+                    *(cmdline + offset + key_len + 1) != '\t' &&
+                    *(cmdline + offset + key_len + 1) != '\n' &&
+                    *(cmdline + offset + key_len + 1) != 0 &&
+                    (cmdline + offset - argument_start) < ARG_MAX_LEN)
+            {
+                offset++; sz++;
+            }
 
-            memcpy(result, argument_start, offset);
-            result[offset] = '\0';
+            memcpy(result, argument_start, sz);
+            result[sz] = '\0';
             return 0;
         }
 
