@@ -2,4 +2,4 @@ build/
 *.elf
 *.o
 docs/
-fs/
+/fs/
