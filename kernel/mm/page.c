@@ -52,10 +52,32 @@ void *page_alloc(size_t npages, uint32_t flags)
 
 void page_free(void *vbase, size_t npages)
 {
-    void *pbase = arch_phys_page(vbase);
-    if (pbase != NULL)
-        pmm_free_pages(pbase, npages);
-    
-    vmm_free_pages(vbase, npages);
-    arch_unmap_page(vbase, npages * PAGE_SIZE);
+    for (size_t i = 0; i < npages; i++)
+    {
+        void *pbase = arch_virt_to_phys(vbase + i * PAGE_SIZE);
+        if (pbase != NULL)
+            pmm_free_pages(pbase, 1);
+        vmm_free_pages(vbase, 1);
+        arch_unmap_page(vbase, 1);
+    }
+}
+
+pagedir_t page_get_dir(void)
+{
+    return (pagedir_t *)arch_get_pagedir();
+}
+
+void page_switch_dir(pagedir_t dir)
+{
+    arch_switch_pagedir((struct paging_directory*)dir);
+}
+
+pagedir_t page_alloc_dir(void)
+{
+    return (pagedir_t)arch_create_pagedir();
+}
+
+void page_dealloc_dir(pagedir_t dir)
+{
+    if (dir) arch_cleanup_pagedir((struct paging_directory*)dir);
 }

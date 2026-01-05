@@ -13,6 +13,10 @@
 #define	ETIMEDOUT	8	/* Connection timed out */
 #define	ENOENT		9	/* No such file or directory */
 #define	EBADHNDL    10	/* Bad handle */
+#define	ENOSYS		11	/* Function not implemented */
+#define	ESRCH		12	/* No such process */
+#define	EACCES		13	/* Permission denied */
+#define	EFAULT		14	/* Bad address */
 
 // 
 // #define	ENOENT		 2	/* No such file or directory */

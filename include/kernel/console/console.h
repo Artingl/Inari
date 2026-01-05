@@ -20,13 +20,16 @@ typedef struct console_dev {
     struct list_head list;
 } console_dev_t;
 
-extern int console_init(void);
-extern int console_register(struct console_dev *dev);
-extern int console_unregister(struct console_dev *dev);
+int console_init(void);
+int console_register(struct console_dev *dev);
+int console_unregister(struct console_dev *dev);
+
+/* Switch back to early console */
+void console_switch_early(void);
 
 #define CONSOLE_MESSAGE_PRINTK 0x00
 #define CONSOLE_MESSAGE_DEBUG  0x01
 
-extern int console_printc(int type, const char *s, uint32_t count);
+int console_printc(int type, const char *s, uint32_t count);
 
 #endif

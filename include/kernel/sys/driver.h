@@ -26,16 +26,6 @@
 
 #define DRIVER_TOTAL         256
 
-static const char *driver_namings[] =
-{
-    [ UNNAMED_DRIVER ] = "UNNAMED",
-    [ RAMDISK_DRIVER ] = "RAMDISK",
-    [ ATA_DRIVER ] = "ATA",
-    [ TTY_DRIVER ] = "TTY",
-    [ GPT_DRIVER ] = "GPT",
-
-};
-
 typedef unsigned int dev_t;
 
 #endif

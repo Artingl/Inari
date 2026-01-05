@@ -30,7 +30,7 @@ int register_blkdev_group(uint32_t driver, uint32_t block_size, const char *name
     strcpy(&bdev_group->name[0], name);
     bdev_group->name[BLOCK_DEV_NAME_SIZE] = '\0';
 
-    printk("block: %s registered as /%16s", driver_namings[driver], bdev_group->name);
+    printk("block: new bdev group %16s; driver %u", bdev_group->name, driver);
     return 0;
 }
 
@@ -66,7 +66,7 @@ int register_blkdev_ops(dev_t dev, struct block_ops *ops, uint64_t size, void *d
         .type = EVENT_LOAD_BLKDEV,
         .as = { .blkdev = dev }
     });
-    printk("block: registered new %s device %u", driver_namings[driver], minor);
+    printk("block: new dev:%s%u; driver 0x%04x", group->name, minor, driver);
     return 0;
 }
 

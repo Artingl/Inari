@@ -78,6 +78,7 @@ echo ">>> Copying kernel and config..."
 mkdir -p $MOUNT_DIR/boot/grub
 cp $KERNEL_BIN $MOUNT_DIR/boot/kernel.bin
 cp $GRUB_CFG $MOUNT_DIR/boot/grub/grub.cfg
+cp test/main.exe $MOUNT_DIR/init.exe
 
 # 7. Install GRUB
 # GRUB will automatically find the 'bios_grub' partition (p1) 

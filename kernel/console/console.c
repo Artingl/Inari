@@ -3,7 +3,7 @@
 #include <kernel/console/console.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/console/earlycon.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 #include <kernel/errno.h>
 #include <kernel/timer.h>
 
@@ -89,6 +89,51 @@ static void console_print_dev(int type, const char *s, uint32_t count)
     }
 }
 
+static struct list_head console_flush(void)
+{
+    struct list_head local_list;
+    struct list_head *pos, *n;
+    struct console_lazy_buffer *entry;
+
+    INIT_LIST_HEAD(&local_list);
+    
+    /* Move any latest buffer into the lazy list, and then steal the whole lazy list */
+    unsigned long flags;
+    spin_lock_irqsave(&console_lock, flags);
+
+    if (console_latest_buffer) {
+        /* move latest to lazy list */
+        list_add_tail(&console_latest_buffer->list, &console_lazy_list);
+        console_latest_buffer = NULL;
+    }
+
+    /* Move all items from console_lazy_list to local_list (swap) */
+    if (!list_empty(&console_lazy_list)) {
+        local_list.next = console_lazy_list.next;
+        local_list.prev = console_lazy_list.prev;
+        local_list.next->prev = &local_list;
+        local_list.prev->next = &local_list;
+
+        /* reinit the shared list to empty */
+        INIT_LIST_HEAD(&console_lazy_list);
+    }
+
+    spin_unlock_irqrestore(&console_lock, flags);
+
+    /* Now process the local list OUTSIDE the lock */
+    list_for_each_safe(pos, n, &local_list) {
+        entry = list_entry(pos, struct console_lazy_buffer, list);
+        list_del(pos);
+        if (entry->buffer_offset > 0) {
+            console_print_dev(0, entry->buffer, entry->buffer_offset);
+        }
+        /* return buffer to pool or free memory */
+        console_buffer_free(entry);
+    }
+
+    return local_list;
+}
+
 /*
  * console_main_task:
  *   take ownership of console_lazy_list under lock, then release lock and print.
@@ -96,51 +141,12 @@ static void console_print_dev(int type, const char *s, uint32_t count)
  */
 static void console_thread(void)
 {
-    earlycom_cleanup();
     console_is_early = 0;
     printk("console: early console disabled");
 
     while (1)
     {
-        struct list_head local_list;
-        struct list_head *pos, *n;
-        struct console_lazy_buffer *entry;
-
-        INIT_LIST_HEAD(&local_list);
-        
-        /* Move any latest buffer into the lazy list, and then steal the whole lazy list */
-        unsigned long flags;
-        spin_lock_irqsave(&console_lock, flags);
-
-        if (console_latest_buffer) {
-            /* move latest to lazy list */
-            list_add_tail(&console_latest_buffer->list, &console_lazy_list);
-            console_latest_buffer = NULL;
-        }
-
-        /* Move all items from console_lazy_list to local_list (swap) */
-        if (!list_empty(&console_lazy_list)) {
-            local_list.next = console_lazy_list.next;
-            local_list.prev = console_lazy_list.prev;
-            local_list.next->prev = &local_list;
-            local_list.prev->next = &local_list;
-
-            /* reinit the shared list to empty */
-            INIT_LIST_HEAD(&console_lazy_list);
-        }
-
-        spin_unlock_irqrestore(&console_lock, flags);
-
-        /* Now process the local list OUTSIDE the lock */
-        list_for_each_safe(pos, n, &local_list) {
-            entry = list_entry(pos, struct console_lazy_buffer, list);
-            list_del(pos);
-            if (entry->buffer_offset > 0) {
-                console_print_dev(0, entry->buffer, entry->buffer_offset);
-            }
-            /* return buffer to pool or free memory */
-            console_buffer_free(entry);
-        }
+        struct list_head local_list = console_flush();
 
         /* If there's nothing to do, wait a bit to avoid busy spin. */
         if (list_empty(&local_list)) {
@@ -157,7 +163,7 @@ int console_init(void)
     spinlock_init(&console_lock);
     console_pool_init();
 
-    ret = sched_add_task(&console_task_id, &console_thread);
+    ret = sched_create_thread(&console_task_id, &console_thread, NULL);
     return ret;
 }
 
@@ -266,4 +272,10 @@ int console_printc(int type, const char *s, uint32_t count)
         spin_unlock_irqrestore(&console_lock, flags);
     }
     return 0;
+}
+
+void console_switch_early(void)
+{
+    console_flush();
+    console_is_early = 1;
 }

@@ -180,7 +180,7 @@ int vfs_close(vfs_handle_t handle)
         if (entry->id == handle)
         {
             if (entry->mount->layer->ops->close)
-                res = entry->mount->layer->ops->close(entry, handle);
+                res = entry->mount->layer->ops->close(entry->mount, handle);
             kfree(entry);
             return res;
         }
@@ -199,8 +199,62 @@ int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
         if (entry->id == handle)
         {
             if (entry->mount->layer->ops->read)
-                return entry->mount->layer->ops->read(entry, handle, buf, len, rlen);
-            return -EINVAL;
+                return entry->mount->layer->ops->read(entry->mount, handle, buf, len, rlen);
+            return -ENOSYS;
+        }
+    }
+
+    return -EBADHNDL;
+}
+
+int vfs_seek(vfs_handle_t handle, size_t offset)
+{
+    struct list_head *pos;
+    struct vfs_handle *entry;
+
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->seek)
+                return entry->mount->layer->ops->seek(entry->mount, handle, offset);
+            return -ENOSYS;
+        }
+    }
+
+    return -EBADHNDL;
+}
+
+int vfs_tell(vfs_handle_t handle, size_t *offset)
+{
+    struct list_head *pos;
+    struct vfs_handle *entry;
+
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->tell)
+                return entry->mount->layer->ops->tell(entry->mount, handle, offset);
+            return -ENOSYS;
+        }
+    }
+
+    return -EBADHNDL;
+}
+
+int vfs_size(vfs_handle_t handle, size_t *size)
+{
+    struct list_head *pos;
+    struct vfs_handle *entry;
+
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->size)
+                return entry->mount->layer->ops->size(entry->mount, handle, size);
+            return -ENOSYS;
         }
     }
 

@@ -1,6 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/timer.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 
 static volatile size_t timer_resolution = 1;
 static volatile size_t timer_ticks;
@@ -36,7 +36,7 @@ size_t uptimer_ms()
 void usleep(size_t us)
 {
     tid_t tid;
-    if (sched_current_task(&tid) == 0)
+    if (sched_current_thread(&tid) == 0)
     {
         /* Called from a task, use scheduler to sleep */
         sched_usleep(tid, us);

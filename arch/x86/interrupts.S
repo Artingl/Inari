@@ -32,6 +32,8 @@ _arch_excp_base:
 
 _arch_irq_base:
     pushad
+	mov eax, cr3
+	push eax
 	push ds
 	push es
 	push fs
@@ -48,6 +50,8 @@ _arch_irq_base:
 	pop fs
 	pop es
 	pop ds
+	pop eax
+	mov cr3, eax
 	popad
     add esp, 8
 	sti
@@ -131,3 +135,4 @@ IRQ_HANDLER 14
 IRQ_HANDLER 15
 
 SWI_HANDLER 100
+SWI_HANDLER 101

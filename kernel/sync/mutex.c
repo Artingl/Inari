@@ -1,6 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/sync/mutex.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 
 /* TODO: implement proper mutex with tasks's sleeping and waiting for it to release */
 

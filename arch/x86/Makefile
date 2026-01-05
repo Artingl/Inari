@@ -1,8 +1,9 @@
 TARGET = x86
 AS = nasm
 CC = gcc
+LD = ld
 
-LDFLAGS = -m32 -no-pie -nostdlib
+LDFLAGS = -no-pie -nostdlib
 CFLAGS = --include "../../build/config.h" -I ../../include/ $(shell cat cflags.txt) $(shell cat ../../cflags.txt)
 
 arch_source_c := $(shell find . -name '*.c')

@@ -1,12 +1,13 @@
 #include <kernel/inari.h>
 #include <kernel/interrupts/interrupts.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 #include <kernel/mm/kmalloc.h>
 
 #include <arch/x86/cpu.h>
+#include <arch/paging.h>
 #include <misc/string.h>
 
-void arch_sched_save(struct sched_task *task)
+void arch_sched_save(struct thread *task)
 {
     struct interrupt_frame *frame = interrupt_frame();
     struct x86_regs32 *regs;
@@ -16,7 +17,7 @@ void arch_sched_save(struct sched_task *task)
     task->saved_sp = regs->task_esp;
 }
 
-void arch_sched_load(struct sched_task *task)
+void arch_sched_load(struct thread *task)
 {
     struct interrupt_frame *frame = interrupt_frame();
     struct x86_regs32 *regs;
@@ -36,10 +37,12 @@ void arch_sched_load(struct sched_task *task)
         esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->stack_pointer + (uint32_t)CONFIG_STACK_SIZE;   // useresp
         esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->eflags;
         esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->cs;
-        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)&sched_task_preentry;
+        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)&sched_thread_preentry;
 
         esp -= 4*2;                           // int_no, err_code
         esp -= 4*8;                           // regs edi-eax
+
+        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)arch_virt_to_phys((void*)task->vmem); // cr3
 
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // ds
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // es

@@ -8,7 +8,8 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/sys/block.h>
 #include <kernel/sys/driver.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
+#include <kernel/proc/proc.h>
 #include <kernel/module.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/event.h>
@@ -19,6 +20,7 @@
 #include <misc/string.h>
 #include <misc/format.h>
 
+pagedir_t kernel_page_dir;
 bootinfo_t bootinfo;
 int init_task();
 int mount_root();
@@ -37,16 +39,18 @@ void kearly_init(bootinfo_t b)
     assert(page_init() == 0, "paging init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
 
+    kernel_page_dir = (pagedir_t *)arch_get_pagedir();
     printk("kearly_init: done");
 }
 
 void kmain(void)
 {
-    assert(console_init() == 0, "console init failed.");
+    // assert(console_init() == 0, "console init failed.");
     assert(event_bus_init() == 0, "event bus init failed.");
     assert(blkdev_init() == 0, "block device init failed.");
     assert(sched_init() == 0, "scheduler init failed.");
     assert(vfs_init() == 0, "vfs init failed.");
+    assert(proc_init() == 0, "proc init failed.");
 
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
@@ -56,24 +60,6 @@ void kmain(void)
     assert(init_task() == 0, "unable to launch init.");
     sched_enter_core();
     panic("Reached end of kmain");
-}
-
-void cpu_usage_task()
-{
-    while (1)
-    {
-        usleep(5000000);
-        for (size_t i = 0; i < 10000; i++)
-        {
-            struct sched_task *task;
-            if (sched_get_task(i, &task) == 0)
-            {
-                if (task->reschedules_count > 0 && task->cpu_time > 0)
-                    printk("cpu_usage: tid %lu time %lu count %lu", i,
-                        task->cpu_time, task->reschedules_count);
-            }
-        }
-    }
 }
 
 int mount_root()
@@ -111,14 +97,30 @@ found_dev:
     return vfs_mount(bdev->dev, "/");
 }
 
+static void init_stub_thread()
+{
+    /* This thread is only created to delay a little the execution
+     * of the init task, so critical kernel modules have time to initialize. */
+    usleep(40000);
+
+    pid_t pid;
+    int res;
+    if ((res = execp(&pid, "/init.exe")) != 0)
+        panic("unable to launch init; code %d.", res);
+}
+
 int init_task()
 {
-    tid_t task_id;
-    sched_add_task(&task_id, &cpu_usage_task);
-    return 0;
+    tid_t tid;
+    return sched_create_thread(&tid, &init_stub_thread, NULL);
 }
 
 bootinfo_t get_boot_info()
 {
     return bootinfo;
+}
+
+pagedir_t get_kernel_pagedir()
+{
+    return kernel_page_dir;
 }

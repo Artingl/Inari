@@ -1,9 +1,10 @@
 #include <kernel/inari.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 #include <kernel/interrupts/swi.h>
-#include <kernel/sched/signals.h>
+#include <kernel/proc/signals.h>
 
 #include <arch/x86/cpu.h>
+#include <arch/x86/arch.h>
 #include <arch/x86/exception.h>
 
 #define DECL_EXCP(n) extern void _arch_excp##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_excp##n, n, 0x08, 0x8e)
@@ -68,7 +69,7 @@ void x86_exception_handler(struct x86_regs32 regs)
 {
     tid_t tid;
     uint32_t signo = SIGTERM;
-    if (sched_current_task(&tid) == 0)
+    if (sched_current_thread(&tid) == 0)
     {
         switch (regs.int_no)
         {
@@ -80,7 +81,7 @@ void x86_exception_handler(struct x86_regs32 regs)
                 printk("x86: exception %s", EXCEPTIONS_NAMES[regs.int_no]);
         }
         
-        sched_signal_task(tid, signo);
+        sched_signal_thread(tid, signo);
     }
     else {
         /* Exception in kernel code */

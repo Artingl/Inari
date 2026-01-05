@@ -5,6 +5,7 @@
 #include "kernel/sys/block.h"
 #include "kernel/mm/kmalloc.h"
 #include "kernel/errno.h"
+#include "kernel/printk.h"
 
 #include "misc/string.h"
 

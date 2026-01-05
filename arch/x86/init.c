@@ -106,6 +106,11 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
     /* Fix the stack */
     __asm__ volatile("mov %0, %%esp" :: "r"(&_arch_stack_bsp));
 
+    extern struct paging_directory *x86_kernel_dir;
+    x86_kernel_dir = (struct paging_directory*)&tables_phys;
+    extern struct paging_directory *x86_current_dir;
+    x86_current_dir = (struct paging_directory*)&tables_phys;
+
     /* We can finally go further */
     x86_entrypoint2(magic, multiboot);
 

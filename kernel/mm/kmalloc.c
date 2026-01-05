@@ -17,7 +17,7 @@ int kmalloc_init(void)
 
 void *kmalloc(size_t size)
 {
-    size = align_up(size, BLOCK_ALIGN);
+    size = align_up(size + PAGE_SIZE, BLOCK_ALIGN);
 
     /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD)

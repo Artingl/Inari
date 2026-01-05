@@ -36,10 +36,13 @@ struct vfs_layer_ops {
     int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);
     int (*close)(struct vfs_mount_point *mount, vfs_handle_t handle);
 
+    /* File I/O */
     int (*read)(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
     int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t len);
 
-    int (*seek)(struct vfs_mount_point *mount, size_t offset);
+    int (*seek)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t offset);
+    int (*tell)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *offset);
+    int (*size)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size);
     // int (*readdir)(struct vfs_mount_point *mount);
     // int (*ioctl)(struct vfs_mount_point *mount, unsigned long req, void *arg);
 };
@@ -78,6 +81,9 @@ int vfs_remove_layer(struct vfs_layer *layer);
 
 int vfs_open(vfs_handle_t *file, const char *path, int flags);
 int vfs_close(vfs_handle_t handle);
+int vfs_seek(vfs_handle_t handle, size_t offset);
+int vfs_tell(vfs_handle_t handle, size_t *offset);
+int vfs_size(vfs_handle_t handle, size_t *size);
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);

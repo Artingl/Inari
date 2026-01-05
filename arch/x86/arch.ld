@@ -17,7 +17,6 @@ SECTIONS
     . += 0x400000;           /* reserve 4MB */
     _arch_pagetable_area_end = .;
 
-
     kern_phys_end = .;
     . += 0xC0000000;
     kern_virt_start = .;

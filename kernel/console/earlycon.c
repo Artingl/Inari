@@ -45,14 +45,3 @@ int earlycon_init()
     
     return -EINVAL;
 }
-
-void earlycom_cleanup()
-{
-    if (device_in_use)
-    {
-        printk("earlycon: cleaning up device %s", device_in_use->name);
-        device_in_use->cleanup();
-        device_in_use = (earlycon_device_t *)NULL;
-    }
-}
-

@@ -1,6 +1,6 @@
 #include <kernel/inari.h>
-#include <kernel/sched/sched.h>
-#include <kernel/sched/signals.h>
+#include <kernel/proc/sched.h>
+#include <kernel/proc/signals.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/interrupts/interrupts.h>
 #include <kernel/interrupts/swi.h>
@@ -17,7 +17,7 @@ LIST_HEAD(sched_task_list);
 
 static tid_t sched_last_id = 0xff;
 static struct sched_core sched_cores[CONFIG_MAX_CORES];
-static struct sched_task *sched_idle_task;
+static struct thread *sched_idle_task;
 static int sched_initialized = 0;
 static spinlock_t sched_lock;
 
@@ -29,7 +29,7 @@ static void __sched_idle()
     }
 }
 
-static struct sched_task *__sched_current_task()
+static struct thread *__sched_current_thread()
 {
     uint32_t core_id = core_id();
     if (core_id > CONFIG_MAX_CORES || !sched_cores[core_id].active || !sched_cores[core_id].task)
@@ -37,9 +37,21 @@ static struct sched_task *__sched_current_task()
     return sched_cores[core_id].task;
 }
 
-void sched_task_preentry()
+static void sched_handle_death(struct thread *th)
 {
-    struct sched_task *task = __sched_current_task();
+    if (!th) return;
+
+    /* Panic if critical process died */
+    if (th->flags & SCHED_FLAG_SYSTEM)
+    {
+        spin_unlock(&sched_lock); // don't forget to unlock!
+        panic("sched: critical process died");
+    }
+}
+
+void sched_thread_preentry()
+{
+    struct thread *task = __sched_current_thread();
     if (!task)
         goto end;
 
@@ -51,15 +63,15 @@ end:
     idle();
 }
 
-static int sched_remove_task(tid_t tid)
+static int sched_remove_thread(tid_t tid)
 {
     struct list_head *pos, *n;
-    struct sched_task *entry;
+    struct thread *entry;
 
     list_for_each_safe(pos, n, &sched_task_list) {
-        entry = list_entry(pos, struct sched_task, list);
+        entry = list_entry(pos, struct thread, list);
         if (!entry) continue;
-        if (entry->task_id == tid)
+        if (entry->tid == tid)
         {
             /* Deallocate the registers and the entry itself */
             if (entry->stack_pointer) kfree(entry->stack_pointer);
@@ -73,24 +85,24 @@ static int sched_remove_task(tid_t tid)
     return -1;
 }
 
-static struct sched_task *__sched_get_task(tid_t task_id)
+static struct thread *__sched_get_thread(tid_t tid)
 {
     struct list_head *pos;
-    struct sched_task *entry;
+    struct thread *entry;
 
     list_for_each(pos, &sched_task_list) {
-        entry = list_entry(pos, struct sched_task, list);
-        if (entry && entry->task_id == task_id)
+        entry = list_entry(pos, struct thread, list);
+        if (entry && entry->tid == tid)
             return entry;
     }
 
     return NULL;
 }
 
-extern void arch_sched_save(struct sched_task *task);
-extern void arch_sched_load(struct sched_task *task);
+void arch_sched_save(struct thread *task);
+void arch_sched_load(struct thread *task);
 
-static void sched_save(struct sched_task *task)
+static void sched_save(struct thread *task)
 {
     uint32_t core_id = core_id();
     if (!task)
@@ -102,33 +114,33 @@ static void sched_save(struct sched_task *task)
     arch_sched_save(task);
 }
 
-static void sched_load(struct sched_task *task)
+static void sched_load(struct thread *task)
 {
     if (!task)
         return;
-
     arch_sched_load(task);
 }
 
 static void sched_reschedule(struct sched_core *core)
 {
-    tid_t current_tid = core->task ? core->task->task_id : 0;
+    tid_t current_tid = core->task ? core->task->tid : 0;
     struct list_head *pos, *n;
-    struct sched_task *entry, *new_task = (struct sched_task*)NULL;
+    struct thread *entry, *new_task = (struct thread*)NULL;
 
     /* Update tasks */
     size_t sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
     list_for_each_safe(pos, n, &sched_task_list) {
-        entry = list_entry(pos, struct sched_task, list);
+        entry = list_entry(pos, struct thread, list);
         if (!entry) continue;
 
         if (entry->state == SCHED_TASK_SLEEPING && entry->sleep_timeout <= sleep_timeout)
             entry->state = SCHED_TASK_ACTIVE;
         else if (entry->state == SCHED_TASK_DEAD)
         {
-            sched_remove_task(entry->task_id);
+            sched_handle_death(entry);
+            sched_remove_thread(entry->tid);
             if (core->task == entry)
-                core->task = (struct sched_task *)NULL;
+                core->task = (struct thread *)NULL;
         }
     }
 
@@ -137,10 +149,10 @@ static void sched_reschedule(struct sched_core *core)
 
     /* Find next task to schedule */
     list_for_each(pos, &sched_task_list) {
-        entry = list_entry(pos, struct sched_task, list);
+        entry = list_entry(pos, struct thread, list);
         if (entry && entry->state == SCHED_TASK_ACTIVE)
         {
-            if (entry->task_id > current_tid && entry->task_id != sched_idle_task->task_id)
+            if (entry->tid > current_tid && entry->tid != sched_idle_task->tid)
             {
                 core->task = entry;
                 return;
@@ -152,8 +164,8 @@ static void sched_reschedule(struct sched_core *core)
      * Try again to find any task to avoid going idle
      */
     list_for_each(pos, &sched_task_list) {
-        entry = list_entry(pos, struct sched_task, list);
-        if (entry && entry->state == SCHED_TASK_ACTIVE && entry->task_id != sched_idle_task->task_id)
+        entry = list_entry(pos, struct thread, list);
+        if (entry && entry->state == SCHED_TASK_ACTIVE && entry->tid != sched_idle_task->tid)
         {
             core->task = entry;
             return;
@@ -184,18 +196,18 @@ int sched_init()
     if (!sched_idle_task) return -ENOMEM;
     memset((void*)sched_idle_task, 0, sizeof(*sched_idle_task));
 
-    sched_idle_task->task_id = sched_last_id++;
+    sched_idle_task->vmem = get_kernel_pagedir();
+    sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
     sched_idle_task->state = SCHED_TASK_ACTIVE;
     list_add_tail(&sched_idle_task->list, &sched_task_list);
-
 
     spinlock_init(&sched_lock);
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
     if (ret != 0) return ret;
     ret = swi_request(SWI_RESCHEDULE, &sched_swi, NULL);
     sched_initialized = 1;
-    printk("sched: idle task id: %lu", sched_idle_task->task_id);
+    printk("sched: idle task id: %lu", sched_idle_task->tid);
     return ret;
 }
 
@@ -213,7 +225,7 @@ void sched_usleep(tid_t tid, size_t us)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
-    struct sched_task *task = __sched_get_task(tid);
+    struct thread *task = __sched_get_thread(tid);
     if (!task)
     {
         spin_unlock_irqrestore(&sched_lock, flags);
@@ -246,19 +258,21 @@ void sched_call()
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_add_task(tid_t *tid, task_entrypoint_t entrypoint)
+int sched_create_thread(tid_t *tid, task_entrypoint_t entrypoint, pagedir_t vmem)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
-    struct sched_task *node = kmalloc(sizeof(*node));
+    struct thread *node = kmalloc(sizeof(*node));
     if (!node) goto err;
+    if (!vmem) vmem = get_kernel_pagedir();
     memset((void*)node, 0, sizeof(*node));
-    node->task_id = sched_last_id++;
+    node->vmem = vmem;
+    node->tid = sched_last_id++;
     node->entrypoint = entrypoint;
     node->state = SCHED_TASK_ACTIVE;
     list_add_tail(&node->list, &sched_task_list);
     if (tid)
-        *tid = node->task_id;
+        *tid = node->tid;
     spin_unlock_irqrestore(&sched_lock, flags);
     return 0;
 err:
@@ -266,12 +280,12 @@ err:
     return -ENOMEM;
 }
 
-int sched_get_task(tid_t task_id, struct sched_task **task)
+int sched_get_thread(tid_t tid, struct thread **task)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
     if (!task) goto err;
-    struct sched_task *_task = __sched_get_task(task_id);
+    struct thread *_task = __sched_get_thread(tid);
     if (!_task) goto err;
     *task = _task;
     spin_unlock_irqrestore(&sched_lock, flags);
@@ -281,25 +295,39 @@ err:
     return -1;
 }
 
-int sched_signal_task(tid_t tid, uint32_t signo)
+int sched_thread_set_flags(tid_t tid, uint32_t flags)
+{
+    uint32_t irq_flags;
+    spin_lock_irqsave(&sched_lock, irq_flags);
+    struct thread *task = __sched_get_thread(tid);
+    if (!task) goto err;
+    task->flags = flags;
+    spin_unlock_irqrestore(&sched_lock, irq_flags);
+    return 0;
+err:
+    spin_unlock_irqrestore(&sched_lock, irq_flags);
+    return -1;
+}
+
+int sched_signal_thread(tid_t tid, uint32_t signo)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
-    struct sched_task *task = __sched_get_task(tid);
+    struct thread *task = __sched_get_thread(tid);
     if (!task) goto err;
     
     switch (signo)
     {
         case SIGKILL:
         case SIGSTOP:
-            printk("sched%u: signal %u", task->task_id, signo);
+            printk("sched%u: signal %u", task->tid, signo);
             task->state = SCHED_TASK_DEAD;
             break;
 
         default:
             if (!task->signal_handler || task->inside_signal)
             {
-                printk("sched%u: signal %u", task->task_id, signo);
+                printk("sched%u: signal %u", task->tid, signo);
                 task->state = SCHED_TASK_DEAD;
                 break;
             }
@@ -313,13 +341,13 @@ err:
     return -1;
 }
 
-int sched_current_task(tid_t *tid)
+int sched_current_thread(tid_t *tid)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
-    struct sched_task *task = __sched_current_task();
+    struct thread *task = __sched_current_thread();
     if (!task || !tid) goto err;
-    *tid = task->task_id;
+    *tid = task->tid;
     spin_unlock_irqrestore(&sched_lock, flags);
     return 0;
 err:
@@ -352,6 +380,6 @@ void sched_enter_core()
 
     sched_cores[core_id].core_id = core_id;
     sched_cores[core_id].active = 1;
-    sched_cores[core_id].task = (struct sched_task*)NULL;
+    sched_cores[core_id].task = (struct thread*)NULL;
     idle();
 }

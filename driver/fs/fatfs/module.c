@@ -110,13 +110,22 @@ static int fatfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
     if (!rlen) rlen = &br;
     if (!mount) return -EINVAL;
     FIL *fp = vfs_handle_data(handle);
-    return f_read(fp, mount->fs_data, buf, len, rlen) == FR_OK ? 0 : -EINVAL;
+    return f_read(fp, mount->fs_data, buf, len, (UINT*)rlen) == FR_OK ? 0 : -EINVAL;
+}
+
+static int fatfs_size(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size)
+{
+    if (!mount) return -EINVAL;
+    FIL *fp = vfs_handle_data(handle);
+    *size = (size_t)fp->obj.objsize;
+    return 0;
 }
 
 static struct vfs_layer_ops fatfs_ops = {
     .open = &fatfs_open,
     .close = &fatfs_close,
     .read = &fatfs_read,
+    .size = &fatfs_size,
 };
 
 static struct vfs_layer fatfs_layer = {

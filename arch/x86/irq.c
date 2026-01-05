@@ -33,11 +33,18 @@ void x86_irq_setup(struct x86_cpu *core)
 
     /* SWI */
     DECL_DIRECT(100);  // SWI_RESCHEDULE
+
+    /* Syscalls */
+    DECL_DIRECT(101);
 }
 
 void x86_irq_handler(struct x86_regs32 regs)
 {
     uint32_t irq = regs.int_no;
+    // if (irq != 32)
+    //     printk("irq %u", irq);
+
+    if (irq == 101) printk((char*)regs.eax);
 
     if (regs.int_no == X86_PIT_IRQ)
     {

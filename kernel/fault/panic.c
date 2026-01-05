@@ -1,7 +1,7 @@
 #include <kernel/inari.h>
 #include <arch/sys.h>
 #include <kernel/console/console.h>
-#include <kernel/sched/sched.h>
+#include <kernel/proc/sched.h>
 
 #include <misc/print.h>
 #include <misc/string.h>
@@ -23,7 +23,8 @@ static inline int print(const char *fmt, ...)
 void panic(const char *fmt, ...)
 {
     sched_stop();
-
+    console_switch_early();
+    
     va_list args;
     va_start(args, fmt);
     int c = 0;
@@ -34,7 +35,7 @@ void panic(const char *fmt, ...)
 
     c += print("\n");
     c += print("Kernel panic!");
-    
+
     va_end(args);
     halt();
 }

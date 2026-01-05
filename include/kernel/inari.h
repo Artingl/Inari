@@ -3,6 +3,7 @@
 
 #include <misc/types.h>
 
+#include <kernel/mm/page.h>
 #include <kernel/fault/panic.h>
 #include <kernel/printk.h>
 
@@ -27,16 +28,17 @@ typedef struct reserved_memory {
 } reserved_memory_t;
 
 /* Performs all early initialization: earlycon device, etc. */
-extern void kearly_init(bootinfo_t bootinfo);
+void kearly_init(bootinfo_t bootinfo);
 
 /* The main kernel entrypoint after the hardware was initialized */
-extern void kmain(void);
-extern bootinfo_t get_boot_info();
+void kmain(void);
+bootinfo_t get_boot_info();
+pagedir_t get_kernel_pagedir();
 
 #define ARG_MAX_LEN 64
 
-extern int parse_cmdline_argument(const char *key, char *result);
-extern const char *get_cmdline();
+int parse_cmdline_argument(const char *key, char *result);
+const char *get_cmdline();
 
 #endif
 
