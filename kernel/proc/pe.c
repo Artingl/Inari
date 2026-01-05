@@ -7,12 +7,6 @@
 
 #include <misc/string.h>
 
-#include <kernel/timer.h>
-void test()
-{
-    printk("test routine");
-    // usleep(3000000);
-}
 
 int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
 {
@@ -31,41 +25,25 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
     pagedir_t prev_dir = page_get_dir();
     page_switch_dir(vmem);
 
-    pbase = pmm_alloc_pages((sz >> 12) + 1);
-    if (!pbase || !page_map(header32->image_base, pbase, sz, PAGE_RW | PAGE_PRESENT))
-    {
-        res = -ENOMEM;
-        goto end;
-    }
-    memcpy((void*)header32->image_base, (void*)&buf[0], sz);
-
     /* Load all sections */
     for (i = 0; i < header->sections_number; i++)
     {
         off = i * 40 + 128 + header->optional_header_sz + sizeof(struct pe_header);
         section = (struct pe_image_section*)&buf[off];
 
-        /* TODO: do it properly, don't ignore long names */
-        if (section->name[0] == '/') continue;
+        printk("%s: pbase 0x%x 0x%x", section->name, pbase, section->vbase);
 
         pbase = pmm_alloc_pages((section->virt_sz >> 12) + 1);
-        printk("pbase 0x%x 0x%x", pbase, section->vbase);
-        if (!pbase || !page_map(section->vbase, pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
+        if (!pbase || !page_map(header32->image_base + section->vbase, pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
         {
             res = -ENOMEM;
             goto end;
         }
 
-        printk("copying section %s", section->name);
-        memcpy((void*)section->vbase, (void*)&buf[section->pbase], section->phys_sz);
-
-        /* Check if this section contains entrypoint */
-        if (section->vbase <= header32->address_of_entry_point
-            && section->vbase + section->virt_sz > header32->address_of_entry_point)
-        {
-            *entrypoint = header32->image_base + (header32->address_of_entry_point - section->vbase) + section->pbase;
-        }
+        memcpy((void*)header32->image_base + section->vbase, (void*)&buf[section->pbase], section->phys_sz);
     }
+
+    *entrypoint = (void*)(header32->image_base + header32->address_of_entry_point);
 
 end:
     page_switch_dir(prev_dir);

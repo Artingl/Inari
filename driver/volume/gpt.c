@@ -134,8 +134,7 @@ static void handle_block_dev_load(dev_t dev)
         partitions++;
 
 #ifdef CONFIG_DEBUG
-        printk("gpt: %u %u found partition '%s' on dev:%s%d; size %uKiB",
-            header.entry_sz, offset,
+        printk("gpt: found partition '%s' on dev:%s%d; size %uKiB",
             entry.name,
             bdev->group->name,
             DEVID(dev),

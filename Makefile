@@ -35,7 +35,8 @@ mkconfig:
 
 clean:
 	-rm -rf build && \
-	make -C arch/${TARGET} clean
+	make -C arch/${TARGET} clean && \
+	make -C libc clean
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \

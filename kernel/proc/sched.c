@@ -206,8 +206,12 @@ int sched_init()
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
     if (ret != 0) return ret;
     ret = swi_request(SWI_RESCHEDULE, &sched_swi, NULL);
-    sched_initialized = 1;
-    printk("sched: idle task id: %lu", sched_idle_task->tid);
+    if (ret == 0)
+    {
+        sched_initialized = 1;
+        printk("sched: idle task id: %lu", sched_idle_task->tid);
+    }
+    
     return ret;
 }
 

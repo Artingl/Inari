@@ -17,6 +17,7 @@
 #define	ESRCH		12	/* No such process */
 #define	EACCES		13	/* Permission denied */
 #define	EFAULT		14	/* Bad address */
+#define	ENOEXEC		15	/* Exec format error */
 
 // 
 // #define	ENOENT		 2	/* No such file or directory */

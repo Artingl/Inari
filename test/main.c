@@ -16,13 +16,15 @@
 //     }
 // }
 
-#include <stdint.h>
+#include <typedefs.h>
+#include <sys.h>
 
-int __main()
+int main()
 {
-    char *s = "hello world from init!";
-    __asm__ volatile("mov %0, %%eax" ::"r"((uint32_t)s));
-    __asm__ volatile("int $101");
+    // __print("Hello world from init!");
+    char *s = "Hello world from init!";
 
-    return 12;
+    syscall(23, (uint32_t)s, 0x00, 0x12, 0x07, 0x93);
+
+    return 0;
 }

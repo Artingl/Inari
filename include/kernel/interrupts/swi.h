@@ -5,6 +5,7 @@
 #include <kernel/interrupts/interrupts.h>
 
 #define SWI_RESCHEDULE 0x2000
+#define SWI_SYSCALL    0x80
 
 #define SWI_HANDLED 1
 

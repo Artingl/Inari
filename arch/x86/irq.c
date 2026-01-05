@@ -2,6 +2,7 @@
 #include <kernel/interrupts/interrupts.h>
 #include <kernel/interrupts/irq.h>
 #include <kernel/interrupts/swi.h>
+#include <kernel/sys/syscall.h>
 
 #include <arch/x86/pit.h>
 #include <arch/x86/cpu.h>
@@ -35,16 +36,15 @@ void x86_irq_setup(struct x86_cpu *core)
     DECL_DIRECT(100);  // SWI_RESCHEDULE
 
     /* Syscalls */
-    DECL_DIRECT(101);
+    DECL_DIRECT(0x80);  // SWI_SYSCALL
 }
 
 void x86_irq_handler(struct x86_regs32 regs)
 {
     uint32_t irq = regs.int_no;
-    // if (irq != 32)
-    //     printk("irq %u", irq);
 
-    if (irq == 101) printk((char*)regs.eax);
+    if (irq == SWI_SYSCALL)
+        regs.eax = syscall_handle(regs.ebx, regs.ecx, regs.edx, regs.esi, regs.edi, regs.ebp);
 
     if (regs.int_no == X86_PIT_IRQ)
     {
