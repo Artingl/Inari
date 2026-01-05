@@ -41,6 +41,9 @@ static void sched_handle_death(struct thread *th)
 {
     if (!th) return;
 
+    if (th->cleanup_handler)
+        th->cleanup_handler(th, th->proc_data);
+
     /* Panic if critical process died */
     if (th->flags & SCHED_FLAG_SYSTEM)
     {
@@ -262,7 +265,7 @@ void sched_call()
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, task_entrypoint_t entrypoint, pagedir_t vmem)
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vmem, thread_cleanup_t cleanup_handler, void *proc_data)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
@@ -273,6 +276,8 @@ int sched_create_thread(tid_t *tid, task_entrypoint_t entrypoint, pagedir_t vmem
     node->vmem = vmem;
     node->tid = sched_last_id++;
     node->entrypoint = entrypoint;
+    node->cleanup_handler = cleanup_handler;
+    node->proc_data = proc_data;
     node->state = SCHED_TASK_ACTIVE;
     list_add_tail(&node->list, &sched_task_list);
     if (tid)

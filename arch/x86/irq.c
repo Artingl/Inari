@@ -44,7 +44,7 @@ void x86_irq_handler(struct x86_regs32 regs)
     uint32_t irq = regs.int_no;
 
     if (irq == SWI_SYSCALL)
-        regs.eax = syscall_handle(regs.ebx, regs.ecx, regs.edx, regs.esi, regs.edi, regs.ebp);
+        regs.ebx = syscall_handle(regs.ebx, (void*)regs.ecx, (void*)regs.edx, (void*)regs.esi, (void*)regs.edi, (void*)regs.ebp);
 
     if (regs.int_no == X86_PIT_IRQ)
     {

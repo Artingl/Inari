@@ -13,14 +13,14 @@
 
 #define SCHED_FLAG_SYSTEM (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
 
-typedef void (*task_entrypoint_t)();
-typedef void (*task_signal_t)(uint32_t signo);
+typedef void (*thread_cleanup_t)(struct thread *, void*);
+typedef void (*thread_signal_t)(uint32_t signo);
 
 struct thread
 {
     tid_t tid;
-    task_entrypoint_t entrypoint;
-    task_signal_t signal_handler;
+    thread_entrypoint_t entrypoint;
+    thread_signal_t signal_handler;
     pagedir_t vmem;
     uint8_t inside_signal;
     uint8_t state;
@@ -28,6 +28,8 @@ struct thread
     uint32_t flags;
     size_t sleep_timeout;
     void *stack_pointer;
+    thread_cleanup_t cleanup_handler;
+    void *proc_data;
 
     /* Count of reschedules for this task */
     size_t reschedules_count;
@@ -48,7 +50,7 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, task_entrypoint_t entrypoint, pagedir_t vmem);
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vmem, thread_cleanup_t cleanup_handler, void *data);
 int sched_signal_thread(tid_t tid, uint32_t signo);
 void sched_yield();
 void sched_enter_core();

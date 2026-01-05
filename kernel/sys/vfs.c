@@ -9,12 +9,10 @@
 #include <misc/string.h>
 #include <misc/format.h>
 
-LIST_HEAD(vfs_layers);
-LIST_HEAD(vfs_mount_points);
-LIST_HEAD(vfs_handles);
-
-vfs_handle_t last_handle = 0xff0;
-struct list_head handles;
+static LIST_HEAD(vfs_layers);
+static LIST_HEAD(vfs_mount_points);
+static LIST_HEAD(vfs_handles);
+static vfs_handle_t last_handle = 0xff0;
 
 struct vfs_handle
 {
@@ -35,6 +33,7 @@ int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *
 {
     if (!handle) return -EINVAL;
     struct vfs_handle *base = (struct vfs_handle*)kmalloc(sizeof(struct vfs_handle));
+    if (!base)   return -ENOMEM;
     base->id = last_handle++;
     base->mount = mount;
     base->data = data;
@@ -81,6 +80,7 @@ int vfs_mount(dev_t dev, const char* path)
     if (!bdev) return -ENODEV;
 
     struct vfs_mount_point *mount = (struct vfs_mount_point*)kmalloc(sizeof(struct vfs_mount_point));
+    if (!mount) return -ENOMEM;
     mount->bdev = dev;
     mount->mount_point = path;
     INIT_LIST_HEAD(&mount->list);
@@ -181,6 +181,7 @@ int vfs_close(vfs_handle_t handle)
         {
             if (entry->mount->layer->ops->close)
                 res = entry->mount->layer->ops->close(entry->mount, handle);
+            list_del(&entry->list);
             kfree(entry);
             return res;
         }

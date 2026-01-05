@@ -163,7 +163,7 @@ int console_init(void)
     spinlock_init(&console_lock);
     console_pool_init();
 
-    ret = sched_create_thread(&console_task_id, &console_thread, NULL);
+    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL);
     return ret;
 }
 

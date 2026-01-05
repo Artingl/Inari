@@ -2,6 +2,7 @@
 #include <kernel/proc/proc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/pe.h>
+#include <kernel/proc/signals.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/sys/vfs.h>
@@ -14,17 +15,6 @@ static spinlock_t lock;
 static pid_t last_pid = 1;
 
 static LIST_HEAD(processes);
-
-struct process
-{
-    pid_t pid;
-    task_descriptor_t descriptor;
-
-    /* TODO: should there be a limit? */
-    tid_t threads[CONFIG_PROC_MAX_THREADS];
-
-    struct list_head list;
-};
 
 static int get_process(struct process **proc, pid_t pid)
 {
@@ -43,10 +33,37 @@ static int get_process(struct process **proc, pid_t pid)
     return -ESRCH;
 }
 
+static void thread_cleanup(struct thread *th, struct process *proc)
+{
+    if (!proc) return;
+
+    size_t i, total_threads = 0;
+    for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
+    {
+        if (proc->threads[i] == th->tid)
+            proc->threads[i] = 0;
+        if (proc->threads[i] != 0) total_threads++;
+    }
+    
+    /* If we don't have any threads running, that means either they died
+     * on their own or kill_process killed them. We can cleanup the process now. */
+    if (total_threads == 0)
+    {
+        list_del(&proc->list);
+        /* TODO: cleanup process's virtual memory! */
+    }
+}
+
 int proc_init()
 {
     spinlock_init(&lock);
     return 0;
+}
+
+int exit(pid_t pid, int exit_code)
+{
+    /* TODO: exit code has no actual use for now */
+    return kill_process(pid);
 }
 
 int execp(pid_t *pid, const char *path)
@@ -90,8 +107,6 @@ end:
 
 int spawn_process(pid_t *pid, task_descriptor_t descriptor)
 {
-    if (!pid) return -EINVAL;
-
     uint32_t flags;
     struct process *proc;
     tid_t tid;
@@ -104,20 +119,37 @@ int spawn_process(pid_t *pid, task_descriptor_t descriptor)
     proc->descriptor = descriptor;
     memset((void*)&proc->threads[0], 0, sizeof(proc->threads));
     list_add(&proc->list, &processes);
-    *pid = proc->pid;
+    if (pid)
+        *pid = proc->pid;
     spin_unlock_irqrestore(&lock, flags);
 
-    spawn_thread(&tid, *pid, descriptor);
+    spawn_thread(&tid, proc->pid, (thread_entrypoint_t)descriptor.entrypoint);
     return 0;
 }
 
 int kill_process(pid_t pid)
 {
-    /* Kill all threads and kfree the process struct */
-    return -ESRCH;
+    int res = 0;
+    size_t i;
+    uint32_t flags;
+    struct process *proc;
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+
+    /* Kill all threads */
+    for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
+        if (proc->threads[i] != 0)
+        {
+            /* NOTE: SIGKILL will kill a thread immediately */
+            sched_signal_thread(proc->threads[i], SIGKILL);
+        }
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    return res;
 }
 
-int spawn_thread(tid_t *tid, pid_t pid, task_descriptor_t descriptor)
+int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
 {
     if (!tid) return -EINVAL;
 
@@ -129,7 +161,7 @@ int spawn_thread(tid_t *tid, pid_t pid, task_descriptor_t descriptor)
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
-    if ((res = sched_create_thread(tid, descriptor.entrypoint, descriptor.vmem)) != 0)
+    if ((res = sched_create_thread(tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, (void*)proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(*tid, SCHED_FLAG_SYSTEM);

@@ -7,6 +7,8 @@
 
 #include <misc/string.h>
 
+extern char kern_virt_start;
+extern char kern_virt_end;
 
 int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
 {
@@ -31,7 +33,12 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
         off = i * 40 + 128 + header->optional_header_sz + sizeof(struct pe_header);
         section = (struct pe_image_section*)&buf[off];
 
-        printk("%s: pbase 0x%x 0x%x", section->name, pbase, section->vbase);
+        if (header32->image_base + section->vbase >= (uintptr_t)&kern_virt_start
+            && header32->image_base + section->vbase < (uintptr_t)&kern_virt_end)
+        {
+            res = -EFAULT;
+            goto end;
+        }
 
         pbase = pmm_alloc_pages((section->virt_sz >> 12) + 1);
         if (!pbase || !page_map(header32->image_base + section->vbase, pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))

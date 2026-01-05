@@ -19,7 +19,8 @@
             ],
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/include"
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/libc/include"
             ]
         }
     ],

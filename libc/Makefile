@@ -16,4 +16,5 @@ clean:
 	rm libc.a
 
 build: $(libc_objects)
+	cp ../include/kernel/errno.h include/ && \
 	i686-w64-mingw32-ar rcs libc.a $(shell find build/ -name *.o)
