@@ -17,35 +17,32 @@ static int devfs_mount_bdev(struct vfs_mount_point *mount)
     return -EINVFS;
 }
 
-static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct vfs_node *nodes, size_t offset, size_t limit)
+static size_t devfs_groups_count = 7;
+static const char *devfs_groups[] = { "sys", "disks", "volume", "input", "terminals", "video", "network" };
+
+static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct vfs_node *node, size_t offset)
 {
-    if (!mount || !path || !nodes) return -EINVAL;
-    size_t i = 0;
+    size_t i;
+    if (!mount || !path || !node) return -EINVAL;
 
     if (strcmp(path, "/") == 0)
     {
-        strcpy(&nodes[i].name[0], "dev");
-        nodes[i++].st_mode = VFS_STAT_DIR;
+        strcpy(&node->name[0], "dev");
+        node->st_mode = VFS_STAT_DIR;
+        return 1;
     }
     else if (strncmp(path, "/dev", 4) == 0)
     {
-        strcpy(&nodes[i].name[0], "sys");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "disks");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "volume");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "input");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "terminals");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "video");
-        nodes[i++].st_mode = VFS_STAT_DIR;
-        strcpy(&nodes[i].name[0], "network");
-        nodes[i++].st_mode = VFS_STAT_DIR;
+        for (i = 0; i < devfs_groups_count; i++)
+        {
+            if (i < node->off - offset) continue;
+            strcpy(&node->name[0], devfs_groups[i]);
+            node->st_mode = VFS_STAT_DIR;
+            return 1;
+        }
     }
 
-    return i;
+    return 0;
 }
 
 static struct vfs_layer_ops devfs_ops = {

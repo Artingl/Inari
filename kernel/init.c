@@ -103,6 +103,27 @@ static void init_stub_thread()
      * of the init task, so critical kernel modules have time to initialize. */
     usleep(40000);
 
+
+    // vfs_mount(0, "/dev");
+
+    // struct vfs_node node = {0};
+    
+    // while (vfs_readdir("/dev", &node) > 0)
+    // {
+    //     if (node.st_mode & VFS_STAT_DIR)
+    //     {
+    //         printk("directory");
+    //         printk(node.name);
+    //         printk("");
+    //     }
+    //     if (node.st_mode & VFS_STAT_FILE)
+    //     {
+    //         printk("file");
+    //         printk(node.name);
+    //         printk("");
+    //     }
+    // }
+
     pid_t pid;
     int res;
     if ((res = execp(&pid, "/init.exe")) != 0)

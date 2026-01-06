@@ -26,6 +26,8 @@ struct fs_node {
     char name[256];
     uint32_t st_mode;           // File type + permissions
     uint64_t size;              // File size (bytes)
+
+    size_t off;                 // Node offset in the directory
 };
 
 int exit(int code);
@@ -44,7 +46,7 @@ int get_tid(tid_t *tid);
 int kill_thread(tid_t tid);
 int mount(dev_t dev, const char *path);
 int unmount(const char *path);
-int readdir(const char *path, struct fs_node *nodes, size_t offset, size_t limit);
+int readdir(const char *path, struct fs_node *node);
 
 int syscall(
     uint32_t id,

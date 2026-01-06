@@ -88,7 +88,7 @@ int syscall_handle(
         return vfs_unmount((const char*)param1);
     
     case SYSCALL_READDIR:
-        return vfs_readdir((const char*)param0, (struct vfs_node*)param1, (size_t)param2, (size_t)param3);
+        return vfs_readdir((const char*)param0, (struct vfs_node*)param1);
 
     default:
         return -EINVAL;

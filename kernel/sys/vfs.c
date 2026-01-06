@@ -267,18 +267,16 @@ int vfs_size(vfs_handle_t handle, size_t *size)
     return -EBADHNDL;
 }
 
-int vfs_readdir(const char *path, struct vfs_node *nodes, size_t offset, size_t limit)
+int vfs_readdir(const char *path, struct vfs_node *node)
 {
-    if (!nodes || !path) return -EINVAL;
+    if (!node || !path) return -EINVAL;
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
-    int found_files, total_files = 0;
+    int res = 0, total_files = 0;
 
     /* Search mount point that owns this path */
     list_for_each(pos, &vfs_mount_points) {
-        if (limit == 0) break;
-
         entry = list_entry(pos, struct vfs_mount_point, list);
 
         /* TODO: we use dumb approach here: just check that the mount point path
@@ -288,13 +286,14 @@ int vfs_readdir(const char *path, struct vfs_node *nodes, size_t offset, size_t 
          *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg */
         if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(path)) == 0)
         {
-            found_files = entry->layer->ops->readdir(entry, path, &nodes[total_files], offset, limit);
-            total_files += found_files;
-            if (limit > found_files)
-                limit -= found_files;
-            else limit = found_files;
+            res = entry->layer->ops->readdir(entry, path, node, total_files);
+            if (res > 0)
+                total_files += res;
+            if (total_files > node->off)
+                break;
         }
     }
-
-    return total_files;
+    
+    node->off++;
+    return res;
 }

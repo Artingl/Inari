@@ -28,6 +28,8 @@ struct vfs_node {
     char name[CONFIG_VFS_NAME_MAX];
     uint32_t st_mode;           // File type + permissions
     uint64_t size;              // File size (bytes)
+
+    size_t off;                 // Node offset in the directory
 };
 
 struct vfs_layer_ops {
@@ -38,7 +40,7 @@ struct vfs_layer_ops {
     int (*seek)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t offset);
     int (*tell)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *offset);
     int (*size)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size);
-    int (*readdir)(struct vfs_mount_point *mount, const char *path, struct vfs_node *nodes, size_t offset, size_t limit);
+    int (*readdir)(struct vfs_mount_point *mount, const char *path, struct vfs_node *node, size_t offset);
     // int (*ioctl)(struct vfs_mount_point *mount, unsigned long req, void *arg);
 };
 
@@ -80,7 +82,7 @@ int vfs_seek(vfs_handle_t handle, size_t offset);
 int vfs_tell(vfs_handle_t handle, size_t *offset);
 int vfs_size(vfs_handle_t handle, size_t *size);
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
-int vfs_readdir(const char *path, struct vfs_node *nodes, size_t offset, size_t limit);
+int vfs_readdir(const char *path, struct vfs_node *node);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
 void *vfs_handle_data(vfs_handle_t handle);

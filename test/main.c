@@ -10,30 +10,25 @@ int main()
     /* Mount devfs */
     mount(0, "/dev");
 
-    struct fs_node nodes[8];
-    int total_files = readdir("/", &nodes[0], 0, 8);
-
-    if (total_files < 0)
+    struct fs_node node = {0};
+    
+    while (readdir("/", &node) > 0)
     {
-        debug("unable to read dir.");
-        exit(1);
-    }
-
-    for (int i = 0; i < total_files; i++)
-    {
-        if (nodes[i].st_mode & IO_STAT_DIR)
+        if (node.st_mode & IO_STAT_DIR)
         {
             debug("directory");
-            debug(nodes[i].name);
+            debug(node.name);
             debug("");
         }
-        if (nodes[i].st_mode & IO_STAT_FILE)
+        if (node.st_mode & IO_STAT_FILE)
         {
             debug("file");
-            debug(nodes[i].name);
+            debug(node.name);
             debug("");
         }
     }
 
+    debug("done");
+    usleep(1000000);
     return 0;
 }

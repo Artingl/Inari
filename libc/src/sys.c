@@ -113,7 +113,7 @@ int unmount(const char *path)
     return (int)syscall(16, (uint32_t)path, 0, 0, 0, 0);
 }
 
-int readdir(const char *path, struct fs_node *nodes, size_t offset, size_t limit)
+int readdir(const char *path, struct fs_node *node)
 {
-    return (int)syscall(17, (uint32_t)path, (uint32_t)nodes, (uint32_t)offset, (uint32_t)limit, 0);
+    return (int)syscall(17, (uint32_t)path, (uint32_t)node, 0, 0, 0);
 }

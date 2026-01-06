@@ -123,40 +123,41 @@ static int fatfs_size(struct vfs_mount_point *mount, vfs_handle_t handle, size_t
     return 0;
 }
 
-static int fatfs_readdir(struct vfs_mount_point *mount, const char *path, struct vfs_node *nodes, size_t offset, size_t limit)
+static int fatfs_readdir(struct vfs_mount_point *mount, const char *path, struct vfs_node *node, size_t offset)
 {
-    if (!mount || !path || !nodes) return -EINVAL;
-    size_t count = 0, i = 0, ln;
+    if (!mount || !path || !node) return -EINVAL;
+    size_t file_id = 0, res = 0, ln;
     DIR dp;
     FILINFO fno;
 
     if (f_opendir(&dp, mount->fs_data, path) != FR_OK) return -ENOENT;
     for (;;)
     {
-        if (offset > 0) { offset--; continue; }
-
         f_readdir(&dp, mount->fs_data, &fno);
-        if (fno.fname[0] == 0 || limit == 0) break;
-        limit--;
+        if (fno.fname[0] == 0) break;
+        if (file_id++ < node->off - offset) continue;
 
         ln = strlen(fno.fname);
-        memcpy((void*)&nodes[i].name[0], (void*)fno.fname, ln > CONFIG_VFS_NAME_MAX ? CONFIG_VFS_NAME_MAX : ln);
-        nodes[i].name[CONFIG_VFS_NAME_MAX - 1] = '\0';
+        memcpy((void*)&node->name[0], (void*)fno.fname, ln > CONFIG_VFS_NAME_MAX ? CONFIG_VFS_NAME_MAX : ln);
+        node->name[CONFIG_VFS_NAME_MAX - 1] = '\0';
 
         if (fno.fattrib & AM_DIR)
         {
-            nodes[i].st_mode = VFS_STAT_DIR;
-            nodes[i++].size = 0;
+            node->st_mode = VFS_STAT_DIR;
+            node->size = 0;
         }
         else {
-            nodes[i].st_mode = VFS_STAT_FILE;
-            nodes[i++].size = fno.fsize;
+            node->st_mode = VFS_STAT_FILE;
+            node->size = fno.fsize;
         }
+
+        res = 1;
+        break;
     }
 
 end:
     f_closedir(&dp, mount->fs_data);
-    return i;
+    return res;
 }
 
 static struct vfs_layer_ops fatfs_ops = {
