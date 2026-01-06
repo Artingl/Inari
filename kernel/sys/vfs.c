@@ -83,6 +83,8 @@ int vfs_mount(dev_t dev, const char* path)
     mount->mount_point = path;
     INIT_LIST_HEAD(&mount->list);
 
+    /* TODO: When mounting, ensure there's actual folder we can mount to */
+
     list_for_each(pos, &vfs_layers) {
         entry = list_entry(pos, struct vfs_layer, list);
         if (entry->mount(mount) == 0)
@@ -161,7 +163,7 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
          *       IS in the beginning of the target path.
          *
          *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
-         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg */
+         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg` */
         if (entry->layer->ops->open && strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
         {
             return entry->layer->ops->open(entry, file, path, flags);
@@ -283,17 +285,17 @@ int vfs_readdir(const char *path, struct vfs_node *node)
          *       IS in the beginning of the target path.
          *
          *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
-         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg */
-        if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(path)) == 0)
+         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg` */
+        if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
         {
             res = entry->layer->ops->readdir(entry, path, node, total_files);
             if (res > 0)
                 total_files += res;
-            if (total_files > node->off)
-                break;
+            // if (total_files > node->off)
+            break;
         }
     }
-    
+
     node->off++;
     return res;
 }

@@ -12,17 +12,23 @@ int main()
 
     struct fs_node node = {0};
     
-    while (readdir("/", &node) > 0)
+    while (readdir("/dev/volume", &node) > 0)
     {
-        if (node.st_mode & IO_STAT_DIR)
+        if (node.st_mode & STAT_DIR)
         {
             debug("directory");
             debug(node.name);
             debug("");
         }
-        if (node.st_mode & IO_STAT_FILE)
+        else if (node.st_mode & STAT_FILE)
         {
             debug("file");
+            debug(node.name);
+            debug("");
+        }
+        else if (node.st_mode & STAT_BLOCK)
+        {
+            debug("bdev");
             debug(node.name);
             debug("");
         }

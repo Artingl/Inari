@@ -10,17 +10,17 @@ typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 typedef unsigned int dev_t;
 
-#define	IO_READ			    0x01
-#define	IO_WRITE			0x02
-#define	IO_OPEN_EXISTING	0x00
-#define	IO_CREATE_NEW		0x04
-#define	IO_CREATE_ALWAYS	0x08
-#define	IO_OPEN_ALWAYS		0x10
-#define	IO_OPEN_APPEND		0x30
+#define	READ            0x01
+#define	WRITE			0x02
+#define	OPEN_EXISTING	0x00
+#define	CREATE_NEW		0x04
+#define	CREATE_ALWAYS	0x08
+#define	OPEN_ALWAYS		0x10
+#define	OPEN_APPEND		0x30
 
-#define IO_STAT_FILE       (1 << 1)
-#define IO_STAT_DIR        (1 << 2)
-#define IO_STAT_BLOCK      (1 << 3)
+#define STAT_FILE       (1 << 0)
+#define STAT_DIR        (1 << 1)
+#define STAT_BLOCK      (1 << 2)
 
 struct fs_node {
     char name[256];

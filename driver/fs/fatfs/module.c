@@ -139,7 +139,7 @@ static int fatfs_readdir(struct vfs_mount_point *mount, const char *path, struct
 
         ln = strlen(fno.fname);
         memcpy((void*)&node->name[0], (void*)fno.fname, ln > CONFIG_VFS_NAME_MAX ? CONFIG_VFS_NAME_MAX : ln);
-        node->name[CONFIG_VFS_NAME_MAX - 1] = '\0';
+        node->name[(ln > CONFIG_VFS_NAME_MAX ? (CONFIG_VFS_NAME_MAX - 1) : ln)] = '\0';
 
         if (fno.fattrib & AM_DIR)
         {
