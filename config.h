@@ -4,6 +4,7 @@
 #define CONFIG_DRV_VGA_TEXT
 #define CONFIG_DRV_PS2_KBD
 
+#define CONFIG_DRV_DEVFS
 #define CONFIG_DRV_FATFS
 #define CONFIG_DRV_GPT
 

@@ -151,9 +151,8 @@ end:
 
 int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
 {
-    if (!tid) return -EINVAL;
-
     size_t i;
+    tid_t i_tid;
     int res = 0;
     struct process *proc;
     uint32_t flags;
@@ -161,17 +160,19 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
-    if ((res = sched_create_thread(tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, (void*)proc)) != 0)
+    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, (void*)proc)) != 0)
         goto end;
     if (pid == 1)
-        sched_thread_set_flags(*tid, SCHED_FLAG_SYSTEM);
+        sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);
 
     for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
         if (proc->threads[i] == 0)
         {
-            proc->threads[i] = *tid;
+            proc->threads[i] = i_tid;
             break;
         }
+    if (tid)
+        *tid = i_tid;
 end:
     spin_unlock_irqrestore(&lock, flags);
     return res;

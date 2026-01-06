@@ -113,6 +113,7 @@ static int ata_identify(uint8_t drive_id)
     }
     if (s_start == -1) s_start = 39;
     drive->model[s_start+1] = '\0';
+    drive->present = 1;
 
     printk("ata: drive %s on %u[%u] %dKB; dma=%u, lba48=%u",
         drive->model, drive->drive, drive->controller, drive->size / 2,
@@ -127,8 +128,6 @@ static int ata_identify(uint8_t drive_id)
         &ata_block_ops,
         drive->size * 512,
         (void*)drive);
-
-    drive->present = 1;
     return 0;
 }
 

@@ -80,5 +80,40 @@ int tell(handle_t hndl, size_t *offset)
 
 int size(handle_t hndl, size_t *size)
 {
-    return syscall(10, (uint32_t)(size), (uint32_t)(size), 0, 0, 0);
+    return syscall(10, (uint32_t)(hndl), (uint32_t)(size), 0, 0, 0);
+}
+
+int get_pid(pid_t *pid)
+{
+    return (int)syscall(11, (uint32_t)pid, 0, 0, 0, 0);
+}
+
+int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
+{
+    return (int)syscall(12, (uint32_t)tid, (uint32_t)pid, (uint32_t)entrypoint, 0, 0);
+}
+
+int get_tid(tid_t *tid)
+{
+    return (int)syscall(13, (uint32_t)tid, 0, 0, 0, 0);
+}
+
+int kill_thread(tid_t tid)
+{
+    return (int)syscall(14, (uint32_t)tid, 0, 0, 0, 0);
+}
+
+int mount(dev_t dev, const char *path)
+{
+    return (int)syscall(15, (uint32_t)dev, (uint32_t)path, 0, 0, 0);
+}
+
+int unmount(const char *path)
+{
+    return (int)syscall(16, (uint32_t)path, 0, 0, 0, 0);
+}
+
+int readdir(const char *path, struct fs_node *nodes, size_t offset, size_t limit)
+{
+    return (int)syscall(17, (uint32_t)path, (uint32_t)nodes, (uint32_t)offset, (uint32_t)limit, 0);
 }

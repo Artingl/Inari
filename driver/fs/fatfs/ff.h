@@ -327,7 +327,7 @@ FRESULT f_lseek (FIL* fp, FSIZE_t ofs);								/* Move file pointer of the file 
 FRESULT f_truncate (FIL* fp);										/* Truncate the file */
 FRESULT f_sync (FIL* fp);											/* Flush cached data of the writing file */
 FRESULT f_opendir (DIR* dp, FATFS *fs, const TCHAR* path);						/* Open a directory */
-FRESULT f_closedir (DIR* dp);										/* Close an open directory */
+FRESULT f_closedir (DIR* dp, FATFS *fs);										/* Close an open directory */
 FRESULT f_readdir (DIR* dp, FATFS *fs, FILINFO* fno);							/* Read a directory item */
 FRESULT f_findfirst (DIR* dp, FILINFO* fno, const TCHAR* path, const TCHAR* pattern);	/* Find first file */
 FRESULT f_findnext (DIR* dp, FILINFO* fno);							/* Find next file */

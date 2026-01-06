@@ -45,7 +45,7 @@ void kearly_init(bootinfo_t b)
 
 void kmain(void)
 {
-    // assert(console_init() == 0, "console init failed.");
+    assert(console_init() == 0, "console init failed.");
     assert(event_bus_init() == 0, "event bus init failed.");
     assert(blkdev_init() == 0, "block device init failed.");
     assert(sched_init() == 0, "scheduler init failed.");

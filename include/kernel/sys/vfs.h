@@ -14,6 +14,10 @@
 #define	VFS_OPEN_ALWAYS		0x10
 #define	VFS_OPEN_APPEND		0x30
 
+#define VFS_STAT_FILE       (1 << 0)
+#define VFS_STAT_DIR        (1 << 1)
+#define VFS_STAT_BLOCK      (1 << 2)
+
 struct vfs_node;
 struct vfs_mount_point;
 struct vfs_layer;
@@ -22,28 +26,19 @@ typedef int64_t vfs_handle_t;
 
 struct vfs_node {
     char name[CONFIG_VFS_NAME_MAX];
-    uint32_t inode;
     uint32_t st_mode;           // File type + permissions
     uint64_t size;              // File size (bytes)
-    struct vfs_ops *ops;        // File operations
-    void *data;                 // FS-specific data
-
-    struct vfs_node *parent;
-    struct list_head children;  // If directory
 };
 
 struct vfs_layer_ops {
     int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);
     int (*close)(struct vfs_mount_point *mount, vfs_handle_t handle);
-
-    /* File I/O */
     int (*read)(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
     int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t len);
-
     int (*seek)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t offset);
     int (*tell)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *offset);
     int (*size)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size);
-    // int (*readdir)(struct vfs_mount_point *mount);
+    int (*readdir)(struct vfs_mount_point *mount, const char *path, struct vfs_node *nodes, size_t offset, size_t limit);
     // int (*ioctl)(struct vfs_mount_point *mount, unsigned long req, void *arg);
 };
 
@@ -85,6 +80,7 @@ int vfs_seek(vfs_handle_t handle, size_t offset);
 int vfs_tell(vfs_handle_t handle, size_t *offset);
 int vfs_size(vfs_handle_t handle, size_t *size);
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
+int vfs_readdir(const char *path, struct vfs_node *nodes, size_t offset, size_t limit);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
 void *vfs_handle_data(vfs_handle_t handle);

@@ -2,24 +2,38 @@
 #include <sys.h>
 #include <errno.h>
 
+
 int main()
 {
-    debug("Hello world from init!");
+    debug("init launched");
 
-    handle_t file;
-    char buf[8];
-    int res = open(&file, "/test.txt", IO_READ);
+    /* Mount devfs */
+    mount(0, "/dev");
 
-    if (res != 0)
-        debug("unable to open file!");
-    
-    read(file, &buf[0], 7, NULL);
-    buf[7] = '\0';
-    debug(buf);
+    struct fs_node nodes[8];
+    int total_files = readdir("/", &nodes[0], 0, 8);
 
-    if (close(file) != 0)
-        debug("unable to close file!");
-    usleep(1000000);
-    debug("dying!");
+    if (total_files < 0)
+    {
+        debug("unable to read dir.");
+        exit(1);
+    }
+
+    for (int i = 0; i < total_files; i++)
+    {
+        if (nodes[i].st_mode & IO_STAT_DIR)
+        {
+            debug("directory");
+            debug(nodes[i].name);
+            debug("");
+        }
+        if (nodes[i].st_mode & IO_STAT_FILE)
+        {
+            debug("file");
+            debug(nodes[i].name);
+            debug("");
+        }
+    }
+
     return 0;
 }

@@ -3,6 +3,7 @@
 #include <kernel/errno.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/proc.h>
+#include <kernel/proc/signals.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/syscall.h>
 #include <kernel/console/console.h>
@@ -27,8 +28,8 @@ int syscall_handle(
         return -ESRCH;
     struct process *proc = (struct process*)th->proc_data;
 
-    printk("syscall: id %u; params 0x%x 0x%x 0x%x 0x%x 0x%x",
-            id, param0, param1, param2, param3, param4);
+    // printk("syscall: id %u; params 0x%x 0x%x 0x%x 0x%x 0x%x",
+    //         id, param0, param1, param2, param3, param4);
     
     switch (id)
     {
@@ -62,7 +63,33 @@ int syscall_handle(
         
     case SYSCALL_SIZE:
         return vfs_size((vfs_handle_t)param0, (size_t*)param1);
-        
+    
+    case SYSCALL_GET_PID:
+        if (param0)
+            *((pid_t*)param0) = proc->pid;
+        return 0;
+
+    case SYSCALL_SPAWN_THREAD:
+        return spawn_thread((tid_t*)param0, (pid_t)param1, (thread_entrypoint_t)param2);
+    
+    case SYSCALL_GET_TID:
+        if (param0)
+            *((pid_t*)param0) = th->tid;
+        return 0;
+
+    case SYSCALL_KILL_THREAD:
+        /* NOTE: SIGKILL will kill a thread immediately */
+        return sched_signal_thread((tid_t)param0, SIGKILL);
+
+    case SYSCALL_MOUNT:
+        return vfs_mount((dev_t)param0, (const char*)param1);
+
+    case SYSCALL_UNMOUNT:
+        return vfs_unmount((const char*)param1);
+    
+    case SYSCALL_READDIR:
+        return vfs_readdir((const char*)param0, (struct vfs_node*)param1, (size_t)param2, (size_t)param3);
+
     default:
         return -EINVAL;
     }

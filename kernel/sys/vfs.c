@@ -77,8 +77,6 @@ int vfs_mount(dev_t dev, const char* path)
     struct vfs_layer *entry;
     struct block_device *bdev = block_get(dev);
 
-    if (!bdev) return -ENODEV;
-
     struct vfs_mount_point *mount = (struct vfs_mount_point*)kmalloc(sizeof(struct vfs_mount_point));
     if (!mount) return -ENOMEM;
     mount->bdev = dev;
@@ -91,8 +89,12 @@ int vfs_mount(dev_t dev, const char* path)
         {
             mount->layer = entry;
             list_add(&mount->list, &vfs_mount_points);
-            printk("vfs: mounted %s; fs %s on dev:%s%d",
-                mount->mount_point, mount->fs_name, bdev->group->name, DEVID(dev));
+            if (bdev)
+                printk("vfs: mounted %s; fs %s on dev:%s%d",
+                    mount->mount_point, mount->fs_name, bdev->group->name, DEVID(dev));
+            else
+                printk("vfs: mounted %s; fs %s",
+                    mount->mount_point, mount->fs_name);
             return 0;
         }
     }
@@ -192,6 +194,7 @@ int vfs_close(vfs_handle_t handle)
 
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
 {
+    if (!buf) return -EINVAL;
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -228,6 +231,7 @@ int vfs_seek(vfs_handle_t handle, size_t offset)
 
 int vfs_tell(vfs_handle_t handle, size_t *offset)
 {
+    if (!offset) return -EINVAL;
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -246,6 +250,7 @@ int vfs_tell(vfs_handle_t handle, size_t *offset)
 
 int vfs_size(vfs_handle_t handle, size_t *size)
 {
+    if (!size) return -EINVAL;
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -260,4 +265,36 @@ int vfs_size(vfs_handle_t handle, size_t *size)
     }
 
     return -EBADHNDL;
+}
+
+int vfs_readdir(const char *path, struct vfs_node *nodes, size_t offset, size_t limit)
+{
+    if (!nodes || !path) return -EINVAL;
+
+    struct list_head *pos;
+    struct vfs_mount_point *entry;
+    int found_files, total_files = 0;
+
+    /* Search mount point that owns this path */
+    list_for_each(pos, &vfs_mount_points) {
+        if (limit == 0) break;
+
+        entry = list_entry(pos, struct vfs_mount_point, list);
+
+        /* TODO: we use dumb approach here: just check that the mount point path
+         *       IS in the beginning of the target path.
+         *
+         *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
+         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg */
+        if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(path)) == 0)
+        {
+            found_files = entry->layer->ops->readdir(entry, path, &nodes[total_files], offset, limit);
+            total_files += found_files;
+            if (limit > found_files)
+                limit -= found_files;
+            else limit = found_files;
+        }
+    }
+
+    return total_files;
 }

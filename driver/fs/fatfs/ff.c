@@ -4778,11 +4778,11 @@ FRESULT f_opendir (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_closedir (
-	DIR *dp		/* Pointer to the directory object to be closed */
+	DIR *dp,		/* Pointer to the directory object to be closed */
+	FATFS *fs
 )
 {
 	FRESULT res;
-	FATFS *fs;
 
 
 	res = validate(&dp->obj, &fs);	/* Check validity of the file object */
