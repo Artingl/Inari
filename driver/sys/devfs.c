@@ -19,24 +19,24 @@ static LIST_HEAD(terminals_group);
 static LIST_HEAD(video_group);
 static LIST_HEAD(network_group);
 
+static size_t devfs_groups_count = 7;
+static const char *devfs_groups[] = { "sys", "disks", "volume", "input", "terminals", "video", "network" };
+static struct list_head *devfs_groups_list[] = {
+    &sys_group,
+    &disks_group,
+    &volume_group,
+    &input_group,
+    &terminals_group,
+    &video_group,
+    &network_group };
+
+static uint8_t is_mounted;
+
 struct devfs_group_item
 {
     dev_t dev;
     struct list_head list;
 };
-
-
-static int devfs_mount_bdev(struct vfs_mount_point *mount)
-{
-    if (!mount) return -EINVAL;
-    if (strcmp(mount->mount_point, "/dev") == 0)
-    {
-        mount->fs_name = "devfs";
-        return 0;
-    }
-
-    return -EINVFS;
-}
 
 static struct list_head *get_dev_group(dev_t dev, char **name)
 {
@@ -94,8 +94,33 @@ static void handle_block_dev_unload(dev_t dev)
     }
 }
 
-static size_t devfs_groups_count = 7;
-static const char *devfs_groups[] = { "sys", "disks", "volume", "input", "terminals", "video", "network" };
+static struct devfs_group_item *get_item_by_handle(vfs_handle_t handle)
+{
+    /* TODO: item might have been deleted while it was opened. Ensure we still have access to the item */
+    return (struct devfs_group_item*)vfs_handle_data(handle);
+}
+
+static int find_group_by_path(struct list_head **group, char **group_path, const char *path)
+{
+    size_t i;
+    if (strncmp(path, "/dev/", 5) == 0)
+    {
+        /* Determine in what group we are */
+        for (i = 0; i < devfs_groups_count; i++)
+        {
+            /* &path[5] => skip /dev/ part in the path */
+            if (strncmp(&path[5], devfs_groups[i], strlen(devfs_groups[i])) == 0)
+            {
+                if (group_path)
+                    *group_path = devfs_groups[i];
+                *group = devfs_groups_list[i];
+                return 0;
+            }
+        }
+    }
+    
+    return -ENOENT; /* File not found */
+}
 
 static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct vfs_node *node, size_t offset)
 {
@@ -104,15 +129,7 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     struct list_head *pos;
     struct devfs_group_item *entry;
     struct block_device *bdev;
-    struct list_head *devfs_groups_list[] = {
-        &sys_group,
-        &disks_group,
-        &volume_group,
-        &input_group,
-        &terminals_group,
-        &video_group,
-        &network_group };
-    char bdev_name[256];
+    char dev_name[256];
     if (!mount || !path || !node) return -EINVAL;
 
     /* Reading from root */
@@ -136,18 +153,8 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     /* Reading /dev/GROUP */
     else if (strncmp(path, "/dev/", 5) == 0)
     {
-        /* Determine in what group we are */
-        for (i = 0; i < devfs_groups_count; i++)
-        {
-            /* &path[5] => skip /dev/ part in the path */
-            if (strcmp(&path[5], devfs_groups[i]) == 0)
-            {
-                group = devfs_groups_list[i];
-                break;
-            }
-        }
-
-        if (!group) return 0;
+        if (find_group_by_path(&group, NULL, path) != 0)
+            return 0;
 
         /* Iterate through all nodes in the group */
         i = 0;
@@ -157,9 +164,9 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
             if (!bdev) continue;
             if (i++ < node->off - offset) continue;
             
-            sprintf(&bdev_name[0], "%s%d", bdev->group->name, DEVID(bdev->dev));
-            strcpy(&node->name[0], &bdev_name[0]);
-            node->st_mode = VFS_STAT_BLOCK;
+            sprintf(&dev_name[0], "blk_%s%d", bdev->group->name, DEVID(bdev->dev));
+            strcpy(&node->name[0], &dev_name[0]);
+            node->st_mode = VFS_STAT_BLOCK | VFS_STAT_BLOCK;
             return 1;
         }
     }
@@ -167,35 +174,144 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     return 0;
 }
 
+static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
+{
+    if (!mount || !buf) return -EINVAL;
+    struct block_device *bdev;
+    struct devfs_group_item *item = get_item_by_handle(handle);
+    if (!item) return -ENOENT;
+    bdev = block_get(item->dev);
+    if (!bdev) return -ENODEV;
+    *rlen = len;
+    size_t block = len / bdev->group->block_size;
+    return bdev->ops->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
+}
+
+static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t sz)
+{
+    if (!mount || !buf) return -EINVAL;
+    struct block_device *bdev;
+    struct devfs_group_item *item = get_item_by_handle(handle);
+    if (!item) return -ENOENT;
+    bdev = block_get(item->dev);
+    if (!bdev) return -ENODEV;
+    return bdev->ops->write_blocks(bdev, sz, buf, 0);
+}
+
+static int devfs_close(struct vfs_mount_point *mount, vfs_handle_t handle)
+{
+    if (!mount) return -EINVAL;
+    struct devfs_group_item *item = get_item_by_handle(handle);
+    if (item)
+        vfs_kill_handle(handle);
+    return 0;
+}
+
+static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags)
+{
+    int res;
+    size_t i;
+    struct list_head *pos;
+    struct devfs_group_item *entry;
+    struct block_device *bdev;
+    struct list_head *group = NULL;
+    char *group_name;
+    char dev_name[256];
+    if (!mount) return -EINVAL;
+
+    if (find_group_by_path(&group, &group_name, path) != 0)
+        return -ENOENT;
+
+    /* Iterate through all nodes in the group to find required file */
+    i = 0;
+    list_for_each(pos, group) {
+        entry = list_entry(pos, struct devfs_group_item, list);
+        bdev = block_get(entry->dev);
+        if (!bdev) continue;
+        
+        sprintf(&dev_name[0], "/dev/%s/blk_%s%d", group_name, bdev->group->name, DEVID(bdev->dev));
+        if (strcmp(dev_name, path) == 0)
+        {
+            return vfs_alloc_handle(mount, handle, entry);
+        }
+    }
+
+    return -ENOENT;
+}
+
+static int devfs_unmount(struct vfs_mount_point *mount)
+{
+    size_t i;
+    struct list_head *group;
+    struct block_device *bdev;
+    struct list_head *pos;
+    struct devfs_group_item *entry;
+
+    /* Deallocate all devs */
+    for (i = 0; i < devfs_groups_count; i++)
+    {
+        group = devfs_groups_list[i];
+        list_for_each(pos, group)
+        {
+            entry = list_entry(pos, struct devfs_group_item, list);
+            bdev = block_get(entry->dev);
+            printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
+            list_del(&entry->list);
+            kfree(entry);
+        }
+    }
+
+    is_mounted = 0;
+    return 0;
+}
+
+static int devfs_mount(struct vfs_mount_point *mount)
+{
+    if (!mount) return -EINVAL;
+    if (strcmp(mount->mount_point, "/dev") == 0)
+    {
+        /* It is possible that some block devs were loaded before devfs was mounted. */
+        dev_t devs[128];
+        int offset = 0, count = 0;
+        while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
+        {
+            for (; count > 0; count--)
+                handle_block_dev_load(devs[count - 1]);
+            offset += 128;
+        }
+
+        is_mounted = 1;
+        mount->fs_name = "devfs";
+        return 0;
+    }
+
+    return -EINVFS;
+}
+
 static struct vfs_layer_ops devfs_ops = {
-    .readdir = &devfs_readdir
+    .readdir = &devfs_readdir,
+    .read = &devfs_read,
+    .write = &devfs_write,
+    .open = &devfs_open,
+    .close = &devfs_close,
 };
 
 static struct vfs_layer devfs_layer = {
     .name = "devfs",
-    .mount = &devfs_mount_bdev,
+    .mount = &devfs_mount,
+    .unmount = &devfs_unmount,
     .ops = &devfs_ops
 };
 
 int devfs_probe()
 {
-    /* During initial devfs module load, we analyze all loaded block devs.
-     * It is possible that some block devs were loaded before devfs module
-     * itself was loaded. */
-    dev_t devs[128];
-    int offset = 0, count = 0;
-    while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
-    {
-        for (; count > 0; count--)
-            handle_block_dev_load(devs[count - 1]);
-        offset += 128;
-    }
-
+    is_mounted = 0;
     return vfs_add_layer(&devfs_layer);
 }
 
 int devfs_event_handler(event_t event)
 {
+    if (!is_mounted) return EVENT_HANDLED;
     switch (event.type)
     {
         case EVENT_LOAD_BLKDEV:
@@ -211,6 +327,7 @@ int devfs_event_handler(event_t event)
 
 void devfs_cleanup()
 {
+    is_mounted = 0;
 }
 
 module_t devfs_module = {

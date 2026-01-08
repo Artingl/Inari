@@ -4,6 +4,7 @@
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
+#include <kernel/sys/block.h>
 #include <kernel/module.h>
 #include <kernel/errno.h>
 
@@ -24,18 +25,23 @@
 static int pc8250_is_initialized = 0;
 static int pc8250_port = COM1;
 
-static void serial_putc(const char *s, uint32_t count)
+static void serial_putc(int port, const char *s, uint32_t count)
 {
     if (!pc8250_is_initialized)
         return;
-    while (is_transmit_empty(pc8250_port) == 0);
+    while (is_transmit_empty(port) == 0);
     while (count--)
-        x86_outb(pc8250_port, *s++);
+        x86_outb(port, *s++);
+}
+
+static void console_putc(const char *s, uint32_t count)
+{
+    serial_putc(pc8250_port, s, count);
 }
 
 static struct console_dev console_dev = {
     .name = "pc8250_serial",
-    .write = serial_putc,
+    .write = console_putc,
     .read = NULL,
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };
@@ -78,12 +84,41 @@ int pc8250_serial_init()
     return 0;
 }
 
+static int serial_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
+{
+    if (!buf) return -EINVAL;
+    serial_putc((int)bdev->driver_data, (const char*)buf, lba);
+    return lba;
+}
+
+static struct block_ops serial_block_ops = {
+    .write_blocks = &serial_write_blocks
+};
+
 int pc8250_serial_probe()
 {
+    int res;
     if (pc8250_serial_init() != 0)
         return -ENODEV;
+    console_register(&console_dev);
     
-    return console_register(&console_dev);
+    /* TODO: Implement char devices */
+    if ((res = register_blkdev_group(SERIAL_DRIVER, 16, "serial")) != 0)
+        return res;
+
+    if (pc8250_is_initialized)
+    {
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM1);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM2);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM3);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM4);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM5);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM6);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM7);
+        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM8);
+    }
+    
+    return 0;
 }
 
 void pc8250_serial_cleanup()

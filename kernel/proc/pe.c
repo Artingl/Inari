@@ -41,7 +41,7 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
         }
 
         pbase = pmm_alloc_pages((section->virt_sz >> 12) + 1);
-        if (!pbase || !page_map(header32->image_base + section->vbase, pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
+        if (!pbase || !page_map((void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
         {
             res = -ENOMEM;
             goto end;

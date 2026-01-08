@@ -126,13 +126,12 @@ static void handle_block_dev_load(dev_t dev)
         partition->disk_bdev = dev;
 
         register_blkdev_ops(
-            MKDEV(GPT_DRIVER, partitions),
+            GPT_DRIVER,
             &gpt_block_ops,
             (entry.end_lba - entry.start_lba) * bdev->group->block_size,
             (void*)partition);
 
         partitions++;
-
 #ifdef CONFIG_DEBUG
         printk("gpt: found partition '%s' on dev:%s%d; size %uKiB",
             entry.name,

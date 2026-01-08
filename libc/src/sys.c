@@ -117,3 +117,8 @@ int readdir(const char *path, struct fs_node *node)
 {
     return (int)syscall(17, (uint32_t)path, (uint32_t)node, 0, 0, 0);
 }
+
+int write(handle_t hndl, const void *buf, size_t sz)
+{
+    return (int)syscall(18, (uint32_t)hndl, (uint32_t)buf, (uint32_t)sz, 0, 0);
+}

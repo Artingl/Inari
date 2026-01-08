@@ -194,18 +194,10 @@ int console_unregister(struct console_dev *dev)
     return 0;
 }
 
-/*
- * console_printc:
- *   - If early or panic, print directly (as before).
- *   - Otherwise append chars to a buffer.
- *   - Allocation attempts to use the static pool (no sleep). If pool empty,
- *     we try to kmalloc (may sleep); however, since we cannot detect IRQ
- *     context portably here, we conservatively *prefer pool* and drop chars
- *     when pool is exhausted to stay safe for IRQ contexts.
- */
+/* TODO: console is broken, lots of chars are lost during print */
 int console_printc(int type, const char *s, uint32_t count)
 {
-    if (console_is_early || type == CONSOLE_PANIC)
+    // if (console_is_early || type == CONSOLE_PANIC)
     {
         console_print_dev(type, s, count);
         return 0;

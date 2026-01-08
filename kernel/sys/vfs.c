@@ -213,6 +213,25 @@ int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
     return -EBADHNDL;
 }
 
+int vfs_write(vfs_handle_t handle, const void *buf, size_t sz)
+{
+    if (!buf) return -EINVAL;
+    struct list_head *pos;
+    struct vfs_handle *entry;
+
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->write)
+                return entry->mount->layer->ops->write(entry->mount, handle, buf, sz);
+            return -ENOSYS;
+        }
+    }
+
+    return -EBADHNDL;
+}
+
 int vfs_seek(vfs_handle_t handle, size_t offset)
 {
     struct list_head *pos;

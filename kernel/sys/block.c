@@ -43,28 +43,38 @@ int unregister_blkdev_group(uint32_t driver)
     return -EINVAL;
 }
 
-int register_blkdev_ops(dev_t dev, struct block_ops *ops, uint64_t size, void *driver_data)
+int register_blkdev_ops(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data)
 {
-    uint32_t driver = DRVID(dev), minor = DEVID(dev);
-
     if (!ops || driver >= DRIVER_TOTAL) return -EINVAL;
 
+    uint32_t minor = 0;
     struct block_device *bdev = kmalloc(sizeof(struct block_device));
     struct block_device_group *group = &group_entries[driver];
+    struct list_head *pos;
+    struct block_device *entry;
 
     if (!bdev || group->driver == UNNAMED_DRIVER) return -ENOMEM;
+
+    /* Calculate the minor value based on the total count of devices with such driver */
+    list_for_each(pos, &group->block_devices) {
+        entry = list_entry(pos, struct block_device, list);
+        if (DRVID(entry->dev) == driver && minor <= DEVID(entry->dev))
+        {
+            minor = DEVID(entry->dev) + 1;
+        }
+    }
 
     /* Add the block device */
     bdev->driver_data = driver_data;
     bdev->ops = ops;
     bdev->size = size;
     bdev->group = group;
-    bdev->dev = dev;
+    bdev->dev = MKDEV(driver, minor);
 
     list_add_tail(&bdev->list, &group->block_devices);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_BLKDEV,
-        .as = { .blkdev = dev }
+        .as = { .blkdev = bdev->dev }
     });
     printk("block: new dev:%s%u; driver 0x%04x", group->name, minor, driver);
     return 0;

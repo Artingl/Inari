@@ -89,6 +89,9 @@ int syscall_handle(
     
     case SYSCALL_READDIR:
         return vfs_readdir((const char*)param0, (struct vfs_node*)param1);
+    
+    case SYSCALL_WRITE:
+        return vfs_write((vfs_handle_t)param0, (void*)param1, (size_t)param2);
 
     default:
         return -EINVAL;

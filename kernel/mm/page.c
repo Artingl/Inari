@@ -64,7 +64,7 @@ void page_free(void *vbase, size_t npages)
 
 pagedir_t page_get_dir(void)
 {
-    return (pagedir_t *)arch_get_pagedir();
+    return (pagedir_t)arch_get_pagedir();
 }
 
 void page_switch_dir(pagedir_t dir)

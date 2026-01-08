@@ -82,6 +82,7 @@ static int fatfs_close(struct vfs_mount_point *mount, vfs_handle_t handle)
 {
     if (!mount) return -EINVAL;
     FIL *fp = vfs_handle_data(handle);
+    vfs_kill_handle(handle);
     int res = f_close(fp);
     if (fp) kfree(fp);
     return res == FR_OK ? 0 : -EINVAL;
@@ -102,8 +103,7 @@ static int fatfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
         return -ENOENT;
     }
 
-    vfs_alloc_handle(mount, handle, fp);
-    return 0;
+    return vfs_alloc_handle(mount, handle, fp);
 }
 
 static int fatfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
@@ -112,7 +112,7 @@ static int fatfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
     if (!rlen) rlen = &br;
     if (!mount) return -EINVAL;
     FIL *fp = vfs_handle_data(handle);
-    return f_read(fp, mount->fs_data, buf, len, (UINT*)rlen) == FR_OK ? 0 : -EINVAL;
+    return f_read(fp, mount->fs_data, buf, len, (UINT*)rlen) == FR_OK ? 0 : -ENOENT;
 }
 
 static int fatfs_size(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size)

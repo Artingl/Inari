@@ -2,7 +2,6 @@
 #include <sys.h>
 #include <errno.h>
 
-
 int main()
 {
     debug("init launched");
@@ -12,7 +11,7 @@ int main()
 
     struct fs_node node = {0};
     
-    while (readdir("/dev/volume", &node) > 0)
+    while (readdir("/dev/input", &node) > 0)
     {
         if (node.st_mode & STAT_DIR)
         {
@@ -34,7 +33,15 @@ int main()
         }
     }
 
+    /* Test serial write via devfs */
+    // handle_t hndl;
+    // if (open(&hndl, "/dev/input/blk_serial0", WRITE) != 0)
+    //     debug("unable to open serial.");
+    // else {
+    //     write(hndl, "hello from serial", 17);
+    //     close(hndl);
+    // }
+
     debug("done");
-    usleep(1000000);
     return 0;
 }

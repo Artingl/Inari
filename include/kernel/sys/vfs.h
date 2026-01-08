@@ -17,6 +17,7 @@
 #define VFS_STAT_FILE       (1 << 0)
 #define VFS_STAT_DIR        (1 << 1)
 #define VFS_STAT_BLOCK      (1 << 2)
+#define VFS_STAT_CHAR       (1 << 3)
 
 struct vfs_node;
 struct vfs_mount_point;
@@ -36,7 +37,7 @@ struct vfs_layer_ops {
     int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);
     int (*close)(struct vfs_mount_point *mount, vfs_handle_t handle);
     int (*read)(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
-    int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t len);
+    int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t sz);
     int (*seek)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t offset);
     int (*tell)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *offset);
     int (*size)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size);
@@ -83,6 +84,7 @@ int vfs_tell(vfs_handle_t handle, size_t *offset);
 int vfs_size(vfs_handle_t handle, size_t *size);
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
 int vfs_readdir(const char *path, struct vfs_node *node);
+int vfs_write(vfs_handle_t handle, const void *buf, size_t sz);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
 void *vfs_handle_data(vfs_handle_t handle);

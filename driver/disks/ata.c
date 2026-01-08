@@ -124,7 +124,7 @@ static int ata_identify(uint8_t drive_id)
     ata_pio_init(drive);
 
     register_blkdev_ops(
-        MKDEV(ATA_DRIVER, 64 * drive_id),
+        ATA_DRIVER,
         &ata_block_ops,
         drive->size * 512,
         (void*)drive);

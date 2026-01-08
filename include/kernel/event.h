@@ -13,6 +13,9 @@ typedef enum
     EVENT_LOAD_BLKDEV = 0,
     EVENT_UNLOAD_BLKDEV,
 
+    EVENT_LOAD_CHARDEV,
+    EVENT_UNLOAD_CHARDEV,
+
     EVENT_MODULE_LOAD,
     EVENT_MODULE_UNLOAD,
 
@@ -25,7 +28,7 @@ typedef struct
     event_type_t type;
 
     union {
-        dev_t blkdev;
+        dev_t dev;
 
         void *custom;
     } as;

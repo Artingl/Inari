@@ -13,6 +13,8 @@
 
 #define SCHED_FLAG_SYSTEM (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
 
+struct thread;
+
 typedef void (*thread_cleanup_t)(struct thread *, void*);
 typedef void (*thread_signal_t)(uint32_t signo);
 

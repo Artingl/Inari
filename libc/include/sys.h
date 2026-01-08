@@ -21,6 +21,7 @@ typedef unsigned int dev_t;
 #define STAT_FILE       (1 << 0)
 #define STAT_DIR        (1 << 1)
 #define STAT_BLOCK      (1 << 2)
+#define STAT_CHAR       (1 << 3)
 
 struct fs_node {
     char name[256];
@@ -47,6 +48,7 @@ int kill_thread(tid_t tid);
 int mount(dev_t dev, const char *path);
 int unmount(const char *path);
 int readdir(const char *path, struct fs_node *node);
+int write(handle_t hndl, const void *buf, size_t sz);
 
 int syscall(
     uint32_t id,

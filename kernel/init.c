@@ -7,6 +7,7 @@
 #include <kernel/mm/page.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/sys/block.h>
+#include <kernel/sys/char.h>
 #include <kernel/sys/driver.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/proc.h>
@@ -39,7 +40,7 @@ void kearly_init(bootinfo_t b)
     assert(page_init() == 0, "paging init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
 
-    kernel_page_dir = (pagedir_t *)arch_get_pagedir();
+    kernel_page_dir = (pagedir_t)arch_get_pagedir();
     printk("kearly_init: done");
 }
 
@@ -48,6 +49,7 @@ void kmain(void)
     assert(console_init() == 0, "console init failed.");
     assert(event_bus_init() == 0, "event bus init failed.");
     assert(blkdev_init() == 0, "block device init failed.");
+    assert(chardev_init() == 0, "char device init failed.");
     assert(sched_init() == 0, "scheduler init failed.");
     assert(vfs_init() == 0, "vfs init failed.");
     assert(proc_init() == 0, "proc init failed.");

@@ -1,7 +1,7 @@
 TARGET = x86
 AS = nasm
-CC = gcc
-LD = ld
+CC = /home/parallels/opt/cross/bin/i686-elf-gcc
+LD = /home/parallels/opt/cross/bin/i686-elf-ld
 
 LDFLAGS = -no-pie -nostdlib
 CFLAGS = --include "../../build/config.h" -I ../../include/ $(shell cat cflags.txt) $(shell cat ../../cflags.txt)
