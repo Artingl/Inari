@@ -35,6 +35,7 @@ struct vfs_node {
 
 struct vfs_layer_ops {
     int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);
+    /* NOTE: do NOT kill handle in the close handler! VFS will do it on its own. */
     int (*close)(struct vfs_mount_point *mount, vfs_handle_t handle);
     int (*read)(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
     int (*write)(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t sz);

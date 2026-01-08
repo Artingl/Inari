@@ -37,13 +37,23 @@ int register_blkdev_group(uint32_t driver, uint32_t block_size, const char *name
 int unregister_blkdev_group(uint32_t driver)
 {
     printk("block: unimplemented unregister_blkdev_group");
-    // event_bus_broadcast((event_t){
-    //     .type = EVENT_UNLOAD_BLKDEV
-    // });
     return -EINVAL;
 }
 
-int register_blkdev_ops(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data)
+int unregister_blkdev(dev_t dev)
+{
+    struct block_device *bdev = block_get(dev);
+    if (!bdev) return -ENODEV;
+    event_bus_broadcast((event_t){
+        .type = EVENT_UNLOAD_BLKDEV,
+        .as = { .dev = bdev->dev }
+    });
+    list_del(&bdev->list);
+    kfree(bdev);
+    return 0;
+}
+
+int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data)
 {
     if (!ops || driver >= DRIVER_TOTAL) return -EINVAL;
 
@@ -74,9 +84,9 @@ int register_blkdev_ops(uint32_t driver, struct block_ops *ops, uint64_t size, v
     list_add_tail(&bdev->list, &group->block_devices);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_BLKDEV,
-        .as = { .blkdev = bdev->dev }
+        .as = { .dev = bdev->dev }
     });
-    printk("block: new dev:%s%u; driver 0x%04x", group->name, minor, driver);
+    printk("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
     return 0;
 }
 

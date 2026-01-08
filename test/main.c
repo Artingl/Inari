@@ -10,8 +10,9 @@ int main()
     mount(0, "/dev");
 
     struct fs_node node = {0};
+    int res = -ENOENT;
     
-    while (readdir("/dev/input", &node) > 0)
+    while ((res = readdir("/dev/input", &node)) > 0)
     {
         if (node.st_mode & STAT_DIR)
         {
@@ -33,14 +34,17 @@ int main()
         }
     }
 
+    if (res == -ENOENT)
+        debug("no such dir.");
+
     /* Test serial write via devfs */
-    // handle_t hndl;
-    // if (open(&hndl, "/dev/input/blk_serial0", WRITE) != 0)
-    //     debug("unable to open serial.");
-    // else {
-    //     write(hndl, "hello from serial", 17);
-    //     close(hndl);
-    // }
+    handle_t hndl;
+    if (open(&hndl, "/dev/input/char_serial0", WRITE) != 0)
+        debug("unable to open serial.");
+    else {
+        write(hndl, "hello from serial", 17);
+        close(hndl);
+    }
 
     debug("done");
     return 0;

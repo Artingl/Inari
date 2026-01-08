@@ -125,7 +125,7 @@ static void handle_block_dev_load(dev_t dev)
         partition->header = header;
         partition->disk_bdev = dev;
 
-        register_blkdev_ops(
+        register_blkdev(
             GPT_DRIVER,
             &gpt_block_ops,
             (entry.end_lba - entry.start_lba) * bdev->group->block_size,
@@ -133,7 +133,7 @@ static void handle_block_dev_load(dev_t dev)
 
         partitions++;
 #ifdef CONFIG_DEBUG
-        printk("gpt: found partition '%s' on dev:%s%d; size %uKiB",
+        printk("gpt: found partition '%s' on dev:blk_%s%d; size %uKiB",
             entry.name,
             bdev->group->name,
             DEVID(dev),
@@ -158,10 +158,10 @@ static void handle_block_dev_load(dev_t dev)
         memcpy((void*)&entry, &lba[offset], sizeof(entry));
     }
 
-    printk("gpt: found %u partitions on dev:%s%d", partitions, bdev->group->name, DEVID(dev));
+    printk("gpt: found %u partitions on dev:blk_%s%d", partitions, bdev->group->name, DEVID(dev));
     goto end;
 read_err:
-    printk("gpt: failed to read lba%d for dev:%s%d", lba_offset, bdev->group->name, DEVID(dev));
+    printk("gpt: failed to read lba%d for dev:blk_%s%d", lba_offset, bdev->group->name, DEVID(dev));
 end:
     kfree((void*)lba);
 }
@@ -190,7 +190,7 @@ int gpt_event_handler(event_t event)
     switch (event.type)
     {
         case EVENT_LOAD_BLKDEV:
-            handle_block_dev_load(event.as.blkdev);
+            handle_block_dev_load(event.as.dev);
     }
 
     return EVENT_HANDLED;

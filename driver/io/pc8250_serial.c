@@ -4,7 +4,7 @@
 #include <kernel/inari.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
-#include <kernel/sys/block.h>
+#include <kernel/sys/char.h>
 #include <kernel/module.h>
 #include <kernel/errno.h>
 
@@ -84,15 +84,15 @@ int pc8250_serial_init()
     return 0;
 }
 
-static int serial_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
+static int serial_write_chardev(struct char_device *chardev, const uint8_t *buf, size_t sz)
 {
     if (!buf) return -EINVAL;
-    serial_putc((int)bdev->driver_data, (const char*)buf, lba);
-    return lba;
+    serial_putc((int)chardev->driver_data, (const char*)buf, sz);
+    return sz;
 }
 
-static struct block_ops serial_block_ops = {
-    .write_blocks = &serial_write_blocks
+static struct char_ops serial_block_ops = {
+    .write = &serial_write_chardev
 };
 
 int pc8250_serial_probe()
@@ -102,20 +102,19 @@ int pc8250_serial_probe()
         return -ENODEV;
     console_register(&console_dev);
     
-    /* TODO: Implement char devices */
-    if ((res = register_blkdev_group(SERIAL_DRIVER, 16, "serial")) != 0)
+    if ((res = register_chardev_group(SERIAL_DRIVER, "serial")) != 0)
         return res;
 
     if (pc8250_is_initialized)
     {
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM1);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM2);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM3);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM4);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM5);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM6);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM7);
-        register_blkdev_ops(SERIAL_DRIVER, &serial_block_ops, 0, (void*)COM8);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM1);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM2);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM3);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM4);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM5);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM6);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM7);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM8);
     }
     
     return 0;

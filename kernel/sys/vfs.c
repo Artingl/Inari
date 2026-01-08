@@ -92,7 +92,7 @@ int vfs_mount(dev_t dev, const char* path)
             mount->layer = entry;
             list_add(&mount->list, &vfs_mount_points);
             if (bdev)
-                printk("vfs: mounted %s; fs %s on dev:%s%d",
+                printk("vfs: mounted %s; fs %s on dev:blk_%s%d",
                     mount->mount_point, mount->fs_name, bdev->group->name, DEVID(dev));
             else
                 printk("vfs: mounted %s; fs %s",
@@ -118,8 +118,8 @@ int vfs_unmount(const char* path)
             bdev = block_get(entry->bdev);
 
             entry->layer->unmount(entry);
-            if (bdev) printk("vfs: unmounted %s on dev:%s%d",entry->fs_name, bdev->group->name, DEVID(bdev->dev));
-            else printk("vfs: unmounted %s on dev:invalid", entry->fs_name);
+            if (bdev) printk("vfs: unmounted %s on dev:blk_%s%d",entry->fs_name, bdev->group->name, DEVID(bdev->dev));
+            else printk("vfs: unmounted %s on dev:blk_invalid", entry->fs_name);
             kfree(entry);
             list_del(&entry->list);
             return 0;
@@ -294,7 +294,7 @@ int vfs_readdir(const char *path, struct vfs_node *node)
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
-    int res = 0, total_files = 0;
+    int res = 0, total_files = 0, found_dir = 0;
 
     /* Search mount point that owns this path */
     list_for_each(pos, &vfs_mount_points) {
@@ -308,12 +308,15 @@ int vfs_readdir(const char *path, struct vfs_node *node)
         if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
         {
             res = entry->layer->ops->readdir(entry, path, node, total_files);
+            if (res != -ENOENT) found_dir = 1;
             if (res > 0)
                 total_files += res;
             // if (total_files > node->off)
             break;
         }
     }
+
+    if (!found_dir) return -ENOENT;
 
     node->off++;
     return res;

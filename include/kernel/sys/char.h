@@ -13,14 +13,13 @@ struct char_device_group;
 
 struct char_ops
 {
-    int (*read)(struct char_device *bdev, uint8_t *buf, size_t sz);
-    int (*write)(struct char_device *bdev, const uint8_t *buf, size_t sz);
-    int (*ioctl)(struct char_device *bdev, unsigned long req, void *arg);
+    int (*read)(struct char_device *chardev, uint8_t *buf, size_t sz);
+    int (*write)(struct char_device *chardev, const uint8_t *buf, size_t sz);
+    int (*ioctl)(struct char_device *chardev, unsigned long req, void *arg);
 };
 
 struct char_device
 {
-    uint64_t size;
     void *driver_data;
 
     dev_t dev;
@@ -46,8 +45,8 @@ int chardev_init();
 int register_chardev_group(uint32_t driver, const char *name);
 int unregister_chardev_group(uint32_t driver);
 
-int register_chardev_ops(uint32_t driver, struct char_ops *ops, void *driver_data);
-
+int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data);
+int unregister_chardev(dev_t dev);
 
 /* Fills the `devs` array with bdevs relative to set offset and limit.
  * Returns the amount of found bdevs or 0 if none */

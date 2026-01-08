@@ -103,7 +103,7 @@ static void init_stub_thread()
 {
     /* This thread is only created to delay a little the execution
      * of the init task, so critical kernel modules have time to initialize. */
-    usleep(40000);
+    usleep(400000);
 
     pid_t pid;
     int res;

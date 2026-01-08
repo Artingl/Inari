@@ -1,6 +1,6 @@
 TARGET=x86
-CC = /home/parallels/opt/cross/bin/i686-elf-gcc
-LD = /home/parallels/opt/cross/bin/i686-elf-ld
+CC = gcc
+LD = ld
 GRUB_MKRESCUE := $(shell if command -v grub-mkrescue >/dev/null 2>&1; then echo grub-mkrescue; else echo grub2-mkrescue; fi)
 
 CFLAGS = --include "build/config.h" -I include/ $(shell cat arch/$(TARGET)/cflags.txt) $(shell cat cflags.txt)

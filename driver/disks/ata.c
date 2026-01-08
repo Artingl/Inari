@@ -123,7 +123,7 @@ static int ata_identify(uint8_t drive_id)
     /* We support only pio mode for now */
     ata_pio_init(drive);
 
-    register_blkdev_ops(
+    register_blkdev(
         ATA_DRIVER,
         &ata_block_ops,
         drive->size * 512,

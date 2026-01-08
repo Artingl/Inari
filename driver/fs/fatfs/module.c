@@ -82,7 +82,6 @@ static int fatfs_close(struct vfs_mount_point *mount, vfs_handle_t handle)
 {
     if (!mount) return -EINVAL;
     FIL *fp = vfs_handle_data(handle);
-    vfs_kill_handle(handle);
     int res = f_close(fp);
     if (fp) kfree(fp);
     return res == FR_OK ? 0 : -EINVAL;

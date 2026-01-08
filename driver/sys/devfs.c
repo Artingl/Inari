@@ -3,6 +3,7 @@
 #include <kernel/errno.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/block.h>
+#include <kernel/sys/char.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/printk.h>
 
@@ -35,6 +36,7 @@ static uint8_t is_mounted;
 struct devfs_group_item
 {
     dev_t dev;
+    uint8_t is_blk;
     struct list_head list;
 };
 
@@ -52,31 +54,41 @@ static struct list_head *get_dev_group(dev_t dev, char **name)
     return group;
 }
 
-static void handle_block_dev_load(dev_t dev)
+static void handle_dev_load(uint8_t is_blk, dev_t dev)
 {
     struct list_head *group;
-    struct block_device *bdev = block_get(dev);
-    char *name;
-    if (!(group = get_dev_group(dev, &name)) || !bdev)
+    struct block_device *bdev = NULL;
+    struct char_device *chardev = NULL;
+    char *name, *group_name = "invalid";
+    if (is_blk && (bdev = block_get(dev)))
+        group_name = bdev->group->name;
+    else if ((chardev = char_get(dev)))
+        group_name = chardev->group->name;
+    else if (!bdev && !chardev)
+        return;
+
+    if (!(group = get_dev_group(dev, &name)))
         return; /* Ignore invalid driver groups */
 
     /* Put the bdev into appropriate driver group */
     struct devfs_group_item *item = (struct devfs_group_item*)kmalloc(sizeof(struct devfs_group_item));
     item->dev = dev;
+    item->is_blk = is_blk;
     INIT_LIST_HEAD(&item->list);
     list_add(&item->list, group);
     struct list_head *pos;
     struct devfs_group_item *entry;
 
-    printk("devfs: new entry dev:%s%d in group %s", bdev->group->name, DEVID(dev), name);
+    printk("devfs: new entry dev:%s_%s%d in group %s", (is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
 }
 
-static void handle_block_dev_unload(dev_t dev)
+static void handle_dev_unload(dev_t dev)
 {
     struct list_head *group;
-    struct block_device *bdev = block_get(dev);
-    char *name;
-    if (!(group = get_dev_group(dev, &name)) || !bdev)
+    struct block_device *bdev = NULL;
+    struct char_device *chardev = NULL;
+    char *name, *group_name = "invalid";
+    if (!(group = get_dev_group(dev, &name)))
         return; /* Ignore invalid driver groups */
 
     struct list_head *pos;
@@ -86,7 +98,12 @@ static void handle_block_dev_unload(dev_t dev)
         entry = list_entry(pos, struct devfs_group_item, list);
         if (entry->dev == dev)
         {
-            printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(dev), name);
+            if (entry->is_blk && (bdev = block_get(dev)))
+                group_name = bdev->group->name;
+            else if ((chardev = char_get(dev)))
+                group_name = chardev->group->name;
+
+            printk("devfs: removed entry dev:%s_%s%d in group %s", (entry->is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
             list_del(&entry->list);
             kfree(entry);
             break;
@@ -128,7 +145,9 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     struct list_head *group = NULL;
     struct list_head *pos;
     struct devfs_group_item *entry;
-    struct block_device *bdev;
+    struct block_device *bdev = NULL;
+    struct char_device *chardev = NULL;
+    char *group_name = NULL;
     char dev_name[256];
     if (!mount || !path || !node) return -EINVAL;
 
@@ -154,56 +173,73 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     else if (strncmp(path, "/dev/", 5) == 0)
     {
         if (find_group_by_path(&group, NULL, path) != 0)
-            return 0;
+            return -ENOENT;
 
         /* Iterate through all nodes in the group */
         i = 0;
         list_for_each(pos, group) {
             entry = list_entry(pos, struct devfs_group_item, list);
-            bdev = block_get(entry->dev);
-            if (!bdev) continue;
+            if (entry->is_blk && (bdev = block_get(entry->dev))) group_name = bdev->group->name;
+            else if ((chardev = char_get(entry->dev))) group_name = chardev->group->name;
+            if (!group_name) continue;
             if (i++ < node->off - offset) continue;
             
-            sprintf(&dev_name[0], "blk_%s%d", bdev->group->name, DEVID(bdev->dev));
+            sprintf(&dev_name[0], "%s_%s%d", (entry->is_blk ? "blk" : "char"), group_name, DEVID(entry->dev));
             strcpy(&node->name[0], &dev_name[0]);
-            node->st_mode = VFS_STAT_BLOCK | VFS_STAT_BLOCK;
+            node->st_mode = VFS_STAT_FILE | (entry->is_blk ? VFS_STAT_BLOCK : VFS_STAT_CHAR);
             return 1;
         }
+
+        return 0;
     }
 
-    return 0;
+    return -ENOENT;
 }
 
 static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
 {
     if (!mount || !buf) return -EINVAL;
-    struct block_device *bdev;
+    struct char_device *chardev = NULL;
+    struct block_device *bdev = NULL;
     struct devfs_group_item *item = get_item_by_handle(handle);
     if (!item) return -ENOENT;
-    bdev = block_get(item->dev);
-    if (!bdev) return -ENODEV;
+    if (item->is_blk) bdev = block_get(item->dev);
+    else chardev = char_get(item->dev);
+
     *rlen = len;
-    size_t block = len / bdev->group->block_size;
-    return bdev->ops->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
+    if (bdev)
+    {
+        size_t block = len / bdev->group->block_size;
+        return bdev->ops->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
+    }
+    else
+        return chardev->ops->read(chardev, (uint8_t*)buf, len);
+
+    return -ENODEV;
 }
 
 static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t sz)
 {
     if (!mount || !buf) return -EINVAL;
-    struct block_device *bdev;
+    struct char_device *chardev = NULL;
+    struct block_device *bdev = NULL;
     struct devfs_group_item *item = get_item_by_handle(handle);
     if (!item) return -ENOENT;
-    bdev = block_get(item->dev);
-    if (!bdev) return -ENODEV;
-    return bdev->ops->write_blocks(bdev, sz, buf, 0);
+    if (item->is_blk) bdev = block_get(item->dev);
+    else chardev = char_get(item->dev);
+
+    if (bdev)
+        return bdev->ops->write_blocks(bdev, sz, buf, 0);
+    else
+        return chardev->ops->write(chardev, (const uint8_t*)buf, sz);
+
+    return -ENODEV;
 }
 
 static int devfs_close(struct vfs_mount_point *mount, vfs_handle_t handle)
 {
     if (!mount) return -EINVAL;
     struct devfs_group_item *item = get_item_by_handle(handle);
-    if (item)
-        vfs_kill_handle(handle);
     return 0;
 }
 
@@ -213,9 +249,11 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
     size_t i;
     struct list_head *pos;
     struct devfs_group_item *entry;
-    struct block_device *bdev;
+    struct block_device *bdev = NULL;
+    struct char_device *chardev = NULL;
     struct list_head *group = NULL;
     char *group_name;
+    char *dev_group_name = NULL;
     char dev_name[256];
     if (!mount) return -EINVAL;
 
@@ -226,10 +264,11 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
     i = 0;
     list_for_each(pos, group) {
         entry = list_entry(pos, struct devfs_group_item, list);
-        bdev = block_get(entry->dev);
-        if (!bdev) continue;
-        
-        sprintf(&dev_name[0], "/dev/%s/blk_%s%d", group_name, bdev->group->name, DEVID(bdev->dev));
+        if (entry->is_blk && (bdev = block_get(entry->dev))) dev_group_name = bdev->group->name;
+        else if ((chardev = char_get(entry->dev))) dev_group_name = chardev->group->name;
+        if (!dev_group_name) continue;
+            
+        sprintf(&dev_name[0], "/dev/%s/%s_%s%d", group_name, (entry->is_blk ? "blk" : "char"), dev_group_name, DEVID(entry->dev));
         if (strcmp(dev_name, path) == 0)
         {
             return vfs_alloc_handle(mount, handle, entry);
@@ -239,29 +278,11 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
     return -ENOENT;
 }
 
+void devfs_cleanup();
+
 static int devfs_unmount(struct vfs_mount_point *mount)
 {
-    size_t i;
-    struct list_head *group;
-    struct block_device *bdev;
-    struct list_head *pos;
-    struct devfs_group_item *entry;
-
-    /* Deallocate all devs */
-    for (i = 0; i < devfs_groups_count; i++)
-    {
-        group = devfs_groups_list[i];
-        list_for_each(pos, group)
-        {
-            entry = list_entry(pos, struct devfs_group_item, list);
-            bdev = block_get(entry->dev);
-            printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
-            list_del(&entry->list);
-            kfree(entry);
-        }
-    }
-
-    is_mounted = 0;
+    devfs_cleanup();
     return 0;
 }
 
@@ -276,7 +297,16 @@ static int devfs_mount(struct vfs_mount_point *mount)
         while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
         {
             for (; count > 0; count--)
-                handle_block_dev_load(devs[count - 1]);
+                handle_dev_load(1, devs[count - 1]);
+            offset += 128;
+        }
+
+        /* Same for char devices */
+        offset = 0, count = 0;
+        while ((count = char_get_refs(&devs[0], offset, 128)) > 0)
+        {
+            for (; count > 0; count--)
+                handle_dev_load(0, devs[count - 1]);
             offset += 128;
         }
 
@@ -311,14 +341,18 @@ int devfs_probe()
 
 int devfs_event_handler(event_t event)
 {
+    uint8_t is_blk = 1;
     if (!is_mounted) return EVENT_HANDLED;
     switch (event.type)
     {
+        case EVENT_LOAD_CHARDEV:
+            is_blk = 0;
         case EVENT_LOAD_BLKDEV:
-            handle_block_dev_load(event.as.blkdev);
+            handle_dev_load(is_blk, event.as.dev);
             break;
+        case EVENT_UNLOAD_CHARDEV:
         case EVENT_UNLOAD_BLKDEV:
-            handle_block_dev_unload(event.as.blkdev);
+            handle_dev_unload(event.as.dev);
             break;
     }
 
@@ -327,6 +361,26 @@ int devfs_event_handler(event_t event)
 
 void devfs_cleanup()
 {
+    size_t i;
+    struct list_head *group;
+    struct block_device *bdev;
+    struct list_head *pos;
+    struct devfs_group_item *entry;
+
+    /* Deallocate all devs */
+    for (i = 0; i < devfs_groups_count; i++)
+    {
+        group = devfs_groups_list[i];
+        list_for_each(pos, group)
+        {
+            entry = list_entry(pos, struct devfs_group_item, list);
+            bdev = block_get(entry->dev);
+            printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
+            list_del(&entry->list);
+            kfree(entry);
+        }
+    }
+
     is_mounted = 0;
 }
 
