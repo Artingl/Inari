@@ -4,6 +4,9 @@
 #include <kernel/inari.h>
 #include <kernel/timer.h>
 #include <kernel/console/console.h>
+#include <kernel/input/kbd.h>
+#include <kernel/sys/char.h>
+#include <kernel/sys/driver.h>
 #include <kernel/errno.h>
 #include <kernel/module.h>
 #include <kernel/interrupts/irq.h>
@@ -15,41 +18,6 @@
 
 static int ps2_kb_initialized = 0;
 static const char *ps2_kbd_type;
-
-/* special keycodes start above ASCII range */
-#define KEY_NONE       0x000
-#define KEY_ESC        0x100
-#define KEY_ENTER      0x101
-#define KEY_BACKSPACE  0x102
-#define KEY_TAB        0x103
-#define KEY_LCTRL      0x104
-#define KEY_RCTRL      0x105
-#define KEY_LSHIFT     0x106
-#define KEY_RSHIFT     0x107
-#define KEY_LALT       0x108
-#define KEY_RALT       0x109
-#define KEY_CAPSLOCK   0x10A
-#define KEY_NUMLOCK    0x10B
-#define KEY_SCROLLLOCK 0x10C
-#define KEY_F1         0x120
-#define KEY_F2         0x121
-#define KEY_F3         0x122
-#define KEY_F4         0x123
-#define KEY_F5         0x124
-#define KEY_F6         0x125
-#define KEY_F7         0x126
-#define KEY_F8         0x127
-#define KEY_F9         0x128
-#define KEY_F10        0x129
-#define KEY_F11        0x12A
-#define KEY_F12        0x12B
-
-/* keypad */
-#define KEY_KP_STAR    0x130
-#define KEY_KP_MINUS   0x131
-#define KEY_KP_PLUS    0x132
-#define KEY_KP_ENTER   0x133
-#define KEY_KP_SLASH   0x134
 
 uint16_t scancode_set1_map[128] = {
     [0x00] = KEY_NONE,
@@ -144,17 +112,34 @@ uint16_t scancode_set1_map[128] = {
     /* 0x59–0x7F: unused or handled as extended */
 };
 
+static struct kbd_event last_kbd_event = {0};
+
 static int ps2_kbd_irq(uint32_t irq, void *dev_id)
 {
     uint8_t in = x86_inb(0x60);
     int released = in & 0x80;
     uint8_t code = in & 0x7F;
     uint16_t key = scancode_set1_map[code];
-    if (!released)
-        console_printc(0, (const char*)&key, 1);
+    last_kbd_event.event_id++;
+    last_kbd_event.released = released;
+    last_kbd_event.code = code;
+    last_kbd_event.key = key;
     x86_outb(0x64, in);
     return IRQ_HANDLED;
 }
+
+static int kbd_read(struct char_device *chardev, uint8_t *buf, size_t sz)
+{
+    if (sz > sizeof(struct kbd_event))
+        sz = sizeof(struct kbd_event);
+
+    memcpy((void*)buf, (void*)&last_kbd_event, sz);
+    return sz;
+}
+
+static struct char_ops ps2_kbd_ops = {
+    .read = &kbd_read,
+};
 
 int ps2_kbd_probe()
 {
@@ -164,10 +149,7 @@ int ps2_kbd_probe()
     x86_outb(0x60, 0xEE);
     while ((in = x86_inb(0x60)) == 0xFE)
         usleep(0x1000);
-    if (in != 0xEE) {
-        printk("ps2: keyboard not found");
-        return -ENODEV;
-    }
+    if (in != 0xEE) return -ENODEV;
 
     /* Identify keyboard */
     x86_outb(0x60, 0xF5);
@@ -200,8 +182,11 @@ int ps2_kbd_probe()
     else if (b0 == 0xAC && b1 == 0xA1) ps2_kbd_type = "NCD Sun layout keyboard ";
     else ps2_kbd_type = "unkown";
 
+    last_kbd_event.event_id = 0;
+
     printk("ps2: keyboard type is %s", ps2_kbd_type);
     irq_request(PS2_KBD_IRQ, &ps2_kbd_irq, NULL);
+    register_chardev(KBD_DRIVER, &ps2_kbd_ops, NULL, &last_kbd_event.dev);
 
     ps2_kb_initialized = 1;
     return 0;
@@ -209,6 +194,13 @@ int ps2_kbd_probe()
 
 void ps2_kbd_cleanup()
 {
+    if (ps2_kb_initialized)
+    {
+        unregister_chardev(last_kbd_event.dev);
+        ps2_kb_initialized = 0;
+        last_kbd_event.dev = 0;
+        last_kbd_event.event_id = 0;
+    }
 }
 
 module_t ps2_module = {

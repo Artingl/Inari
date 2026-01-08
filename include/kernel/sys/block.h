@@ -46,7 +46,7 @@ int blkdev_init();
 int register_blkdev_group(uint32_t driver, uint32_t block_size, const char *name);
 int unregister_blkdev_group(uint32_t driver);
 
-int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data);
+int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data, dev_t *dev);
 int unregister_blkdev(dev_t dev);
 
 

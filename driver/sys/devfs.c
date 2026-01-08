@@ -206,7 +206,8 @@ static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
     if (item->is_blk) bdev = block_get(item->dev);
     else chardev = char_get(item->dev);
 
-    *rlen = len;
+    if (rlen)
+        *rlen = len;
     if (bdev)
     {
         size_t block = len / bdev->group->block_size;

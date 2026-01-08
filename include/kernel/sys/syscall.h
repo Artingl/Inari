@@ -5,7 +5,7 @@
 
 #define SYSCALL_EXIT             1
 #define SYSCALL_USLEEP           2
-#define SYSCALL_DEBUG            3
+// #define SYSCALL_DEBUG            3
 #define SYSCALL_OPEN             4
 #define SYSCALL_CLOSE            5
 #define SYSCALL_EXECP            6

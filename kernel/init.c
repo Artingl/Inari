@@ -46,13 +46,20 @@ void kearly_init(bootinfo_t b)
 
 void kmain(void)
 {
-    assert(console_init() == 0, "console init failed.");
     assert(event_bus_init() == 0, "event bus init failed.");
     assert(blkdev_init() == 0, "block device init failed.");
     assert(chardev_init() == 0, "char device init failed.");
     assert(sched_init() == 0, "scheduler init failed.");
     assert(vfs_init() == 0, "vfs init failed.");
     assert(proc_init() == 0, "proc init failed.");
+
+    /* Initialize standard driver groups */
+    register_chardev_group(TTY_DRIVER, "tty");
+    register_chardev_group(SERIAL_DRIVER, "serial");
+    register_chardev_group(KBD_DRIVER, "kbd");
+    register_chardev_group(MOUSE_DRIVER, "mouse");
+
+    assert(console_init() == 0, "console init failed.");
 
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
@@ -104,6 +111,8 @@ static void init_stub_thread()
     /* This thread is only created to delay a little the execution
      * of the init task, so critical kernel modules have time to initialize. */
     usleep(400000);
+
+    vfs_mount(0, "/dev");
 
     pid_t pid;
     int res;

@@ -95,26 +95,24 @@ static struct char_ops serial_block_ops = {
     .write = &serial_write_chardev
 };
 
+static dev_t char_devices[8] = {0};
+
 int pc8250_serial_probe()
 {
-    int res;
     if (pc8250_serial_init() != 0)
         return -ENODEV;
     console_register(&console_dev);
-    
-    if ((res = register_chardev_group(SERIAL_DRIVER, "serial")) != 0)
-        return res;
 
     if (pc8250_is_initialized)
     {
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM1);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM2);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM3);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM4);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM5);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM6);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM7);
-        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM8);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM1, &char_devices[0]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM2, &char_devices[1]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM3, &char_devices[2]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM4, &char_devices[3]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM5, &char_devices[4]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM6, &char_devices[5]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM7, &char_devices[6]);
+        register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM8, &char_devices[7]);
     }
     
     return 0;
@@ -122,6 +120,19 @@ int pc8250_serial_probe()
 
 void pc8250_serial_cleanup()
 {
+    if (pc8250_is_initialized)
+    {
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[0]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[1]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[2]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[3]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[4]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[5]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[6]));
+        unregister_chardev(MKDEV(SERIAL_DRIVER, char_devices[7]));
+        memset((void*)&char_devices[0], 0, sizeof(char_devices));
+        pc8250_is_initialized = 0;
+    }
 }
 
 earlycon_device(

@@ -40,8 +40,8 @@ int syscall_handle(
         sched_usleep(tid, (size_t)param0);
         break;
 
-    case SYSCALL_DEBUG:
-        return printk(param0);
+    // case SYSCALL_DEBUG:
+    //     return printk(param0);
     
     case SYSCALL_OPEN:
         return vfs_open((vfs_handle_t*)param0, (const char*)param1, (int)param2);

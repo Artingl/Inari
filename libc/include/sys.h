@@ -33,7 +33,7 @@ struct fs_node {
 
 int exit(int code);
 int usleep(size_t t);
-int debug(const char *s);
+// int debug(const char *s);
 int open(handle_t *hndl, const char *path, int flags);
 int close(handle_t hndl);
 int execp(pid_t *pid, const char *path);

@@ -43,10 +43,10 @@ int usleep(size_t t)
     return syscall(2, (uint32_t)(t), 0, 0, 0, 0);
 }
 
-int debug(const char *s)
-{
-    return syscall(3, (uint32_t)(s), 0, 0, 0, 0);
-}
+// int debug(const char *s)
+// {
+//     return syscall(3, (uint32_t)(s), 0, 0, 0, 0);
+// }
 
 int open(handle_t *hndl, const char *path, int flags)
 {

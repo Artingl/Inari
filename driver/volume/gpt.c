@@ -129,7 +129,7 @@ static void handle_block_dev_load(dev_t dev)
             GPT_DRIVER,
             &gpt_block_ops,
             (entry.end_lba - entry.start_lba) * bdev->group->block_size,
-            (void*)partition);
+            (void*)partition, NULL);
 
         partitions++;
 #ifdef CONFIG_DEBUG

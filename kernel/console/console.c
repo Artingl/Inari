@@ -4,6 +4,7 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/console/earlycon.h>
 #include <kernel/proc/sched.h>
+#include <kernel/sys/char.h>
 #include <kernel/errno.h>
 #include <kernel/timer.h>
 
@@ -155,6 +156,16 @@ static void console_thread(void)
     }
 }
 
+static dev_t console_dev = 0;
+static int console_write_char(struct char_device *chardev, const uint8_t *buf, size_t sz)
+{
+    console_printc(CONSOLE_PRINTK, buf, sz);
+}
+
+static struct char_ops console_ops = {
+    .write = &console_write_char
+};
+
 int console_init(void)
 {
     int ret;
@@ -163,6 +174,7 @@ int console_init(void)
     spinlock_init(&console_lock);
     console_pool_init();
 
+    register_chardev(TTY_DRIVER, &console_ops, NULL, &console_dev);
     ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL);
     return ret;
 }
@@ -190,6 +202,7 @@ int console_unregister(struct console_dev *dev)
 {
     if (!dev)
         return -EINVAL;
+    unregister_chardev(console_dev);
     list_del(&dev->list);
     return 0;
 }
@@ -197,7 +210,7 @@ int console_unregister(struct console_dev *dev)
 /* TODO: console is broken, lots of chars are lost during print */
 int console_printc(int type, const char *s, uint32_t count)
 {
-    // if (console_is_early || type == CONSOLE_PANIC)
+    if (console_is_early || type == CONSOLE_PANIC)
     {
         console_print_dev(type, s, count);
         return 0;

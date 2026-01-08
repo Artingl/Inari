@@ -45,7 +45,7 @@ int chardev_init();
 int register_chardev_group(uint32_t driver, const char *name);
 int unregister_chardev_group(uint32_t driver);
 
-int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data);
+int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data, dev_t *dev);
 int unregister_chardev(dev_t dev);
 
 /* Fills the `devs` array with bdevs relative to set offset and limit.

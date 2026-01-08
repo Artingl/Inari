@@ -53,7 +53,7 @@ int unregister_blkdev(dev_t dev)
     return 0;
 }
 
-int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data)
+int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data, dev_t *dev)
 {
     if (!ops || driver >= DRIVER_TOTAL) return -EINVAL;
 
@@ -82,11 +82,12 @@ int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void 
     bdev->dev = MKDEV(driver, minor);
 
     list_add_tail(&bdev->list, &group->block_devices);
+    printk("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_BLKDEV,
         .as = { .dev = bdev->dev }
     });
-    printk("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
+    if (dev) *dev = bdev->dev;
     return 0;
 }
 

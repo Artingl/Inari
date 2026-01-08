@@ -52,7 +52,7 @@ int unregister_chardev(dev_t dev)
     return 0;
 }
 
-int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data)
+int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data, dev_t *dev)
 {
     if (!ops || driver >= DRIVER_TOTAL) return -EINVAL;
 
@@ -80,11 +80,12 @@ int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data)
     chardev->dev = MKDEV(driver, minor);
 
     list_add_tail(&chardev->list, &group->char_devices);
+    printk("char: new dev:char_%s%u; driver 0x%04x", group->name, minor, driver);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_CHARDEV,
         .as = { .dev = chardev->dev }
     });
-    printk("char: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
+    if (dev) *dev = chardev->dev;
     return 0;
 }
 
