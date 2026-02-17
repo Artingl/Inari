@@ -109,7 +109,6 @@ uint16_t scancode_set1_map[128] = {
     [0x56] = KEY_NONE,
     [0x57] = KEY_F11,
     [0x58] = KEY_F12,
-    /* 0x59–0x7F: unused or handled as extended */
 };
 
 static struct kbd_event last_kbd_event = {0};
@@ -124,7 +123,7 @@ static int ps2_kbd_irq(uint32_t irq, void *dev_id)
     last_kbd_event.released = released;
     last_kbd_event.code = code;
     last_kbd_event.key = key;
-    x86_outb(0x64, in);
+    x86_outb(0x64, 0);
     return IRQ_HANDLED;
 }
 

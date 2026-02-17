@@ -2,13 +2,15 @@
 #define _INARI_PAGE_H
 
 #include <misc/types.h>
-#include <arch/paging.h>
 
 #define PAGE_RW         (1 << 0)
 #define PAGE_USR        (1 << 1)
 #define PAGE_PRESENT    (1 << 2)
 
-typedef struct paging_directory* pagedir_t;
+typedef void* pagedir_t;
+
+struct paging_window
+{};
 
 int page_init(void);
 
@@ -26,5 +28,7 @@ pagedir_t page_alloc_dir(void);
 pagedir_t page_get_dir(void);
 void page_switch_dir(pagedir_t dir);
 void page_dealloc_dir(pagedir_t dir);
+
+uint8_t page_is_kernel_directory(void);
 
 #endif

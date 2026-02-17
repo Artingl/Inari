@@ -1,6 +1,7 @@
 #include <kernel/inari.h>
 #include <kernel/printk.h>
 #include <kernel/mm/pmm.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/mm/page.h>
 #include <kernel/proc/pe.h>
 #include <kernel/errno.h>
@@ -19,13 +20,17 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
     struct pe32_header *header32 = (struct pe32_header*)&buf[128 + sizeof(struct pe_header)];
     struct pe_image_section *section;
     struct pe_symbol *symbol;
+    pagedir_t prev_dir;
 
     if (header->magic != PE_MAGIC) return -EINVAL;
     if (header32->magic != PE32_MAGIC) return -EINVAL;
 
     /* Switch to the vmem process will use to init it */
-    pagedir_t prev_dir = page_get_dir();
-    page_switch_dir(vmem);
+    if (vmem)
+    {
+        prev_dir = page_get_dir();
+        page_switch_dir(vmem);
+    }
 
     /* Load all sections */
     for (i = 0; i < header->sections_number; i++)
@@ -41,6 +46,9 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
         }
 
         pbase = pmm_alloc_pages((section->virt_sz >> 12) + 1);
+        vmm_disable_region((struct reserved_memory){
+            .start = header32->image_base + section->vbase,
+            .end = header32->image_base + section->vbase + section->virt_sz });
         if (!pbase || !page_map((void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
         {
             res = -ENOMEM;
@@ -53,6 +61,7 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
     *entrypoint = (void*)(header32->image_base + header32->address_of_entry_point);
 
 end:
-    page_switch_dir(prev_dir);
+    if (vmem)
+        page_switch_dir(prev_dir);
     return res;
 }

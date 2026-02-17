@@ -284,3 +284,9 @@ void console_switch_early(void)
     console_flush();
     console_is_early = 1;
 }
+
+void console_switch_normal(void)
+{
+    console_flush();
+    console_is_early = 0;
+}

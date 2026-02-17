@@ -76,7 +76,6 @@ int mount_root()
     int res;
     vfs_handle_t file;
     
-
     char name_buff[ARG_MAX_LEN];
     char device[ARG_MAX_LEN];
     parse_cmdline_argument("root", &device[0]);
@@ -114,9 +113,13 @@ static void init_stub_thread()
 
     vfs_mount(0, "/dev");
 
+    char init_file[ARG_MAX_LEN];
+    strcpy(&init_file[0], "/init.exe");
+    parse_cmdline_argument("init", &init_file[0]);
+    
     pid_t pid;
     int res;
-    if ((res = execp(&pid, "/init.exe")) != 0)
+    if ((res = execp(&pid, init_file)) != 0)
         panic("unable to launch init; code %d.", res);
 }
 

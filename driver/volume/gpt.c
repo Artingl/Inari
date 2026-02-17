@@ -26,7 +26,7 @@ struct gpt_header
     uint64_t entries_lba;
     uint32_t entries_cnt;
     uint32_t entry_sz;
-};
+} __attribute__((packed));
 
 struct gpt_entry
 {
@@ -36,7 +36,7 @@ struct gpt_entry
     uint64_t end_lba;
     uint64_t attributes;
     char name[72];
-};
+} __attribute__((packed));
 
 typedef struct {
     struct gpt_header header;

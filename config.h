@@ -7,6 +7,7 @@
 #define CONFIG_DRV_DEVFS
 #define CONFIG_DRV_FATFS
 #define CONFIG_DRV_GPT
+#define CONFIG_DRV_MBR
 
 #define CONFIG_DRV_ATA_PIO
 #define CONFIG_DRV_ATA

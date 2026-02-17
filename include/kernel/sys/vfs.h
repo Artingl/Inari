@@ -26,12 +26,12 @@ struct vfs_layer;
 typedef int64_t vfs_handle_t;
 
 struct vfs_node {
-    char name[CONFIG_VFS_NAME_MAX];
-    uint32_t st_mode;           // File type + permissions
-    uint64_t size;              // File size (bytes)
+    char name[256];
+    uint32_t st_mode;     // File type + permissions
+    uint64_t size;        // File size (bytes)
 
-    size_t off;                 // Node offset in the directory
-};
+    uint32_t off;         // Node offset in the directory
+} __attribute__((packed));
 
 struct vfs_layer_ops {
     int (*open)(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags);

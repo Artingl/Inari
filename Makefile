@@ -1,6 +1,6 @@
 TARGET=x86
-CC = gcc
-LD = ld
+CC = /home/artingl/opt/bin/i686-elf-gcc
+LD = /home/artingl/opt/bin/i686-elf-ld
 GRUB_MKRESCUE := $(shell if command -v grub-mkrescue >/dev/null 2>&1; then echo grub-mkrescue; else echo grub2-mkrescue; fi)
 
 CFLAGS = --include "build/config.h" -I include/ $(shell cat arch/$(TARGET)/cflags.txt) $(shell cat cflags.txt)

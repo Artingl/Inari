@@ -79,7 +79,9 @@ static void handle_dev_load(uint8_t is_blk, dev_t dev)
     struct list_head *pos;
     struct devfs_group_item *entry;
 
+#ifdef CONFIG_DEBUG
     printk("devfs: new entry dev:%s_%s%d in group %s", (is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
+#endif
 }
 
 static void handle_dev_unload(dev_t dev)
@@ -103,7 +105,9 @@ static void handle_dev_unload(dev_t dev)
             else if ((chardev = char_get(dev)))
                 group_name = chardev->group->name;
 
+#ifdef CONFIG_DEBUG
             printk("devfs: removed entry dev:%s_%s%d in group %s", (entry->is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
+#endif
             list_del(&entry->list);
             kfree(entry);
             break;
@@ -376,7 +380,9 @@ void devfs_cleanup()
         {
             entry = list_entry(pos, struct devfs_group_item, list);
             bdev = block_get(entry->dev);
+#ifdef CONFIG_DEBUG
             printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
+#endif
             list_del(&entry->list);
             kfree(entry);
         }

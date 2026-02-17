@@ -118,7 +118,7 @@ void _arch_trigger_interrupt(uint32_t interrupt)
             return;
 
         default:
-            panic("x86: invalid interrupt to trigger %u", interrupt);
+            panic("arch: invalid interrupt to trigger %u", interrupt);
     }
 }
 

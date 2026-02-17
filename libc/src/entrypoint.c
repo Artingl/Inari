@@ -1,4 +1,5 @@
-#include <typedefs.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <sys.h>
 
 extern int main();

@@ -26,6 +26,7 @@ int console_unregister(struct console_dev *dev);
 
 /* Switch back to early console */
 void console_switch_early(void);
+void console_switch_normal(void);
 
 #define CONSOLE_MESSAGE_PRINTK 0x00
 #define CONSOLE_MESSAGE_DEBUG  0x01

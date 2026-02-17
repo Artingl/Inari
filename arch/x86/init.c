@@ -7,19 +7,7 @@
 #include <arch/sys.h>
 #include <arch/x86/cpu.h>
 #include <arch/x86/arch.h>
-
-#define _TABLE_PRESENT (1 << 0)
-#define _TABLE_RW (1 << 1)
-
-#define _PAGE_PRESENT (1 << 0)
-#define _PAGE_RW (1 << 1)
-#define _PAGE_USR (1 << 2)
-#define _PAGE_DIRTY (1 << 5)
-
-struct page_table
-{
-    uint32_t pages[1024];
-};
+#include <arch/paging.h>
 
 extern char kern_virt_start;
 extern char kern_virt_end;
@@ -29,7 +17,7 @@ extern char _arch_pagetable_area_start;
 extern char _arch_stack_bsp;
 
 _lo_data size_t table_pool_offset = 0;
-_lo_data uintptr_t tables_phys[1024] = {0};
+_lo_data struct paging_directory directory = {0};
 
 _lo_text static inline void *x86_memset(void *buf, int ch, size_t count)
 {
@@ -42,13 +30,14 @@ _lo_text static struct page_table *x86_alloc_table(uintptr_t offset)
 {
     struct page_table *table_pool = (struct page_table*)ALIGN((uintptr_t)&_arch_pagetable_area_start, PAGE_SIZE);
 
-    if (!(tables_phys[offset] & _TABLE_PRESENT))
+    if (!(directory.tables_phys[offset] & _TABLE_PRESENT))
     {
         struct page_table *table = (struct page_table*)ALIGN((uintptr_t)&table_pool[table_pool_offset++], PAGE_SIZE);
         x86_memset((void*)table, 0, sizeof(struct page_table));
-        tables_phys[offset] = ((uintptr_t)table) | _TABLE_PRESENT | _TABLE_RW;
+        directory.tables_phys[offset] = ((uintptr_t)table) | _TABLE_PRESENT | _TABLE_RW;
+        directory.tables_virt[offset] = directory.tables_phys[offset];
     }
-    return (struct page_table *)(tables_phys[offset] & ~0xFFF);
+    return (struct page_table *)(directory.tables_phys[offset] & ~0xFFF);
 }
 
 _lo_text static void x86_map_section(
@@ -87,7 +76,9 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 {
     size_t i;
 
-    /* Alloc all 1024 page tables to avoid pain */
+    /* Alloc all kernel's VM memory */
+    // for (i = VIRTUAL_ADDR; i < 0xffffffff; i+=0x400000)
+    //     x86_alloc_table(i >> 22);
     for (i = 0; i < 1024; i++)
         x86_alloc_table(i);
 
@@ -97,7 +88,7 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 
     /* Enable paging */
     uint32_t cr0;
-    __asm__ volatile("mov %0, %%cr3" ::"r"(&tables_phys));
+    __asm__ volatile("mov %0, %%cr3" ::"r"(&directory.tables_phys));
     __asm__ volatile("mov %%cr0, %0"
                      : "=r"(cr0));
     cr0 |= 0x80000000;
@@ -107,9 +98,9 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
     __asm__ volatile("mov %0, %%esp" :: "r"(&_arch_stack_bsp));
 
     extern struct paging_directory *x86_kernel_dir;
-    x86_kernel_dir = (struct paging_directory*)&tables_phys;
     extern struct paging_directory *x86_current_dir;
-    x86_current_dir = (struct paging_directory*)&tables_phys;
+    x86_kernel_dir = &directory;
+    x86_current_dir = &directory;
 
     /* We can finally go further */
     x86_entrypoint2(magic, multiboot);

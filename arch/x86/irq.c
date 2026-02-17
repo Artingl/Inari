@@ -33,18 +33,13 @@ void x86_irq_setup(struct x86_cpu *core)
     DECL_IRQ(15);
 
     /* SWI */
-    DECL_DIRECT(100);  // SWI_RESCHEDULE
-
-    /* Syscalls */
-    DECL_DIRECT(0x80);  // SWI_SYSCALL
+    DECL_DIRECT(0x80);  // SWI_RESCHEDULE
+    DECL_DIRECT(0x81);  // SWI_SYSCALL
 }
 
 void x86_irq_handler(struct x86_regs32 regs)
 {
     uint32_t irq = regs.int_no;
-
-    if (irq == SWI_SYSCALL)
-        regs.ebx = syscall_handle(regs.ebx, (void*)regs.ecx, (void*)regs.edx, (void*)regs.esi, (void*)regs.edi, (void*)regs.ebp);
 
     if (regs.int_no == X86_PIT_IRQ)
     {
@@ -52,6 +47,10 @@ void x86_irq_handler(struct x86_regs32 regs)
         irq = IRQ_TIMER_INTERRUPT;
     }
     else if (regs.int_no == X86_SWI_RESCHEDULE) irq = SWI_RESCHEDULE;
+    else if (regs.int_no == X86_SWI_SYSCALL) {
+        regs.ebx = syscall_handle(regs.ebx, (void*)regs.ecx, (void*)regs.edx, (void*)regs.esi, (void*)regs.edi, (void*)regs.ebp);
+        irq = SWI_SYSCALL;
+    }
     else irq -= X86_IRQ_OFFSET;
 
     interrupt_dispatch((struct interrupt_frame){

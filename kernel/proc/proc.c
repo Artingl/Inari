@@ -5,6 +5,7 @@
 #include <kernel/proc/signals.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/mm/kmalloc.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/errno.h>
 
@@ -66,6 +67,11 @@ int exit(pid_t pid, int exit_code)
     return kill_process(pid);
 }
 
+void test()
+{
+    printk("!!!!");
+}
+
 int execp(pid_t *pid, const char *path)
 {
     pagedir_t vmem;
@@ -77,7 +83,6 @@ int execp(pid_t *pid, const char *path)
 
     if ((res = vfs_open(&hndl, path, VFS_READ)) != 0)
         goto end;
-
     if ((res = vfs_size(hndl, &size)) != 0)
         goto close_f;
     if ((buf = (uint8_t*)kmalloc(size)) == NULL)
@@ -89,14 +94,17 @@ int execp(pid_t *pid, const char *path)
     if ((res = vfs_read(hndl, (void*)buf, size, NULL)) != 0)
         goto dealloc;
 
-    vmem = page_alloc_dir();
-    if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
-    {
-        page_dealloc_dir(vmem);
-        goto dealloc;
-    }
+    vmem = NULL;//page_alloc_dir();
+    // vmm_in_kernel(0);
+    // if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
+    // {
+    //     page_dealloc_dir(vmem);
+    //     vmm_in_kernel(1);
+    //     goto dealloc;
+    // }
 
-    spawn_process(pid, (task_descriptor_t){ .entrypoint = entrypoint, .vmem = vmem });
+    // vmm_in_kernel(1);
+    spawn_process(pid, (task_descriptor_t){ .entrypoint = &test, .vmem = vmem });
 dealloc:
     kfree((void*)buf);
 close_f:

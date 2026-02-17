@@ -17,10 +17,11 @@ typedef struct vmm_page {
 #define VMM_SIZE_PAGES   (VMM_SIZE_BYTES / PAGE_SIZE)
 #define VMM_VBASE        (VIRTUAL_ADDR - VMM_SIZE_BYTES)
 
-extern int vmm_init(void);
-extern void *vmm_alloc_pages(size_t npages);
-extern int vmm_free_pages(void *base, size_t npages);
-extern int vmm_disable_region(struct reserved_memory region);
-extern int vmm_enable_region(struct reserved_memory region);
+int vmm_init(void);
+void vmm_in_kernel(uint8_t flag);
+void *vmm_alloc_pages(size_t npages);
+int vmm_free_pages(void *base, size_t npages);
+int vmm_disable_region(struct reserved_memory region);
+int vmm_enable_region(struct reserved_memory region);
 
 #endif

@@ -10,6 +10,7 @@
 #define PR_16 0x10
 #define PR_WS 0x20
 #define PR_LZ 0x40
+#define PR_64 0x60
 #define PR_BUFLEN 32
 
 handle_t stdout = -1;
@@ -98,6 +99,8 @@ static inline int do_printf(const char *fmt, va_list args,
         if (*fmt == 'l') { flags |= PR_32; fmt++; }
         else if (*fmt == 'h') { flags |= PR_16; fmt++; }
 
+        if (*fmt == 'l' && flags & PR_32) { flags |= PR_64; fmt++; }
+
         // ---- Conversion ----
         unsigned long num;
         switch (*fmt) {
@@ -107,9 +110,10 @@ static inline int do_printf(const char *fmt, va_list args,
         case 's':
             count += emit_string(fn, ud, va_arg(args, const char *));
             break;
-        case 'd': case 'i': flags |= PR_SG; __attribute__((fallthrough));
+        case 'd': case 'i': flags |= PR_SG;
         case 'u':
-            num = (flags & PR_32) ? va_arg(args, unsigned long) :
+            num = (flags & PR_64) ? va_arg(args, unsigned long long) :
+                  (flags & PR_32) ? va_arg(args, unsigned long) :
                   (flags & PR_16) ? (unsigned short)va_arg(args, unsigned int) :
                                     va_arg(args, unsigned int);
             if (flags & PR_SG) {
@@ -120,7 +124,8 @@ static inline int do_printf(const char *fmt, va_list args,
             break;
         case 'x': case 'X':
             if (*fmt == 'X') flags |= PR_CA;
-            num = (flags & PR_32) ? va_arg(args, unsigned long) :
+            num = (flags & PR_64) ? va_arg(args, unsigned long long) :
+                  (flags & PR_32) ? va_arg(args, unsigned long) :
                   (flags & PR_16) ? (unsigned short)va_arg(args, unsigned int) :
                                     va_arg(args, unsigned int);
             count += printnum(fn, ud, num, 16, flags);

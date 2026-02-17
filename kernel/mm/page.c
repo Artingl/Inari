@@ -81,3 +81,8 @@ void page_dealloc_dir(pagedir_t dir)
 {
     if (dir) arch_cleanup_pagedir((struct paging_directory*)dir);
 }
+
+uint8_t page_is_kernel_directory(void)
+{
+    return arch_get_pagedir() == (struct paging_directory*)get_kernel_pagedir();
+}

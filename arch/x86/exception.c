@@ -2,6 +2,7 @@
 #include <kernel/proc/sched.h>
 #include <kernel/interrupts/swi.h>
 #include <kernel/proc/signals.h>
+#include <kernel/console/console.h>
 
 #include <arch/x86/cpu.h>
 #include <arch/x86/arch.h>
@@ -67,6 +68,7 @@ void x86_exception_setup(struct x86_cpu *core)
 
 void x86_exception_handler(struct x86_regs32 regs)
 {
+    console_switch_early();
     tid_t tid;
     uint32_t signo = SIGTERM;
     if (sched_current_thread(&tid) == 0)
@@ -78,7 +80,7 @@ void x86_exception_handler(struct x86_regs32 regs)
             case 0x6:  signo = SIGILL; break;
             case 0x0:  signo = SIGILL; break;
             default:
-                printk("x86: exception %s", EXCEPTIONS_NAMES[regs.int_no]);
+                printk("arch: exception %s; eip=0x%x", EXCEPTIONS_NAMES[regs.int_no], regs.eip);
         }
         
         sched_signal_thread(tid, signo);
@@ -96,5 +98,7 @@ void x86_exception_handler(struct x86_regs32 regs)
             .size = sizeof(struct x86_regs32)
         }
     });
+
+    console_switch_normal();
 }
 

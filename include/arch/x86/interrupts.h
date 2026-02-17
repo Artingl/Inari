@@ -4,7 +4,8 @@
 #define X86_IRQ_OFFSET 32
 #define X86_PIT_IRQ    (X86_IRQ_OFFSET + 0)
 
-#define X86_SWI_OFFSET      100
-#define X86_SWI_RESCHEDULE  (X86_SWI_OFFSET + 0)
+#define X86_SWI_OFFSET      0x80
+#define X86_SWI_SYSCALL     (X86_SWI_OFFSET + 0)
+#define X86_SWI_RESCHEDULE  (X86_SWI_OFFSET + 1)
 
 #endif

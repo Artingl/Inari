@@ -1,7 +1,8 @@
 #ifndef _LIBC_SYS_H
 #define _LIBC_SYS_H
 
-#include <typedefs.h>
+#include <stddef.h>
+#include <stdint.h>
 
 typedef int64_t handle_t;
 
@@ -25,15 +26,14 @@ typedef unsigned int dev_t;
 
 struct fs_node {
     char name[256];
-    uint32_t st_mode;           // File type + permissions
-    uint64_t size;              // File size (bytes)
+    uint32_t st_mode;     // File type + permissions
+    uint64_t size;        // File size (bytes)
 
-    size_t off;                 // Node offset in the directory
-};
+    uint32_t off;         // Node offset in the directory
+} __attribute__((packed));
 
 int exit(int code);
 int usleep(size_t t);
-// int debug(const char *s);
 int open(handle_t *hndl, const char *path, int flags);
 int close(handle_t hndl);
 int execp(pid_t *pid, const char *path);

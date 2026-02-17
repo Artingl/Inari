@@ -2,8 +2,27 @@
 #define _INARI_PAGING_H
 
 #include <misc/types.h>
+#include <kernel/mm/page.h>
 
-struct paging_directory;
+#define _TABLE_PRESENT (1 << 0)
+#define _TABLE_RW (1 << 1)
+
+#define _PAGE_PRESENT (1 << 0)
+#define _PAGE_RW (1 << 1)
+#define _PAGE_USR (1 << 2)
+#define _PAGE_DIRTY (1 << 5)
+
+struct page_table
+{
+    uint32_t pages[1024];
+} __attribute__((packed));
+
+struct paging_directory
+{
+    uintptr_t tables_phys[1024];
+    uintptr_t tables_virt[1024];
+    struct paging_window window;
+} __attribute__((packed));
 
 void *arch_virt_to_phys(void *vbase);
 void *arch_map_page(void *vbase, void *pbase, size_t len, uint32_t flags);
@@ -12,5 +31,6 @@ void arch_switch_pagedir(struct paging_directory *directory);
 struct paging_directory *arch_get_pagedir(void);
 struct paging_directory *arch_create_pagedir(void);
 void arch_cleanup_pagedir(struct paging_directory *directory);
+struct paging_window *arch_get_window();
 
 #endif

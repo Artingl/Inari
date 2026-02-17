@@ -202,6 +202,7 @@ int sched_init()
     sched_idle_task->vmem = get_kernel_pagedir();
     sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
+    sched_idle_task->inside_signal = 0;
     sched_idle_task->state = SCHED_TASK_ACTIVE;
     list_add_tail(&sched_idle_task->list, &sched_task_list);
 
@@ -209,6 +210,8 @@ int sched_init()
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
     if (ret != 0) return ret;
     ret = swi_request(SWI_RESCHEDULE, &sched_swi, NULL);
+    if (ret != 0) return ret;
+    ret = swi_request(SWI_SYSCALL, &sched_swi, NULL);
     if (ret == 0)
     {
         sched_initialized = 1;
@@ -278,6 +281,7 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vm
     node->entrypoint = entrypoint;
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
+    node->inside_signal = 0;
     node->state = SCHED_TASK_ACTIVE;
     list_add_tail(&node->list, &sched_task_list);
     if (tid)
@@ -329,14 +333,14 @@ int sched_signal_thread(tid_t tid, uint32_t signo)
     {
         case SIGKILL:
         case SIGSTOP:
-            printk("sched%u: signal %u", task->tid, signo);
+            printk("sched%llu: signal %u", task->tid, signo);
             task->state = SCHED_TASK_DEAD;
             break;
 
         default:
             if (!task->signal_handler || task->inside_signal)
             {
-                printk("sched%u: signal %u", task->tid, signo);
+                printk("sched%llu: signal %u", task->tid, signo);
                 task->state = SCHED_TASK_DEAD;
                 break;
             }
