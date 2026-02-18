@@ -21,7 +21,13 @@ struct paging_directory
 {
     uintptr_t tables_phys[1024];
     uintptr_t tables_virt[1024];
-    struct paging_window window;
+    uint8_t is_kernel;
+} __attribute__((packed));
+
+struct paging_directory_usr
+{
+    struct paging_directory dir;
+    struct page_table tables_pool[1024];
 } __attribute__((packed));
 
 void *arch_virt_to_phys(void *vbase);
@@ -31,6 +37,6 @@ void arch_switch_pagedir(struct paging_directory *directory);
 struct paging_directory *arch_get_pagedir(void);
 struct paging_directory *arch_create_pagedir(void);
 void arch_cleanup_pagedir(struct paging_directory *directory);
-struct paging_window *arch_get_window();
+int arch_page_is_in_kernel();
 
 #endif

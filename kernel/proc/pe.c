@@ -55,7 +55,7 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
             goto end;
         }
 
-        memcpy((void*)header32->image_base + section->vbase, (void*)&buf[section->pbase], section->phys_sz);
+        memcpy((void*)header32->image_base + section->vbase, (void*)&buf[section->pbase], section->virt_sz);
     }
 
     *entrypoint = (void*)(header32->image_base + header32->address_of_entry_point);

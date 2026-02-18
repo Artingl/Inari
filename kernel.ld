@@ -14,3 +14,8 @@
 }
 .data ALIGN (4K) : AT (ADDR (.data) - 0xC0000000) { *(.data) }
 .bss ALIGN (4K) : AT (ADDR (.bss) - 0xC0000000) { *(.bss) }
+
+
+. = ALIGN(0x1000);
+vmm_pages_pool = .;
+. += 0x300fff;

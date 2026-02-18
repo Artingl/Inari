@@ -86,3 +86,19 @@ uint8_t page_is_kernel_directory(void)
 {
     return arch_get_pagedir() == (struct paging_directory*)get_kernel_pagedir();
 }
+
+static uint8_t is_in_kernel = 1;
+void page_in_kernel_glbl(uint8_t flag)
+{
+    is_in_kernel = flag;
+}
+
+int page_is_in_kernel_glbl()
+{
+    return is_in_kernel;
+}
+
+int page_is_in_kernel()
+{
+    return arch_page_is_in_kernel();
+}

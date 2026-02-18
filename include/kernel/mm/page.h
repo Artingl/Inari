@@ -9,9 +9,6 @@
 
 typedef void* pagedir_t;
 
-struct paging_window
-{};
-
 int page_init(void);
 
 /* Map physical memory to virtual */
@@ -30,5 +27,9 @@ void page_switch_dir(pagedir_t dir);
 void page_dealloc_dir(pagedir_t dir);
 
 uint8_t page_is_kernel_directory(void);
+
+void page_in_kernel_glbl(uint8_t flag);
+int page_is_in_kernel_glbl();
+int page_is_in_kernel();
 
 #endif

@@ -68,9 +68,12 @@ mkdir -p $MOUNT_DIR/boot/grub
 cp $KERNEL_BIN $MOUNT_DIR/boot/kernel.bin
 cp $GRUB_CFG $MOUNT_DIR/boot/grub/grub.cfg
 
-# Copy your init/test executable if it exists
 if [ -f "test/main.exe" ]; then
     cp test/main.exe $MOUNT_DIR/init.exe
+fi
+
+if [ -f "test/test.exe" ]; then
+    cp test/test.exe $MOUNT_DIR/test.exe
 fi
 
 mkdir -p $MOUNT_DIR/dev

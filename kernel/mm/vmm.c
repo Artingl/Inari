@@ -8,7 +8,6 @@
 
 static struct vmm_page *pages_pool;
 static uintptr_t vm_start;
-static uint8_t is_in_kernel = 1;
 extern char kern_phys_end;
 extern char kern_virt_end;
 
@@ -36,7 +35,8 @@ int vmm_init(void)
     
     /* Disable memory regions that are occupied by mapped kernel, or by identity mapping (below kern_phys_end) */
     vmm_mark_region(0, (uintptr_t)&kern_phys_end + PAGE_SIZE, VMM_PAGE_RESERVED);
-    vmm_mark_region(VMM_VBASE, (uintptr_t)&kern_virt_end + PAGE_SIZE, VMM_PAGE_RESERVED);
+    vmm_mark_region(VMM_VBASE, VMM_VBASE + VMM_SIZE_BYTES, VMM_PAGE_RESERVED);
+    vmm_mark_region(VIRTUAL_ADDR, (uintptr_t)&kern_virt_end + PAGE_SIZE, VMM_PAGE_RESERVED);
 
     vm_start = (uintptr_t)&kern_phys_end + PAGE_SIZE;
 
@@ -56,26 +56,27 @@ int vmm_enable_region(struct reserved_memory region)
     return 0;
 }
 
-void vmm_in_kernel(uint8_t flag)
-{
-    is_in_kernel = flag;
-}
-
 void *vmm_alloc_pages(size_t npages)
 {
     struct vmm_page *page;
     size_t block_offset = 0, block_size = 0;
-    uintptr_t i = VIRTUAL_ADDR, end_addr = 0xffff0fff;
+    uintptr_t i, end_addr;
 
     if (npages == 0)
         return NULL;
 
     /* Allocate in different VM space if not allocating for kernel */
-    // if (!is_in_kernel)
+    if (page_is_in_kernel_glbl() && page_is_in_kernel())
     {
-        i = VIRTUAL_ADDR;//vm_start;
-        end_addr = 0xffffffff;//VIRTUAL_ADDR - PAGE_SIZE;
+        i = VIRTUAL_ADDR;
+        end_addr = 0xFFFFFFFF;
     }
+    else
+    {
+        i = MAX(vm_start, 0x800000);
+        end_addr = VIRTUAL_ADDR - PAGE_SIZE;
+    }
+
 
     /* Find free page in the pool */
     for (; i < end_addr; i += PAGE_SIZE)

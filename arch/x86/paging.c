@@ -86,25 +86,29 @@ void arch_switch_pagedir(struct paging_directory *directory)
 struct paging_directory *arch_create_pagedir(void)
 {
     size_t i;
-    struct paging_directory *new_dir = (struct paging_directory*)kmalloc(sizeof(struct paging_directory) + PAGE_SIZE);
-    new_dir = (struct paging_directory*)ALIGN((uintptr_t)new_dir, PAGE_SIZE);
+    struct paging_directory_usr *new_dir = (struct paging_directory_usr*)kmalloc(sizeof(struct paging_directory_usr) + PAGE_SIZE);
+    new_dir = (struct paging_directory_usr*)ALIGN((uintptr_t)new_dir, PAGE_SIZE);
+    memset((void*)new_dir, 0, sizeof(struct paging_directory_usr));
+    new_dir->dir.is_kernel = MIN(page_is_in_kernel_glbl(), x86_current_dir->is_kernel);
     
     /* TODO: CoW */
     for (i = 0; i < 1024; i++)
     {
-        if ((i << 22) > VIRTUAL_ADDR || (i << 22) < 0x300000)
-            new_dir->tables_virt[i] = ((uintptr_t)copy_table((struct page_table*)(x86_kernel_dir->tables_phys[i] & ~0xFFF))) | _TABLE_PRESENT | _TABLE_RW;
+        if (i >= 768 || i < 2)
+        {
+            new_dir->dir.tables_phys[i] = x86_kernel_dir->tables_phys[i];
+            new_dir->dir.tables_virt[i] = x86_kernel_dir->tables_virt[i];
+        }
         else
         {
-            struct page_table *new_table = (struct page_table*)kmalloc(sizeof(struct page_table) + PAGE_SIZE);
+            struct page_table *new_table = &new_dir->tables_pool[i];
             new_table = (struct page_table*)ALIGN((uintptr_t)new_table, PAGE_SIZE);
-            new_dir->tables_virt[i] = (uintptr_t)new_table | _TABLE_PRESENT | _TABLE_RW;
+            new_dir->dir.tables_virt[i] = (uintptr_t)new_table | _TABLE_PRESENT | _TABLE_RW;
+            new_dir->dir.tables_phys[i] = (uintptr_t)arch_virt_to_phys((void*)new_dir->dir.tables_virt[i]);
         }
-
-        new_dir->tables_phys[i] = (uintptr_t)arch_virt_to_phys((void*)new_dir->tables_virt[i]);
     }
 
-    return new_dir;
+    return (struct paging_directory*)&new_dir->dir;
 }
 
 void arch_cleanup_pagedir(struct paging_directory *directory)
@@ -115,7 +119,7 @@ void arch_cleanup_pagedir(struct paging_directory *directory)
     printk("arch_cleanup_pagedir: not implemented");
 }
 
-struct paging_window *arch_get_window()
+int arch_page_is_in_kernel()
 {
-    return &x86_current_dir->window;
+    return x86_current_dir->is_kernel;
 }

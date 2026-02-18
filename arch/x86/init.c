@@ -77,14 +77,14 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
     size_t i;
 
     /* Alloc all kernel's VM memory */
-    // for (i = VIRTUAL_ADDR; i < 0xffffffff; i+=0x400000)
-    //     x86_alloc_table(i >> 22);
     for (i = 0; i < 1024; i++)
         x86_alloc_table(i);
 
     /* Map crucial memory regions */
     x86_map_section((uintptr_t)&kern_phys_start, (uintptr_t)&kern_phys_end, (uintptr_t)&kern_phys_start);
     x86_map_section((uintptr_t)&kern_virt_start, (uintptr_t)&kern_virt_end, (uintptr_t)&kern_phys_end);
+
+    directory.is_kernel = 1;
 
     /* Enable paging */
     uint32_t cr0;

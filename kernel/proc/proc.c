@@ -69,7 +69,7 @@ int exit(pid_t pid, int exit_code)
 
 void test()
 {
-    printk("!!!!");
+    printk("!!!");
 }
 
 int execp(pid_t *pid, const char *path)
@@ -94,17 +94,17 @@ int execp(pid_t *pid, const char *path)
     if ((res = vfs_read(hndl, (void*)buf, size, NULL)) != 0)
         goto dealloc;
 
-    vmem = NULL;//page_alloc_dir();
-    // vmm_in_kernel(0);
-    // if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
-    // {
-    //     page_dealloc_dir(vmem);
-    //     vmm_in_kernel(1);
-    //     goto dealloc;
-    // }
+    vmem = page_alloc_dir();
+    page_in_kernel_glbl(0);
+    if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
+    {
+        page_in_kernel_glbl(1);
+        page_dealloc_dir(vmem);
+        goto dealloc;
+    }
+    page_in_kernel_glbl(1);
 
-    // vmm_in_kernel(1);
-    spawn_process(pid, (task_descriptor_t){ .entrypoint = &test, .vmem = vmem });
+    spawn_process(pid, (task_descriptor_t){ .entrypoint = entrypoint, .vmem = vmem });
 dealloc:
     kfree((void*)buf);
 close_f:

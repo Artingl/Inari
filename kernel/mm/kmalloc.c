@@ -27,7 +27,7 @@ void *kmalloc(size_t size)
         if (!page) return NULL;
 
         struct block *b = (struct block*)page;
-        b->size = npages  *PAGE_SIZE;
+        b->size = npages * PAGE_SIZE;
         b->free = 0;
         b->next = heap_start;
         b->large = 1;
