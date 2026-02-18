@@ -100,7 +100,10 @@ void exec_cmd()
     int argc = 0;
     char **argv = split_into_buffer((void*)&buff[0], path, &argc, &exec_path);
     if (!exec_path) return;
-    printf("-- %u %s\n", argc, exec_path);
+    if (strcmp(exec_path, "exit") == 0) {
+        exit(0);
+        return;
+    }
     if ((res = execpv(&pid, exec_path, argc, argv)) != 0) {
         printf("error: code %d\n", res);
         return;
