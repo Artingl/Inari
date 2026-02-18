@@ -10,7 +10,10 @@ void __main() {}
 void _start()
 {
     int res;
+    int argc = 0;
+    char **argv = (char**)0x900000;
     if ((res = libc_io_init()) != 0)
         exit(res);
-    exit(main());
+    while (argv[argc] != NULL) argc++;
+    exit(main(argc, argv));
 }

@@ -6,6 +6,7 @@
 #include <kernel/sync/spinlock.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/mm/pmm.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/errno.h>
 
@@ -67,17 +68,18 @@ int exit(pid_t pid, int exit_code)
     return kill_process(pid);
 }
 
-void test()
-{
-    printk("!!!");
-}
-
 int execp(pid_t *pid, const char *path)
 {
+    execpv(pid, path, 0, NULL);
+}
+
+int execpv(pid_t *pid, const char *path, int argc, char **argv)
+{
     pagedir_t vmem;
+    pagedir_t prev_dir;
     size_t size;
     vfs_handle_t hndl;
-    void *entrypoint = NULL;
+    void *entrypoint = NULL, *args_pbase, *tmp_args_base = NULL;
     uint8_t *buf;
     int res = 0;
 
@@ -94,19 +96,58 @@ int execp(pid_t *pid, const char *path)
     if ((res = vfs_read(hndl, (void*)buf, size, NULL)) != 0)
         goto dealloc;
 
+    /* TODO: env vars */
+
+    /* Allocate memory for the new process */
+    /* TODO: this is shit */
+    prev_dir = page_get_dir();
+    page_switch_dir(get_kernel_pagedir());
     vmem = page_alloc_dir();
+    tmp_args_base = (void*)kmalloc(PAGE_SIZE * 2);
+    page_switch_dir(prev_dir);
+    /* TODO: what if argv is larger than tmp_args_base */
+    copy_to_fixed_buffer_witharg(argc, argv, path, tmp_args_base);
     page_in_kernel_glbl(0);
-    if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
+    page_switch_dir(vmem);
+
+    /* TODO: args size must not be limited to 8kb */
+    args_pbase = pmm_alloc_pages(2);
+    if (page_map(
+        (void*)PROC_ARGS_BASE,
+        args_pbase,
+        PAGE_SIZE * 2,
+        PAGE_PRESENT | PAGE_RW) == NULL)
     {
+        pmm_free_pages(args_pbase, 2);
+        page_switch_dir(prev_dir);
         page_in_kernel_glbl(1);
         page_dealloc_dir(vmem);
         goto dealloc;
     }
+    vmm_disable_region((struct reserved_memory){
+        .start = PROC_ARGS_BASE,
+        .end = PROC_ARGS_BASE + PAGE_SIZE * 2 });
+    copy_to_fixed_buffer(argc + 1, tmp_args_base, (char**)PROC_ARGS_BASE);
+
+    /* Load the PE into non-kernel memory */
+    if ((res = pe_load(&entrypoint, buf, size)) != 0)
+    {
+        page_switch_dir(prev_dir);
+        page_in_kernel_glbl(1);
+        page_dealloc_dir(vmem);
+        goto dealloc;
+    }
+
+    page_switch_dir(prev_dir);
     page_in_kernel_glbl(1);
 
-    spawn_process(pid, (task_descriptor_t){ .entrypoint = entrypoint, .vmem = vmem });
+    spawn_process(pid, (task_descriptor_t){ 
+        .entrypoint = entrypoint, 
+        .vmem = vmem
+    });
 dealloc:
-    kfree((void*)buf);
+    if (tmp_args_base) kfree((void*)tmp_args_base);
+    if (buf) kfree((void*)buf);
 close_f:
     vfs_close(hndl);
 end:
@@ -181,6 +222,26 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
         }
     if (tid)
         *tid = i_tid;
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    return res;
+}
+
+int waitpid(pid_t pid, pid_t observer_pid)
+{
+    int res = 0;
+    uint32_t flags;
+    struct process *proc;
+    struct process *observer;
+
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    if ((res = get_process(&observer, observer_pid)) != 0)
+        goto end;
+    
+    // proc->threads
+
 end:
     spin_unlock_irqrestore(&lock, flags);
     return res;

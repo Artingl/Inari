@@ -65,16 +65,10 @@ mount "${LOOP_DEV}p1" $MOUNT_DIR
 # 6. Copy Files
 echo ">>> Copying kernel and config..."
 mkdir -p $MOUNT_DIR/boot/grub
+mkdir -p $MOUNT_DIR/bin
 cp $KERNEL_BIN $MOUNT_DIR/boot/kernel.bin
 cp $GRUB_CFG $MOUNT_DIR/boot/grub/grub.cfg
-
-if [ -f "test/main.exe" ]; then
-    cp test/main.exe $MOUNT_DIR/init.exe
-fi
-
-if [ -f "test/test.exe" ]; then
-    cp test/test.exe $MOUNT_DIR/test.exe
-fi
+cp binutils/*.exe $MOUNT_DIR/bin
 
 mkdir -p $MOUNT_DIR/dev
 

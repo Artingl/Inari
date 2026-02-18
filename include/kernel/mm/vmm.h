@@ -17,12 +17,13 @@ extern char vmm_pages_pool;
 
 #define VMM_SIZE_BYTES   (sizeof(struct vmm_page) * (0xffffffff / PAGE_SIZE) + PAGE_SIZE)
 #define VMM_SIZE_PAGES   (VMM_SIZE_BYTES / PAGE_SIZE)
-#define VMM_VBASE        ((uintptr_t)&vmm_pages_pool)//(VIRTUAL_ADDR - VMM_SIZE_BYTES)
+#define VMM_VBASE        ((uintptr_t)&vmm_pages_pool)
 
 int vmm_init(void);
 void *vmm_alloc_pages(size_t npages);
 int vmm_free_pages(void *base, size_t npages);
 int vmm_disable_region(struct reserved_memory region);
 int vmm_enable_region(struct reserved_memory region);
+int vmm_check_flag(uintptr_t start, uintptr_t end, uint8_t flag);
 
 #endif

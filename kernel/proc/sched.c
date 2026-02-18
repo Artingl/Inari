@@ -59,7 +59,7 @@ void sched_thread_preentry()
         goto end;
 
     if (task->entrypoint)
-        task->entrypoint();
+        task->entrypoint(task->proc_data);
     task->state = SCHED_TASK_DEAD;
 end:
     sched_yield();
@@ -282,7 +282,8 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vm
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
     node->inside_signal = 0;
-    node->state = SCHED_TASK_ACTIVE;
+    node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
+    node->state = SCHED_TASK_SLEEPING;
     list_add_tail(&node->list, &sched_task_list);
     if (tid)
         *tid = node->tid;

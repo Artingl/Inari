@@ -11,7 +11,7 @@
 extern char kern_virt_start;
 extern char kern_virt_end;
 
-int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
+int pe_load(void **entrypoint, uint8_t *buf, size_t sz)
 {
     int res = 0;
     void *pbase;
@@ -20,17 +20,9 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
     struct pe32_header *header32 = (struct pe32_header*)&buf[128 + sizeof(struct pe_header)];
     struct pe_image_section *section;
     struct pe_symbol *symbol;
-    pagedir_t prev_dir;
-
+    
     if (header->magic != PE_MAGIC) return -EINVAL;
     if (header32->magic != PE32_MAGIC) return -EINVAL;
-
-    /* Switch to the vmem process will use to init it */
-    if (vmem)
-    {
-        prev_dir = page_get_dir();
-        page_switch_dir(vmem);
-    }
 
     /* Load all sections */
     for (i = 0; i < header->sections_number; i++)
@@ -38,8 +30,7 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
         off = i * 40 + 128 + header->optional_header_sz + sizeof(struct pe_header);
         section = (struct pe_image_section*)&buf[off];
 
-        if (header32->image_base + section->vbase >= (uintptr_t)&kern_virt_start
-            && header32->image_base + section->vbase < (uintptr_t)&kern_virt_end)
+        if (vmm_check_flag(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz, VMM_PAGE_RESERVED))
         {
             res = -EFAULT;
             goto end;
@@ -61,7 +52,5 @@ int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz)
     *entrypoint = (void*)(header32->image_base + header32->address_of_entry_point);
 
 end:
-    if (vmem)
-        page_switch_dir(prev_dir);
     return res;
 }

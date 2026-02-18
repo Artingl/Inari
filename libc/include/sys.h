@@ -49,6 +49,8 @@ int mount(dev_t dev, const char *path);
 int unmount(const char *path);
 int readdir(const char *path, struct fs_node *node);
 int write(handle_t hndl, const void *buf, size_t sz);
+int waitpid(pid_t pid);
+int execpv(pid_t *pid, const char *path, int argc, char **argv);
 
 int syscall(
     uint32_t id,

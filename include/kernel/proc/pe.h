@@ -1,8 +1,6 @@
 #ifndef _INARI_PE_H
 #define _INARI_PE_H
 
-#include <kernel/mm/page.h>
-
 #include <misc/types.h>
 
 #define PE_MAGIC 	0x00004550
@@ -75,6 +73,6 @@ struct pe_symbol {
 };
 
 
-int pe_load(pagedir_t vmem, void **entrypoint, uint8_t *buf, size_t sz);
+int pe_load(void **entrypoint, uint8_t *buf, size_t sz);
 
 #endif

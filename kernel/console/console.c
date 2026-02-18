@@ -140,7 +140,7 @@ static struct list_head console_flush(void)
  *   take ownership of console_lazy_list under lock, then release lock and print.
  *   This ensures we never hold the spinlock while calling console_print_dev (which may sleep).
  */
-static void console_thread(void)
+static void console_thread(void*)
 {
     console_is_early = 0;
     printk("console: early console disabled");

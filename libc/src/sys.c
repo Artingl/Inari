@@ -117,3 +117,13 @@ int write(handle_t hndl, const void *buf, size_t sz)
 {
     return (int)syscall(18, (uint32_t)hndl, (uint32_t)buf, (uint32_t)sz, 0, 0);
 }
+
+int waitpid(pid_t pid)
+{
+    return (int)syscall(19, (uint32_t)pid, 0, 0, 0, 0);
+}
+
+int execpv(pid_t *pid, const char *path, int argc, char **argv)
+{
+    return syscall(20, (uint32_t)(pid), (uint32_t)(path), (int)(argc), (char*)(argv), 0);
+}

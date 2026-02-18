@@ -21,6 +21,8 @@
 #define SYSCALL_UNMOUNT         16
 #define SYSCALL_READDIR         17
 #define SYSCALL_WRITE           18
+#define SYSCALL_WAITPID         19
+#define SYSCALL_EXECPV          20
 
 
 int syscall_handle(

@@ -44,6 +44,15 @@ int vmm_init(void)
     return 0;
 }
 
+int vmm_check_flag(uintptr_t start, uintptr_t end, uint8_t flag)
+{
+    uintptr_t i;
+    for (i = start; i < end; i += PAGE_SIZE)
+        if (pages_pool[i / PAGE_SIZE].flags & flag) return -1;
+
+    return 0;
+}
+
 int vmm_disable_region(struct reserved_memory region)
 {
     vmm_mark_region(region.start, region.end, VMM_PAGE_DISABLED);
@@ -73,7 +82,7 @@ void *vmm_alloc_pages(size_t npages)
     }
     else
     {
-        i = MAX(vm_start, 0x800000);
+        i = MAX(vm_start, 0x900000);
         end_addr = VIRTUAL_ADDR - PAGE_SIZE;
     }
 

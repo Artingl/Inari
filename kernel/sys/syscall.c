@@ -6,6 +6,7 @@
 #include <kernel/proc/signals.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/syscall.h>
+#include <kernel/mm/page.h>
 #include <kernel/console/console.h>
 
 
@@ -27,6 +28,7 @@ int syscall_handle(
     if (!tid || !th->proc_data)
         return -ESRCH;
     struct process *proc = (struct process*)th->proc_data;
+    page_switch_dir(proc->descriptor.vmem);
 
     // printk("syscall: id %u; params 0x%x 0x%x 0x%x 0x%x 0x%x",
     //         id, param0, param1, param2, param3, param4);
@@ -92,6 +94,12 @@ int syscall_handle(
     
     case SYSCALL_WRITE:
         return vfs_write((vfs_handle_t)param0, (void*)param1, (size_t)param2);
+    
+    case SYSCALL_WAITPID:
+        return waitpid((pid_t)param0, proc->pid);
+
+    case SYSCALL_EXECPV:
+        return execpv((pid_t*)param0, (const char*)param1, (int)param2, (char**)param3);
 
     default:
         return -EINVAL;
