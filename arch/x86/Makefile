@@ -1,7 +1,7 @@
 TARGET = x86
 AS = nasm
-CC = /home/artingl/opt/bin/i686-elf-gcc
-LD = /home/artingl/opt/bin/i686-elf-ld
+CC = i686-elf-gcc
+LD = i686-elf-ld
 
 LDFLAGS = -no-pie -nostdlib
 CFLAGS = --include "../../build/config.h" -I ../../include/ $(shell cat cflags.txt) $(shell cat ../../cflags.txt)

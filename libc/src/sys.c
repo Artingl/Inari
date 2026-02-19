@@ -125,5 +125,26 @@ int waitpid(pid_t pid)
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv)
 {
-    return syscall(20, (uint32_t)(pid), (uint32_t)(path), (int)(argc), (char*)(argv), 0);
+    return syscall(20, (uint32_t)(pid), (uint32_t)(path), (uint32_t)(argc), (uint32_t)(argv), 0);
 }
+
+void *memalloc(size_t npages, uint32_t flags)
+{
+    return (void*)syscall(23, (uint32_t)npages, (uint32_t)flags, 0, 0, 0);
+}
+
+void memfree(void *vbase, size_t npages)
+{
+    syscall(24, (uint32_t)vbase, (uint32_t)npages, 0, 0, 0);
+}
+
+void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags)
+{
+    return (void*)syscall(21, (uint32_t)vbase, (uint32_t)pbase, (uint32_t)len, (uint32_t)flags, 0);
+}
+
+void memunmap(void *vbase, size_t len)
+{
+    syscall(22, (uint32_t)vbase, (uint32_t)len, 0, 0, 0);
+}
+

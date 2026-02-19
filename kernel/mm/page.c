@@ -19,7 +19,7 @@ void *page_map(void *vbase, void *pbase, size_t len, uint32_t flags)
     };
 
     /* Ensure that we can disable this region for later use */
-    if (vmm_disable_region(reserved))
+    if (vmm_disable_region(reserved) != 0)
         return (void*)NULL;
 
     return arch_map_page(vbase, pbase, len, flags);
@@ -72,9 +72,9 @@ void page_switch_dir(pagedir_t dir)
     arch_switch_pagedir((struct paging_directory*)dir);
 }
 
-pagedir_t page_alloc_dir(void)
+pagedir_t page_fork_dir(void)
 {
-    return (pagedir_t)arch_create_pagedir();
+    return (pagedir_t)arch_fork_pagedir();
 }
 
 void page_dealloc_dir(pagedir_t dir)
@@ -87,18 +87,7 @@ uint8_t page_is_kernel_directory(void)
     return arch_get_pagedir() == (struct paging_directory*)get_kernel_pagedir();
 }
 
-static uint8_t is_in_kernel = 1;
-void page_in_kernel_glbl(uint8_t flag)
+int page_is_kernel_pagedir()
 {
-    is_in_kernel = flag;
-}
-
-int page_is_in_kernel_glbl()
-{
-    return is_in_kernel;
-}
-
-int page_is_in_kernel()
-{
-    return arch_page_is_in_kernel();
+    return arch_page_is_kernel_pagedir();
 }

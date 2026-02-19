@@ -4,9 +4,12 @@
 #include <string.h>
 #include <sys.h>
 #include <errno.h>
+#include <alloc.h>
+
+#define NO_EXIT_CODE 0xFFFFFFFF
 
 char path[128] = {0};
-int path_offset = 0;
+int path_offset = 0, last_exitcode = NO_EXIT_CODE;
 uint32_t last_kb_event;
 handle_t kb_hndl;
 struct
@@ -94,6 +97,7 @@ void exec_cmd()
     int res, i;
     int is_bg = path[path_offset - 1] == '&';
     if (is_bg) path[path_offset - 1] = '\0';
+    last_exitcode = NO_EXIT_CODE;
 
     char buff[256] = {0};
     char *exec_path = NULL;
@@ -110,13 +114,15 @@ void exec_cmd()
     }
 
     if (!is_bg)
-        waitpid(pid);
+        last_exitcode = waitpid(pid);
 }
 
 int main(int argc, char const *argv[])
 {
-    printf("Simple test shell.\n");
-    printf("My name is %s\n\n", argv[0]);
+    pid_t pid;
+    char *cat_argv[] = { "/sys/motd.txt", NULL };
+    if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
+        waitpid(pid);
 
     if (open(&kb_hndl, "/dev/input/char_kbd0", READ) != 0)
     {
@@ -124,7 +130,7 @@ int main(int argc, char const *argv[])
         exit(1);
     }
 
-    printf(">> ");
+    printf("-> ");
     path_offset = 0;
     memset((void*)&path[0], 0, sizeof(path));
 
@@ -141,7 +147,10 @@ int main(int argc, char const *argv[])
                     exec_cmd();
                     path_offset = 0;
                     memset((void*)&path[0], 0, sizeof(path));
-                    printf(">> ");
+                    if (last_exitcode == NO_EXIT_CODE)
+                        printf("-> ");
+                    else
+                        printf("%d> ", last_exitcode);
                 }
                 else {
                     path[path_offset++] = kbd_event.key;

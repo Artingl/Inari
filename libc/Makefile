@@ -2,7 +2,7 @@ TARGET=x86
 CC = i686-w64-mingw32-gcc
 LD = i686-w64-mingw32-ld
 
-CFLAGS = -I include/ $(shell cat ../arch/$(TARGET)/cflags.txt) $(shell cat ../cflags.txt)
+CFLAGS = -I include/ $(shell cat ../arch/$(TARGET)/cflags.txt) $(shell cat ../cflags.txt) -m32 -mfpmath=387
 
 libc_source := $(shell find src/ -name '*.c')
 libc_objects := $(patsubst src/%.c, build/%.o, $(libc_source))

@@ -182,47 +182,4 @@ static inline void double2buf(char *buf, double f) {
     buf[i] = '\0';
 }
 
-static inline void copy_to_fixed_buffer(int count, char **src_argv, void *buffer) {
-    char **new_argv = (char **)buffer;
-    char *data_ptr = (char *)buffer + ((count + 1) * sizeof(char *));
-    for (int i = 0; i < count; i++) {
-        new_argv[i] = data_ptr;
-        strcpy(data_ptr, src_argv[i]);
-        data_ptr += strlen(src_argv[i]) + 1;
-    }
-    new_argv[count] = NULL;
-}
-
-static inline void copy_to_fixed_buffer_witharg(int count, char **src_argv, const char *path, void *buffer) {
-    char **new_argv = (char **)buffer;
-    
-    /* Determine the actual number of elements we will have */
-    /* If path exists, we have count + 1 elements. */
-    int has_path = (path != NULL) ? 1 : 0;
-    int total_count = (src_argv && count > 0) ? (count + has_path) : has_path;
-
-    /* data_ptr starts after the pointer array (including the NULL terminator) */
-    char *data_ptr = (char *)buffer + ((total_count + 1) * sizeof(char *));
-    int current_idx = 0;
-
-    /* Add Path as the first argument if it exists */
-    if (has_path) {
-        new_argv[current_idx] = data_ptr;
-        strcpy(data_ptr, path);
-        data_ptr += strlen(path) + 1;
-        current_idx++;
-    }
-
-    /* Append original argv elements if they exist */
-    if (src_argv && count > 0) {
-        for (int i = 0; i < count; i++) {
-            new_argv[current_idx] = data_ptr;
-            strcpy(data_ptr, src_argv[i]);
-            data_ptr += strlen(src_argv[i]) + 1;
-            current_idx++;
-        }
-    }
-    new_argv[total_count] = NULL;
-}
-
 #endif

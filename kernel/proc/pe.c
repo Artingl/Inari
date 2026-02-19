@@ -21,8 +21,8 @@ int pe_load(void **entrypoint, uint8_t *buf, size_t sz)
     struct pe_image_section *section;
     struct pe_symbol *symbol;
     
-    if (header->magic != PE_MAGIC) return -EINVAL;
-    if (header32->magic != PE32_MAGIC) return -EINVAL;
+    if (header->magic != PE_MAGIC) return -ENOEXEC;
+    if (header32->magic != PE32_MAGIC) return -ENOEXEC;
 
     /* Load all sections */
     for (i = 0; i < header->sections_number; i++)

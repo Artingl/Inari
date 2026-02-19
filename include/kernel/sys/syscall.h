@@ -23,6 +23,10 @@
 #define SYSCALL_WRITE           18
 #define SYSCALL_WAITPID         19
 #define SYSCALL_EXECPV          20
+#define SYSCALL_MEMMAP          21
+#define SYSCALL_MEMUNMAP        22
+#define SYSCALL_MEMALLOC        23
+#define SYSCALL_MEMFREE         24
 
 
 int syscall_handle(

@@ -65,12 +65,13 @@ mount "${LOOP_DEV}p1" $MOUNT_DIR
 # 6. Copy Files
 echo ">>> Copying kernel and config..."
 mkdir -p $MOUNT_DIR/boot/grub
-mkdir -p $MOUNT_DIR/bin
+mkdir -p $MOUNT_DIR/prog
+mkdir -p $MOUNT_DIR/sys
+mkdir -p $MOUNT_DIR/dev
 cp $KERNEL_BIN $MOUNT_DIR/boot/kernel.bin
 cp $GRUB_CFG $MOUNT_DIR/boot/grub/grub.cfg
-cp binutils/*.exe $MOUNT_DIR/bin
-
-mkdir -p $MOUNT_DIR/dev
+cp binutils/*.exe $MOUNT_DIR/prog
+cp motd.txt $MOUNT_DIR/sys
 
 # 7. Install GRUB
 echo ">>> Installing GRUB..."

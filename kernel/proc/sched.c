@@ -2,6 +2,8 @@
 #include <kernel/proc/sched.h>
 #include <kernel/proc/signals.h>
 #include <kernel/mm/kmalloc.h>
+#include <kernel/mm/pmm.h>
+#include <kernel/mm/page.h>
 #include <kernel/interrupts/interrupts.h>
 #include <kernel/interrupts/swi.h>
 #include <kernel/interrupts/irq.h>
@@ -29,10 +31,10 @@ static void __sched_idle()
     }
 }
 
-static struct thread *__sched_current_thread()
+struct thread *__sched_current_thread()
 {
     uint32_t core_id = core_id();
-    if (core_id > CONFIG_MAX_CORES || !sched_cores[core_id].active || !sched_cores[core_id].task)
+    if (core_id >= CONFIG_MAX_CORES || !sched_cores[core_id].active || !sched_cores[core_id].task)
         return NULL;
     return sched_cores[core_id].task;
 }
@@ -70,14 +72,22 @@ static int sched_remove_thread(tid_t tid)
 {
     struct list_head *pos, *n;
     struct thread *entry;
+    pagedir_t prev_dir = NULL;
 
     list_for_each_safe(pos, n, &sched_task_list) {
         entry = list_entry(pos, struct thread, list);
         if (!entry) continue;
         if (entry->tid == tid)
         {
-            /* Deallocate the registers and the entry itself */
-            if (entry->stack_pointer) kfree(entry->stack_pointer);
+            /* Deallocate the stack and the entry itself */
+            if (entry->stack_pointer)
+            {
+                prev_dir = page_get_dir();
+                page_switch_dir(entry->vmem);
+                kfree(entry->stack_pointer);
+                page_switch_dir(prev_dir);
+            }
+            
             kfree(entry);
 
             list_del(pos);
@@ -88,7 +98,7 @@ static int sched_remove_thread(tid_t tid)
     return -1;
 }
 
-static struct thread *__sched_get_thread(tid_t tid)
+struct thread *__sched_get_thread(tid_t tid)
 {
     struct list_head *pos;
     struct thread *entry;
@@ -202,8 +212,8 @@ int sched_init()
     sched_idle_task->vmem = get_kernel_pagedir();
     sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
-    sched_idle_task->inside_signal = 0;
     sched_idle_task->state = SCHED_TASK_ACTIVE;
+    sched_idle_task->flags = 0;
     list_add_tail(&sched_idle_task->list, &sched_task_list);
 
     spinlock_init(&sched_lock);
@@ -231,7 +241,7 @@ void sched_yield()
     interrupts_trigger(SWI_RESCHEDULE);
 }
 
-void sched_usleep(tid_t tid, size_t us)
+int sched_usleep(tid_t tid, size_t us)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
@@ -239,12 +249,13 @@ void sched_usleep(tid_t tid, size_t us)
     if (!task)
     {
         spin_unlock_irqrestore(&sched_lock, flags);
-        return;
+        return -EINVAL;
     }
     
     task->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + us;
     task->state = SCHED_TASK_SLEEPING;
     spin_unlock_irqrestore(&sched_lock, flags);
+    return 0;
 }
 
 void sched_call()
@@ -281,7 +292,7 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vm
     node->entrypoint = entrypoint;
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
-    node->inside_signal = 0;
+    node->flags = 0;
     node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
     node->state = SCHED_TASK_SLEEPING;
     list_add_tail(&node->list, &sched_task_list);
@@ -309,6 +320,21 @@ err:
     return -1;
 }
 
+int sched_thread_set_state(tid_t tid, int state)
+{
+    uint32_t irq_flags;
+    spin_lock_irqsave(&sched_lock, irq_flags);
+    struct thread *task = __sched_get_thread(tid);
+    if (!task) goto err;
+    task->state = state;
+    spin_unlock_irqrestore(&sched_lock, irq_flags);
+    return 0;
+err:
+    spin_unlock_irqrestore(&sched_lock, irq_flags);
+    return -1;
+}
+
+
 int sched_thread_set_flags(tid_t tid, uint32_t flags)
 {
     uint32_t irq_flags;
@@ -334,14 +360,14 @@ int sched_signal_thread(tid_t tid, uint32_t signo)
     {
         case SIGKILL:
         case SIGSTOP:
-            printk("sched%llu: signal %u", task->tid, signo);
+            // printk("sched%llu: signal %u", task->tid, signo);
             task->state = SCHED_TASK_DEAD;
             break;
 
         default:
-            if (!task->signal_handler || task->inside_signal)
+            if (!task->signal_handler || task->flags & SCHED_FLAG_IN_SIGNAL)
             {
-                printk("sched%llu: signal %u", task->tid, signo);
+                // printk("sched%llu: signal %u", task->tid, signo);
                 task->state = SCHED_TASK_DEAD;
                 break;
             }

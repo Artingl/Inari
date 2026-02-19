@@ -11,6 +11,10 @@ typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 typedef unsigned int dev_t;
 
+#define MEM_RW         (1 << 0)
+#define MEM_USR        (1 << 1)
+#define MEM_PRESENT    (1 << 2)
+
 #define	READ            0x01
 #define	WRITE			0x02
 #define	OPEN_EXISTING	0x00
@@ -51,6 +55,10 @@ int readdir(const char *path, struct fs_node *node);
 int write(handle_t hndl, const void *buf, size_t sz);
 int waitpid(pid_t pid);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
+void *memalloc(size_t npages, uint32_t flags);
+void memfree(void *vbase, size_t npages);
+void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags);
+void memunmap(void *vbase, size_t len);
 
 int syscall(
     uint32_t id,

@@ -46,24 +46,24 @@ int pmm_init(void)
                 /* Ensure that this memory region doesn't overlap important memory regions */
                 if (pmm_check_overlap(j, PAGE_SIZE) != 0)
                 {
-                    pages_pool[j / PAGE_SIZE].flags = PMM_PAGE_DISABLED;
+                    pages_pool[j >> 12].flags = PMM_PAGE_DISABLED;
                     continue;
                 }
 
                 /* Check that we're not over the max pool size */
                 if (j >> 12 >= PMM_POOL_SIZE)
                 {
-                    printk("pmm: warning - over the pool size; %ld > %ld", j / PAGE_SIZE, PMM_POOL_SIZE);
+                    printk("pmm: warning - over the pool size; %ld > %ld", j >> 12, PMM_POOL_SIZE);
                     goto end;
                 }
 
-                if (!(pages_pool[j / PAGE_SIZE].flags & PMM_PAGE_DISABLED))
+                if (!(pages_pool[j >> 12].flags & PMM_PAGE_DISABLED))
                 {
-                    pages_pool[j / PAGE_SIZE].flags = PMM_PAGE_AVAILABLE;
+                    pages_pool[j >> 12].flags = PMM_PAGE_AVAILABLE;
                     available_pages++;
 
-                    if (first_good_page == 0 || first_good_page > j / PAGE_SIZE)
-                        first_good_page = j / PAGE_SIZE;
+                    if (first_good_page == 0 || first_good_page > j >> 12)
+                        first_good_page = j >> 12;
                 }
             }
         }
@@ -97,12 +97,12 @@ void pmm_reserve_memory(struct reserved_memory region)
     size_t i;
     for (i = region.start; i < region.end; i += PAGE_SIZE)
     {
-        if (pages_pool[i / PAGE_SIZE].flags & PMM_PAGE_AVAILABLE)
+        if (pages_pool[i >> 12].flags & PMM_PAGE_AVAILABLE)
         {
             available_pages--;
         }
 
-        pages_pool[i / PAGE_SIZE].flags = PMM_PAGE_DISABLED;
+        pages_pool[i >> 12].flags = PMM_PAGE_DISABLED;
     }
 }
 
@@ -159,7 +159,7 @@ int pmm_free_pages(void *base, size_t npages)
         return 1;
 
     for (i = 0; i < npages; i++) {
-        pages_pool[((uintptr_t)base / PAGE_SIZE) + i].flags &= ~PMM_PAGE_USED;
+        pages_pool[((uintptr_t)base >> 12) + i].flags &= ~PMM_PAGE_USED;
     }
 
     pages_used -= npages;

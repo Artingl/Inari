@@ -1,25 +1,34 @@
-#include <kernel/inari.h>
-#include <kernel/mm/page.h>
-#include <kernel/mm/kmalloc.h>
+#include <sys.h>
 
+#include <stdint.h>
+#include <stddef.h>
+
+struct block {
+    size_t size;
+    struct block *next;
+    int free;
+    int large; // 1 if this block spans multiple pages
+};
+
+#define BLOCK_ALIGN 8
+#define PAGE_SIZE 0x1000
 #define SMALL_ALLOC_THRESHOLD (PAGE_SIZE / 2)
 
 static struct block *heap_start = NULL;
-
-int kmalloc_init(void)
+static inline size_t align_up(size_t size, size_t align)
 {
-    return 0;
+    return (size + align - 1) & ~(align - 1);
 }
 
-void *kmalloc(size_t size)
+void *malloc(size_t size)
 {
-    size = ALIGN(size + PAGE_SIZE, BLOCK_ALIGN);
+    size = align_up(size + PAGE_SIZE, BLOCK_ALIGN);
 
     /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD)
     {
         size_t npages = (size + PAGE_SIZE - 1) >> 12;
-        void *page = page_alloc(npages, PAGE_PRESENT | PAGE_RW);
+        void *page = memalloc(npages, MEM_USR | MEM_PRESENT | MEM_RW);
         if (!page) return NULL;
 
         struct block *b = (struct block*)page;
@@ -44,7 +53,7 @@ void *kmalloc(size_t size)
     }
 
     /* No free block found, allocate new page */
-    void *page = page_alloc(1, PAGE_PRESENT | PAGE_RW);
+    void *page = memalloc(1, MEM_USR | MEM_PRESENT | MEM_RW);
     if (!page) return NULL;
 
     struct block *b = (struct block*)page;
@@ -56,7 +65,7 @@ void *kmalloc(size_t size)
     return (void*)(b + 1);
 }
 
-void kfree(void *ptr)
+void free(void *ptr)
 {
     if (!ptr) return;
     struct block *b = ((struct block*)ptr) - 1;
@@ -69,6 +78,6 @@ void kfree(void *ptr)
         while (*prev && *prev != b) prev = &(*prev)->next;
         if (*prev) *prev = b->next;
 
-        page_free((void*)b, b->size >> 12);
+        memfree((void*)b, b->size >> 12);
     }
 }

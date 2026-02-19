@@ -32,26 +32,30 @@ _arch_excp_base:
 
 _arch_irq_base:
     pushad
-	mov eax, cr3
-	push eax
+	; mov eax, cr3
+	; push eax
 	push ds
 	push es
 	push fs
 	push gs
 	push esp
+	mov eax, cr3
+	push eax
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
     call x86_irq_handler
+	pop eax
+	mov cr3, eax
 	pop esp
 	pop gs
 	pop fs
 	pop es
 	pop ds
-	pop eax
-	mov cr3, eax
+	; pop eax
+	; mov cr3, eax
 	popad
     add esp, 8
 	sti

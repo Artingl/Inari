@@ -15,8 +15,8 @@ typedef struct vmm_page {
 
 extern char vmm_pages_pool;
 
-#define VMM_SIZE_BYTES   (sizeof(struct vmm_page) * (0xffffffff / PAGE_SIZE) + PAGE_SIZE)
-#define VMM_SIZE_PAGES   (VMM_SIZE_BYTES / PAGE_SIZE)
+#define VMM_SIZE_BYTES   (sizeof(struct vmm_page) * (0xffffffff >> 12) + PAGE_SIZE)
+#define VMM_SIZE_PAGES   (VMM_SIZE_BYTES >> 12)
 #define VMM_VBASE        ((uintptr_t)&vmm_pages_pool)
 
 int vmm_init(void);

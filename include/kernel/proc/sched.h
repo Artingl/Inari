@@ -7,11 +7,15 @@
 #include <kernel/proc/proc.h>
 #include <kernel/mm/page.h>
 
-#define SCHED_TASK_ACTIVE   0
-#define SCHED_TASK_SLEEPING 1
-#define SCHED_TASK_DEAD     2
+#define SCHED_TASK_ACTIVE        0
+#define SCHED_TASK_SLEEPING      1
+#define SCHED_TASK_DEAD          2
+#define SCHED_TASK_PAUSED        3
 
-#define SCHED_FLAG_SYSTEM (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
+#define SCHED_FLAG_SYSTEM        (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
+#define SCHED_FLAG_KERNEL_ACCESS (1 << 1)   // Allows to allocate memory within kernel space in vmm
+#define SCHED_FLAG_IN_SIGNAL     (1 << 2)
+#define SCHED_FLAG_SYSCALL_RSLT  (1 << 3)
 
 struct thread;
 
@@ -24,7 +28,6 @@ struct thread
     thread_entrypoint_t entrypoint;
     thread_signal_t signal_handler;
     pagedir_t vmem;
-    uint8_t inside_signal;
     uint8_t state;
     uint32_t saved_sp;
     uint32_t flags;
@@ -36,6 +39,8 @@ struct thread
     /* Count of reschedules for this task */
     size_t reschedules_count;
     size_t cpu_time;
+
+    uint32_t syscall_result;
 
     struct list_head list;
 };
@@ -58,7 +63,8 @@ void sched_yield();
 void sched_enter_core();
 void sched_stop();
 void sched_call();
-void sched_usleep(tid_t tid, size_t us);
+int sched_thread_set_state(tid_t tid, int state);
+int sched_usleep(tid_t tid, size_t us);
 int sched_get_thread(tid_t tid, struct thread **task);
 int sched_current_thread(tid_t *tid);
 int sched_thread_set_flags(tid_t tid, uint32_t flags);

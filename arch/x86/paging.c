@@ -19,14 +19,6 @@ static inline void *get_table(struct paging_directory *dir, size_t offset)
     return (struct page_table *)(dir->tables_virt[offset] & ~0xFFF);
 }
 
-static struct page_table *copy_table(struct page_table *table)
-{
-    struct page_table *new_table = (struct page_table*)kmalloc(sizeof(struct page_table) + PAGE_SIZE);
-    new_table = (struct page_table*)ALIGN((uintptr_t)new_table, PAGE_SIZE);
-    memcpy((void*)new_table, (void*)table, sizeof(struct page_table));
-    return new_table;
-}
-
 void *arch_virt_to_phys(void *vbase)
 {
     struct page_table *table = get_table(x86_current_dir, (uintptr_t)vbase >> 22);
@@ -79,19 +71,22 @@ void arch_switch_pagedir(struct paging_directory *directory)
     if (!directory)
         return;
     
-    __asm__ volatile("mov %0, %%cr3" ::"r"(arch_virt_to_phys((void*)directory)));
     x86_current_dir = directory;
+    if (directory == x86_kernel_dir)
+        __asm__ volatile("mov %0, %%cr3" ::"r"(x86_kernel_dir));
+    else
+        __asm__ volatile("mov %0, %%cr3" ::"r"(arch_virt_to_phys((void*)directory)));
 }
 
-struct paging_directory *arch_create_pagedir(void)
+struct paging_directory *arch_fork_pagedir(void)
 {
     size_t i;
     struct paging_directory_usr *new_dir = (struct paging_directory_usr*)kmalloc(sizeof(struct paging_directory_usr) + PAGE_SIZE);
     new_dir = (struct paging_directory_usr*)ALIGN((uintptr_t)new_dir, PAGE_SIZE);
     memset((void*)new_dir, 0, sizeof(struct paging_directory_usr));
-    new_dir->dir.is_kernel = MIN(page_is_in_kernel_glbl(), x86_current_dir->is_kernel);
+    new_dir->dir.is_kernel = 0;
     
-    /* TODO: CoW */
+    /* TODO: Dynamic allocation */
     for (i = 0; i < 1024; i++)
     {
         if (i >= 768 || i < 2)
@@ -119,7 +114,7 @@ void arch_cleanup_pagedir(struct paging_directory *directory)
     printk("arch_cleanup_pagedir: not implemented");
 }
 
-int arch_page_is_in_kernel()
+int arch_page_is_kernel_pagedir()
 {
     return x86_current_dir->is_kernel;
 }

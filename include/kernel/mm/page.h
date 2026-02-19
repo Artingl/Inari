@@ -21,15 +21,13 @@ void page_unmap(void *vbase, size_t len);
 void *page_alloc(size_t npages, uint32_t flags);
 void page_free(void *vbase, size_t npages);
 
-pagedir_t page_alloc_dir(void);
+pagedir_t page_fork_dir(void);
 pagedir_t page_get_dir(void);
 void page_switch_dir(pagedir_t dir);
 void page_dealloc_dir(pagedir_t dir);
 
 uint8_t page_is_kernel_directory(void);
 
-void page_in_kernel_glbl(uint8_t flag);
-int page_is_in_kernel_glbl();
-int page_is_in_kernel();
+int page_is_kernel_pagedir();
 
 #endif

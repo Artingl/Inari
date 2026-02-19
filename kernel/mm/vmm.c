@@ -2,6 +2,7 @@
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/page.h>
+#include <kernel/proc/sched.h>
 
 #include <arch/paging.h>
 #include <misc/string.h>
@@ -11,14 +12,17 @@ static uintptr_t vm_start;
 extern char kern_phys_end;
 extern char kern_virt_end;
 
-static inline void vmm_mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
+static inline int vmm_mark_region(uintptr_t start, uintptr_t end, uint8_t flags)
 {
     uintptr_t i;
     for (i = start; i < end; i += PAGE_SIZE)
     {
-        if (!(pages_pool[i / PAGE_SIZE].flags & VMM_PAGE_RESERVED))
-            pages_pool[i / PAGE_SIZE].flags = flags;
+        if (!(pages_pool[i >> 12].flags & VMM_PAGE_RESERVED))
+            pages_pool[i >> 12].flags = flags;
+        // else return -1;
     }
+
+    return 0;
 }
 
 int vmm_init(void)
@@ -48,41 +52,44 @@ int vmm_check_flag(uintptr_t start, uintptr_t end, uint8_t flag)
 {
     uintptr_t i;
     for (i = start; i < end; i += PAGE_SIZE)
-        if (pages_pool[i / PAGE_SIZE].flags & flag) return -1;
+        if (pages_pool[i >> 12].flags & flag) return -1;
 
     return 0;
 }
 
 int vmm_disable_region(struct reserved_memory region)
 {
-    vmm_mark_region(region.start, region.end, VMM_PAGE_DISABLED);
-    return 0;
+    return vmm_mark_region(region.start, region.end, VMM_PAGE_DISABLED);
 }
 
 int vmm_enable_region(struct reserved_memory region)
 {
-    vmm_mark_region(region.start, region.end, VMM_PAGE_AVAILABLE);
-    return 0;
+    return vmm_mark_region(region.start, region.end, VMM_PAGE_AVAILABLE);
 }
+
+struct thread *__sched_current_thread();
 
 void *vmm_alloc_pages(size_t npages)
 {
     struct vmm_page *page;
     size_t block_offset = 0, block_size = 0;
     uintptr_t i, end_addr;
+    struct thread *th = NULL;
+    if (sched_is_running())
+        th = __sched_current_thread();
 
     if (npages == 0)
         return NULL;
 
     /* Allocate in different VM space if not allocating for kernel */
-    if (page_is_in_kernel_glbl() && page_is_in_kernel())
+    if (page_is_kernel_pagedir() || (th && th->flags & SCHED_FLAG_KERNEL_ACCESS))
     {
         i = VIRTUAL_ADDR;
         end_addr = 0xFFFFFFFF;
     }
     else
     {
-        i = MAX(vm_start, 0x900000);
+        i = MAX(vm_start, 0x800000);
         end_addr = VIRTUAL_ADDR - PAGE_SIZE;
     }
 
@@ -90,14 +97,14 @@ void *vmm_alloc_pages(size_t npages)
     /* Find free page in the pool */
     for (; i < end_addr; i += PAGE_SIZE)
     {
-        page = &pages_pool[i / PAGE_SIZE];
-        if (!(page->flags & VMM_PAGE_AVAILABLE) || page->flags & VMM_PAGE_USED) {
+        page = &pages_pool[i >> 12];
+        if (!(page->flags & VMM_PAGE_AVAILABLE) || page->flags & VMM_PAGE_USED || page->flags & VMM_PAGE_DISABLED) {
             block_size = 0;
             continue;
         }
 
         if (block_size == 0)
-            block_offset = i / PAGE_SIZE;
+            block_offset = i >> 12;
 
         block_size++;
         if (block_size >= npages)
@@ -124,7 +131,7 @@ int vmm_free_pages(void *base, size_t npages)
         return 1;
 
     for (i = 0; i < npages; i++) {
-        pages_pool[((uintptr_t)base / PAGE_SIZE) + i].flags &= ~VMM_PAGE_USED;
+        pages_pool[((uintptr_t)base >> 12) + i].flags &= ~VMM_PAGE_USED;
     }
 
     return 0;

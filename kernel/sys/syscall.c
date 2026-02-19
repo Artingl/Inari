@@ -20,6 +20,7 @@ int syscall_handle(
 {
     tid_t tid;
     char *s;
+    int res = 0;
     struct thread *th;
     if (sched_current_thread(&tid) != 0)
         return -ESRCH;
@@ -29,47 +30,50 @@ int syscall_handle(
         return -ESRCH;
     struct process *proc = (struct process*)th->proc_data;
     page_switch_dir(proc->descriptor.vmem);
-
-    // printk("syscall: id %u; params 0x%x 0x%x 0x%x 0x%x 0x%x",
-    //         id, param0, param1, param2, param3, param4);
+    th->flags |= SCHED_FLAG_KERNEL_ACCESS;
     
     switch (id)
     {
     case SYSCALL_EXIT:
-        return exit(proc->pid, (int)param0);
+        res = exit(proc->pid, (int)param0);
+        break;
     
     case SYSCALL_USLEEP:
         sched_usleep(tid, (size_t)param0);
         break;
 
-    // case SYSCALL_DEBUG:
-    //     return printk(param0);
-    
     case SYSCALL_OPEN:
-        return vfs_open((vfs_handle_t*)param0, (const char*)param1, (int)param2);
+        res = vfs_open((vfs_handle_t*)param0, (const char*)param1, (int)param2);
+        break;
 
     case SYSCALL_CLOSE:
-        return vfs_close((vfs_handle_t)param0);
+        res = vfs_close((vfs_handle_t)param0);
+        break;
 
     case SYSCALL_EXECP:
-        return execp((pid_t*)param0, (const char*)param1);
+        res = execp((pid_t*)param0, (const char*)param1);
+        break;
     
     case SYSCALL_READ:
-        return vfs_read((vfs_handle_t)param0, (void*)param1, (size_t)param2, (size_t*)param3);
+        res = vfs_read((vfs_handle_t)param0, (void*)param1, (size_t)param2, (size_t*)param3);
+        break;
         
     case SYSCALL_SEEK:
-        return vfs_seek((vfs_handle_t)param0, (size_t)param1);
+        res = vfs_seek((vfs_handle_t)param0, (size_t)param1);
+        break;
         
     case SYSCALL_TELL:
-        return vfs_tell((vfs_handle_t)param0, (size_t*)param1);
+        res = vfs_tell((vfs_handle_t)param0, (size_t*)param1);
+        break;
         
     case SYSCALL_SIZE:
-        return vfs_size((vfs_handle_t)param0, (size_t*)param1);
+        res = vfs_size((vfs_handle_t)param0, (size_t*)param1);
+        break;
     
     case SYSCALL_GET_PID:
         if (param0)
             *((pid_t*)param0) = proc->pid;
-        return 0;
+        break;
 
     case SYSCALL_SPAWN_THREAD:
         return spawn_thread((tid_t*)param0, (pid_t)param1, (thread_entrypoint_t)param2);
@@ -77,33 +81,62 @@ int syscall_handle(
     case SYSCALL_GET_TID:
         if (param0)
             *((pid_t*)param0) = th->tid;
-        return 0;
+        break;
 
     case SYSCALL_KILL_THREAD:
         /* NOTE: SIGKILL will kill a thread immediately */
-        return sched_signal_thread((tid_t)param0, SIGKILL);
+        res = sched_signal_thread((tid_t)param0, SIGKILL);
+        break;
 
     case SYSCALL_MOUNT:
-        return vfs_mount((dev_t)param0, (const char*)param1);
+        res = vfs_mount((dev_t)param0, (const char*)param1);
+        break;
 
     case SYSCALL_UNMOUNT:
-        return vfs_unmount((const char*)param1);
+        res = vfs_unmount((const char*)param1);
+        break;
     
     case SYSCALL_READDIR:
-        return vfs_readdir((const char*)param0, (struct vfs_node*)param1);
+        res = vfs_readdir((const char*)param0, (struct vfs_node*)param1);
+        break;
     
     case SYSCALL_WRITE:
-        return vfs_write((vfs_handle_t)param0, (void*)param1, (size_t)param2);
+        res = vfs_write((vfs_handle_t)param0, (void*)param1, (size_t)param2);
+        break;
     
     case SYSCALL_WAITPID:
-        return waitpid((pid_t)param0, proc->pid);
+        res = waitpid((pid_t)param0, th->tid);
+        break;
 
     case SYSCALL_EXECPV:
-        return execpv((pid_t*)param0, (const char*)param1, (int)param2, (char**)param3);
+        res = execpv((pid_t*)param0, (const char*)param1, (int)param2, (char**)param3);
+        break;
+
+    case SYSCALL_MEMMAP:
+        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
+        res = (int)page_map((void*)param0, (void*)param1, (size_t)param2, (uint32_t)param3);
+        break;
+
+    case SYSCALL_MEMUNMAP:
+        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
+        page_unmap((void*)param0, (size_t)param1);
+        break;
+
+    case SYSCALL_MEMALLOC:
+        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
+        res = (int)page_alloc((size_t)param0, (uint32_t)param1);
+        break;
+
+    case SYSCALL_MEMFREE:
+        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
+        page_free((void*)param0, (size_t)param1);
+        break;
 
     default:
-        return -EINVAL;
+        res = -EINVAL;
+        break;
     }
 
-    return 0;
+    th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
+    return res;
 }

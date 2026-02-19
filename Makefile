@@ -1,6 +1,6 @@
 TARGET=x86
-CC = /home/artingl/opt/bin/i686-elf-gcc
-LD = /home/artingl/opt/bin/i686-elf-ld
+CC = i686-elf-gcc
+LD = i686-elf-ld
 GRUB_MKRESCUE := $(shell if command -v grub-mkrescue >/dev/null 2>&1; then echo grub-mkrescue; else echo grub2-mkrescue; fi)
 
 CFLAGS = --include "build/config.h" -I include/ $(shell cat arch/$(TARGET)/cflags.txt) $(shell cat cflags.txt)
@@ -40,5 +40,4 @@ clean:
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \
-	cp arch/${TARGET}/kernel.elf build/kernel.elf && \
-	bash mkimg.sh
+	cp arch/${TARGET}/kernel.elf build/kernel.elf
