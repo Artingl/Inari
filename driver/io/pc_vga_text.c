@@ -19,11 +19,12 @@
 
 static int pc_vga_text_is_initialized = 0;
 static int offset = 0, line = 0;
+static uint8_t *vga_base = (uint8_t*)VGA_BASE;
 
 static void vga_enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
 {
 	x86_outb(0x3D4, 0x0A);
-	x86_outb(0x3D5, (x86_inb(0x3D5) & 0xC0) | cursor_start);
+	x86_outb(0x3D5, (x86_inb(0x3D5) & 0x1F) | cursor_start);
 
 	x86_outb(0x3D4, 0x0B);
 	x86_outb(0x3D5, (x86_inb(0x3D5) & 0xE0) | cursor_end);
@@ -39,12 +40,46 @@ static void vga_update_cursor(int x, int y)
 	x86_outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-static void vga_putc(const char *s, uint32_t count)
+static void vga_clear()
+{
+    /* Clear the screen */
+    uint8_t *base = (uint8_t*)VGA_BASE;
+    while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
+    {
+        *base++ = ' ';
+        *base++ = DEF_COLOR;
+    }
+
+    offset = 0;
+    line = 0;
+    vga_update_cursor(offset, line);
+
+}
+
+static void vga_rewind(uint32_t count, int clear)
 {
     if (!pc_vga_text_is_initialized)
         return;
 
-    uint8_t *vga_base = (uint8_t*)VGA_BASE;
+    while (count-- && offset > 0)
+    {
+        offset--;
+        if (clear)
+        {
+            *(vga_base + (line * VGA_WIDTH + offset) * 2 + 0) = ' ';
+            *(vga_base + (line * VGA_WIDTH + offset) * 2 + 1) = DEF_COLOR;
+        }
+
+        if (offset <= 0) { line--; offset = VGA_WIDTH - 1; }
+        if (line <= 0)   { line = 0; }
+    }
+    vga_update_cursor(offset, line);
+}
+
+static void vga_putc(const char *s, uint32_t count)
+{
+    if (!pc_vga_text_is_initialized)
+        return;
 
     while (count--)
     {
@@ -68,7 +103,7 @@ static void vga_putc(const char *s, uint32_t count)
             }
         }
 
-        if (offset > VGA_WIDTH)
+        if (offset >= VGA_WIDTH)
         {
             offset = 0;
             line++;
@@ -78,16 +113,24 @@ static void vga_putc(const char *s, uint32_t count)
         {
             memcpy((void*)VGA_BASE, (void*)VGA_BASE + VGA_WIDTH * 2, VGA_SIZE - VGA_WIDTH * 2);
             memset((void*)VGA_BASE + VGA_SIZE - VGA_WIDTH * 2, 0, VGA_WIDTH * 2);
+            uint8_t *last_line = (uint8_t*)((void*)VGA_BASE + VGA_SIZE - VGA_WIDTH * 2);
+            for (int i = 0; i < VGA_WIDTH * 2; i+=2) {
+                last_line[i] = ' ';
+                last_line[i + 1] = DEF_COLOR;
+            }
             offset = 0;
             line = VGA_HEIGHT - 1;
         }
     }
+    
     vga_update_cursor(offset, line);
 }
 
 static struct console_dev console_dev = {
     .name = "pc_vga_text",
     .write = vga_putc,
+    .rewind = vga_rewind,
+    .clear = vga_clear,
     .read = NULL,
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };
@@ -97,12 +140,17 @@ int pc_vga_text_init()
     if (pc_vga_text_is_initialized)
         return 0;
 
+    vga_enable_cursor(14, 15);
+    vga_update_cursor(0, 0);
+
     /* Clear the screen */
-    uint32_t *base = (uint32_t*)VGA_BASE;
+    uint8_t *base = (uint8_t*)VGA_BASE;
     while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
-        *base++ = 0x00;
-    
-    // vga_enable_cursor(0, 1);
+    {
+        *base++ = ' ';
+        *base++ = DEF_COLOR;
+    }
+
     pc_vga_text_is_initialized = 1;
     return 0;
 }

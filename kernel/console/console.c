@@ -26,10 +26,8 @@ LIST_HEAD(console_lazy_list); /* buffers awaiting printing */
 
 static struct console_lazy_buffer *console_latest_buffer = (struct console_lazy_buffer *)NULL;
 
-/* Spinlock used for tiny critical sections; irqsave because writers may be in IRQ */
 static spinlock_t console_lock;
 
-/* Static pool so IRQ context never needs to kmalloc (kmalloc may sleep) */
 static struct console_lazy_buffer console_pool[CONFIG_CONSOLE_POOL_SZ];
 static LIST_HEAD(console_pool_free_list);
 
@@ -90,11 +88,42 @@ static void console_print_dev(int type, const char *s, uint32_t count)
     }
 }
 
-static struct list_head console_flush(void)
+static void console_rewind_dev(uint32_t count, int clear)
+{
+    struct console_dev *entry;
+    struct list_head *pos;
+
+    list_for_each(pos, &consoles_list) {
+        entry = list_entry(pos, struct console_dev, list);
+
+        if (!entry->rewind || (console_is_early && !(entry->flags & CONSOLE_EARLY)))
+            continue;
+
+        entry->rewind(count, clear);
+    }
+}
+
+static void console_clear_dev()
+{
+    struct console_dev *entry;
+    struct list_head *pos;
+
+    list_for_each(pos, &consoles_list) {
+        entry = list_entry(pos, struct console_dev, list);
+
+        if (!entry->clear || (console_is_early && !(entry->flags & CONSOLE_EARLY)))
+            continue;
+
+        entry->clear();
+    }
+}
+
+static int console_flush(void)
 {
     struct list_head local_list;
     struct list_head *pos, *n;
     struct console_lazy_buffer *entry;
+    int flushed = 0;
 
     INIT_LIST_HEAD(&local_list);
     
@@ -117,6 +146,7 @@ static struct list_head console_flush(void)
 
         /* reinit the shared list to empty */
         INIT_LIST_HEAD(&console_lazy_list);
+        flushed = 1;
     }
 
     spin_unlock_irqrestore(&console_lock, flags);
@@ -132,25 +162,18 @@ static struct list_head console_flush(void)
         console_buffer_free(entry);
     }
 
-    return local_list;
+    return flushed;
 }
 
-/*
- * console_main_task:
- *   take ownership of console_lazy_list under lock, then release lock and print.
- *   This ensures we never hold the spinlock while calling console_print_dev (which may sleep).
- */
-static void console_thread(void*)
+static void console_thread(void* arg)
 {
     console_is_early = 0;
     printk("console: early console disabled");
 
     while (1)
     {
-        struct list_head local_list = console_flush();
-
         /* If there's nothing to do, wait a bit to avoid busy spin. */
-        if (list_empty(&local_list)) {
+        if (!console_flush()) {
             usleep(100000);
         }
     }
@@ -159,18 +182,90 @@ static void console_thread(void*)
 static dev_t console_dev = 0;
 static int console_write_char(struct char_device *chardev, const uint8_t *buf, size_t sz)
 {
-    console_printc(CONSOLE_PRINTK, buf, sz);
+    console_printc(CONSOLE_PRINTK, (const char *)buf, sz);
+    return 0;
+}
+
+static int console_ioctl_char(struct char_device *chardev, unsigned long req, void *arg)
+{
+    int ret = 0;
+    unsigned long flags;
+    uint32_t remaining_to_rewind = (uint32_t)(unsigned long)arg;
+    int clear = (req == CONSOLE_IOCTL_REWIND_CLR);
+    struct list_head to_free;
+    struct list_head *pos, *tmp;
+    struct console_lazy_buffer *entry;
+
+    INIT_LIST_HEAD(&to_free);
+
+    spin_lock_irqsave(&console_lock, flags);
+
+    if (req == CONSOLE_IOCTL_CLR)
+    {
+        console_clear_dev();
+    }
+    else if (req != CONSOLE_IOCTL_REWIND && req != CONSOLE_IOCTL_REWIND_CLR)
+    {
+        while (remaining_to_rewind > 0)
+        {
+            if (!console_latest_buffer) {
+                if (list_empty(&console_lazy_list)) {
+                    /* We've exhausted all buffered characters. 
+                    * The rest must have already been printed to the hardware. */
+                    break; 
+                }
+                console_latest_buffer = list_entry(console_lazy_list.prev, struct console_lazy_buffer, list);
+                list_del(&console_latest_buffer->list);
+            }
+
+            if (console_latest_buffer->buffer_offset >= remaining_to_rewind) {
+                /* We can satisfy the remaining rewind entirely within this buffer */
+                console_latest_buffer->buffer_offset -= remaining_to_rewind;
+                
+                if (clear) {
+                    memset(&console_latest_buffer->buffer[console_latest_buffer->buffer_offset], 0, remaining_to_rewind);
+                }
+                remaining_to_rewind = 0;
+            } else {
+                /* The rewind consumes this entire buffer; we must step back to the previous one */
+                remaining_to_rewind -= console_latest_buffer->buffer_offset;
+                console_latest_buffer->buffer_offset = 0;
+                
+                if (clear) {
+                    memset(console_latest_buffer->buffer, 0, CONFIG_CONSOLE_BUFF_SZ);
+                }
+
+                list_add(&console_latest_buffer->list, &to_free);
+                console_latest_buffer = NULL;
+            }
+        }
+    }
+    else ret = -EINVAL;
+
+    spin_unlock_irqrestore(&console_lock, flags);
+
+    list_for_each_safe(pos, tmp, &to_free) {
+        entry = list_entry(pos, struct console_lazy_buffer, list);
+        list_del(pos);
+        console_buffer_free(entry);
+    }
+
+    if (remaining_to_rewind > 0) {
+        console_rewind_dev(remaining_to_rewind, clear);
+    }
+
+    return ret;
 }
 
 static struct char_ops console_ops = {
-    .write = &console_write_char
+    .write = &console_write_char,
+    .ioctl = &console_ioctl_char
 };
 
 int console_init(void)
 {
     int ret;
 
-    /* init spinlock and pool */
     spinlock_init(&console_lock);
     console_pool_init();
 
@@ -202,80 +297,58 @@ int console_unregister(struct console_dev *dev)
 {
     if (!dev)
         return -EINVAL;
-    unregister_chardev(console_dev);
+    
     list_del(&dev->list);
     return 0;
 }
 
-/* TODO: console is broken, lots of chars are lost during print */
 int console_printc(int type, const char *s, uint32_t count)
 {
+    unsigned long flags;
+
     if (console_is_early || type == CONSOLE_PANIC)
     {
         console_print_dev(type, s, count);
         return 0;
     }
 
-    /* Enqueue characters into buffers protected by spinlock (irqsave) */
-    while (count-- > 0)
-    {
-        unsigned long flags;
-        spin_lock_irqsave(&console_lock, flags);
+    /* Enqueue characters into buffers protected by a single lock block */
+    spin_lock_irqsave(&console_lock, flags);
 
+    while (count > 0)
+    {
         /* ensure we have a current buffer */
         if (!console_latest_buffer) {
-            /* try pool first (non-sleeping) */
             console_latest_buffer = console_pool_alloc_nosleep();
-            if (console_latest_buffer) {
-                console_latest_buffer->buffer_offset = 0;
-                /* from_pool already set by pool init */
-            } else {
-                /* pool exhausted: fallback to kmalloc (may sleep). If kmalloc fails immediately,
-                   we drop the character to avoid deadlocks in IRQ context. */
-                console_latest_buffer = kmalloc(sizeof(*console_latest_buffer));
-                if (console_latest_buffer) {
-                    console_latest_buffer->buffer_offset = 0;
-                    console_latest_buffer->from_pool = 0;
-                    INIT_LIST_HEAD(&console_latest_buffer->list);
-                } else {
-                    /* can't allocate - drop the char */
-                    spin_unlock_irqrestore(&console_lock, flags);
-                    s++;
-                    continue;
-                }
+            if (!console_latest_buffer) {
+                /* Static pool exhausted. We CANNOT call kmalloc here because it might sleep,
+                 * and we are holding a spinlock (with IRQs disabled).
+                 * Dropping characters is preferable to deadlocking the kernel.
+                 */
+                break;
             }
+            console_latest_buffer->buffer_offset = 0;
         }
 
-        /* if current buffer full, move it to lazy list and allocate new one */
-        if (console_latest_buffer->buffer_offset + 1 >= CONFIG_CONSOLE_BUFF_SZ)
+        uint32_t space = CONFIG_CONSOLE_BUFF_SZ - console_latest_buffer->buffer_offset;
+        uint32_t to_copy = (count < space) ? count : space;
+
+        /* Bulk copy the string into the buffer rather than iterating per-character */
+        memcpy(&console_latest_buffer->buffer[console_latest_buffer->buffer_offset], s, to_copy);
+        
+        console_latest_buffer->buffer_offset += to_copy;
+        s += to_copy;
+        count -= to_copy;
+
+        /* if current buffer full, move it to lazy list */
+        if (console_latest_buffer->buffer_offset >= CONFIG_CONSOLE_BUFF_SZ)
         {
             list_add_tail(&console_latest_buffer->list, &console_lazy_list);
             console_latest_buffer = NULL;
-
-            /* allocate new buffer for the next char */
-            console_latest_buffer = console_pool_alloc_nosleep();
-            if (console_latest_buffer) {
-                console_latest_buffer->buffer_offset = 0;
-            } else {
-                console_latest_buffer = kmalloc(sizeof(*console_latest_buffer));
-                if (console_latest_buffer) {
-                    console_latest_buffer->buffer_offset = 0;
-                    console_latest_buffer->from_pool = 0;
-                    INIT_LIST_HEAD(&console_latest_buffer->list);
-                } else {
-                    /* pool and kmalloc both failed; drop char */
-                    spin_unlock_irqrestore(&console_lock, flags);
-                    s++;
-                    continue;
-                }
-            }
         }
-
-        /* append char */
-        console_latest_buffer->buffer[console_latest_buffer->buffer_offset++] = *s++;
-
-        spin_unlock_irqrestore(&console_lock, flags);
     }
+
+    spin_unlock_irqrestore(&console_lock, flags);
     return 0;
 }
 

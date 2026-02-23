@@ -148,3 +148,7 @@ void memunmap(void *vbase, size_t len)
     syscall(22, (uint32_t)vbase, (uint32_t)len, 0, 0, 0);
 }
 
+int ioctl(handle_t hndl, unsigned long req, void *arg)
+{
+    return (void*)syscall(25, (uint32_t)hndl, (uint32_t)req, (uint32_t)arg, 0, 0);
+}

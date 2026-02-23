@@ -38,6 +38,16 @@
 #define KEY_KP_PLUS    0x132
 #define KEY_KP_ENTER   0x133
 #define KEY_KP_SLASH   0x134
+#define KEY_KP_HOME    0x135
+#define KEY_KP_UP      0x136
+#define KEY_KP_PGUP    0x137
+#define KEY_KP_LEFT    0x138
+#define KEY_KP_RIGHT   0x139
+#define KEY_KP_END     0x13a
+#define KEY_KP_DOWN    0x13b
+#define KEY_KP_PGDN    0x13c
+#define KEY_KP_INS     0x13d
+#define KEY_KP_DEL     0x13e
 
 /* Each keyboard chardev must return this structure on read.
  * This structure shows the latest state of the keyboard device.

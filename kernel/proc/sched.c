@@ -3,7 +3,7 @@
 #include <kernel/proc/signals.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
-#include <kernel/mm/page.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/interrupts/interrupts.h>
 #include <kernel/interrupts/swi.h>
 #include <kernel/interrupts/irq.h>
@@ -11,6 +11,7 @@
 #include <kernel/timer.h>
 #include <kernel/sync/spinlock.h>
 
+#include <arch/paging.h>
 #include <misc/string.h>
 #include <misc/list.h>
 #include <arch/sys.h>
@@ -72,7 +73,7 @@ static int sched_remove_thread(tid_t tid)
 {
     struct list_head *pos, *n;
     struct thread *entry;
-    pagedir_t prev_dir = NULL;
+    pagedir_t *prev_dir = NULL;
 
     list_for_each_safe(pos, n, &sched_task_list) {
         entry = list_entry(pos, struct thread, list);
@@ -81,14 +82,7 @@ static int sched_remove_thread(tid_t tid)
         {
             /* Deallocate the stack and the entry itself */
             if (entry->stack_pointer)
-            {
-                prev_dir = page_get_dir();
-                page_switch_dir(entry->vmem);
-                kfree(entry->stack_pointer);
-                page_switch_dir(prev_dir);
-            }
-            
-            kfree(entry);
+                vmm_free_pages(entry->vmem, entry->stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
 
             list_del(pos);
             return 0;
@@ -209,7 +203,7 @@ int sched_init()
     if (!sched_idle_task) return -ENOMEM;
     memset((void*)sched_idle_task, 0, sizeof(*sched_idle_task));
 
-    sched_idle_task->vmem = get_kernel_pagedir();
+    sched_idle_task->vmem = arch_get_kernel_pagedir();
     sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
     sched_idle_task->state = SCHED_TASK_ACTIVE;
@@ -279,13 +273,13 @@ void sched_call()
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vmem, thread_cleanup_t cleanup_handler, void *proc_data)
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, void *proc_data)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
     struct thread *node = kmalloc(sizeof(*node));
     if (!node) goto err;
-    if (!vmem) vmem = get_kernel_pagedir();
+    if (!vmem) vmem = arch_get_kernel_pagedir();
     memset((void*)node, 0, sizeof(*node));
     node->vmem = vmem;
     node->tid = sched_last_id++;
@@ -397,12 +391,9 @@ err:
 
 void sched_stop()
 {
-    uint32_t flags;
-    spin_lock_irqsave(&sched_lock, flags);
     size_t i;
     for (i = 0; i < CONFIG_MAX_CORES; i++)
         sched_cores[i].active = 0;
-    spin_unlock_irqrestore(&sched_lock, flags);
 }
 
 void sched_enter_core()

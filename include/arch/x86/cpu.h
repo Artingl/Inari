@@ -105,6 +105,23 @@ struct x86_cpu
     struct x86_cpu_idt *idt;
 };
 
+struct x86_page_table
+{
+    uint32_t pages[1024];
+} __attribute__((packed));
+
+struct x86_paging_directory
+{
+    uintptr_t tables_phys[1024];
+    uintptr_t tables_virt[1024];
+} __attribute__((packed));
+
+struct x86_paging_directory_usr
+{
+    struct x86_paging_directory dir;
+    struct x86_page_table tables_pool[1024];
+} __attribute__((packed));
+
 extern int x86_cpu_init(void);
 extern const char *x86_cpu_vendor(void);
 extern const char *x86_cpu_model(void);

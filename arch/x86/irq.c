@@ -3,8 +3,8 @@
 #include <kernel/interrupts/irq.h>
 #include <kernel/interrupts/swi.h>
 #include <kernel/sys/syscall.h>
-#include <kernel/mm/page.h>
 
+#include <arch/paging.h>
 #include <arch/x86/pit.h>
 #include <arch/x86/cpu.h>
 #include <arch/x86/irq.h>
@@ -40,7 +40,7 @@ void x86_irq_setup(struct x86_cpu *core)
 
 void x86_irq_handler(struct x86_regs32 regs)
 {
-    page_switch_dir(get_kernel_pagedir());
+    arch_switch_pagedir(arch_get_kernel_pagedir());
     uint32_t irq = regs.int_no;
 
     if (regs.int_no == X86_PIT_IRQ)
@@ -54,7 +54,7 @@ void x86_irq_handler(struct x86_regs32 regs)
         irq = SWI_SYSCALL;
 
         /* Restore kernel pagedir just in case */
-        page_switch_dir(get_kernel_pagedir());
+        arch_switch_pagedir(arch_get_kernel_pagedir());
     }
     else irq -= X86_IRQ_OFFSET;
 

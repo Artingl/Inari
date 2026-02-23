@@ -5,7 +5,7 @@
 #include <misc/list.h>
 
 #include <kernel/proc/proc.h>
-#include <kernel/mm/page.h>
+#include <arch/paging.h>
 
 #define SCHED_TASK_ACTIVE        0
 #define SCHED_TASK_SLEEPING      1
@@ -13,7 +13,6 @@
 #define SCHED_TASK_PAUSED        3
 
 #define SCHED_FLAG_SYSTEM        (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
-#define SCHED_FLAG_KERNEL_ACCESS (1 << 1)   // Allows to allocate memory within kernel space in vmm
 #define SCHED_FLAG_IN_SIGNAL     (1 << 2)
 #define SCHED_FLAG_SYSCALL_RSLT  (1 << 3)
 
@@ -27,7 +26,7 @@ struct thread
     tid_t tid;
     thread_entrypoint_t entrypoint;
     thread_signal_t signal_handler;
-    pagedir_t vmem;
+    pagedir_t *vmem;
     uint8_t state;
     uint32_t saved_sp;
     uint32_t flags;
@@ -57,7 +56,7 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t vmem, thread_cleanup_t cleanup_handler, void *data);
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, void *data);
 int sched_signal_thread(tid_t tid, uint32_t signo);
 void sched_yield();
 void sched_enter_core();

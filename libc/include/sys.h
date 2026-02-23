@@ -55,10 +55,11 @@ int readdir(const char *path, struct fs_node *node);
 int write(handle_t hndl, const void *buf, size_t sz);
 int waitpid(pid_t pid);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
-void *memalloc(size_t npages, uint32_t flags);
+void *memalloc(size_t npages, uint32_t flags);     // todo: this syscall currently ignores flags value
 void memfree(void *vbase, size_t npages);
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags);
 void memunmap(void *vbase, size_t len);
+int ioctl(handle_t hndl, unsigned long req, void *arg);
 
 int syscall(
     uint32_t id,

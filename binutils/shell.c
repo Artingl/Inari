@@ -8,8 +8,10 @@
 
 #define NO_EXIT_CODE 0xFFFFFFFF
 
-char path[128] = {0};
-int path_offset = 0, last_exitcode = NO_EXIT_CODE;
+char command[128] = {0};
+char history[8][128] = {0};
+int history_offset = 0, history_scroll = 0;
+int command_offset = 0, last_exitcode = NO_EXIT_CODE;
 uint32_t last_kb_event;
 handle_t kb_hndl;
 struct
@@ -95,17 +97,30 @@ void exec_cmd()
 {
     pid_t pid;
     int res, i;
-    int is_bg = path[path_offset - 1] == '&';
-    if (is_bg) path[path_offset - 1] = '\0';
-    last_exitcode = NO_EXIT_CODE;
-
+    int is_bg = command[command_offset - 1] == '&';
+    if (is_bg) command[command_offset - 1] = '\0';
     char buff[256] = {0};
     char *exec_path = NULL;
     int argc = 0;
-    char **argv = split_into_buffer((void*)&buff[0], path, &argc, &exec_path);
+    char **argv = split_into_buffer((void*)&buff[0], command, &argc, &exec_path);
     if (!exec_path) return;
+
+    if (history_offset >= 8)
+    {
+        memcpy((void*)&history[0], (void*)&history[0] + 128, sizeof(history) - 128);
+        history_offset = 7;
+    }
+
+    history_scroll = history_offset;
+    history[history_offset][0] = 0;
+    memcpy((void*)&history[history_offset++], (void*)&command[0], 128);
+
     if (strcmp(exec_path, "exit") == 0) {
         exit(0);
+        return;
+    }
+    else if (strcmp(exec_path, "clear") == 0) {
+        ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
         return;
     }
     if ((res = execpv(&pid, exec_path, argc, argv)) != 0) {
@@ -130,9 +145,12 @@ int main(int argc, char const *argv[])
         exit(1);
     }
 
-    printf("-> ");
-    path_offset = 0;
-    memset((void*)&path[0], 0, sizeof(path));
+    printf("+;/> ");
+    command_offset = 0;
+    history_offset = 0;
+    history_scroll = 0;
+    last_exitcode = NO_EXIT_CODE;
+    memset((void*)&command[0], 0, sizeof(command));
 
     do
     {
@@ -141,22 +159,47 @@ int main(int argc, char const *argv[])
             if (last_kb_event != kbd_event.event_id && kbd_event.released)
             {
                 last_kb_event = kbd_event.event_id;
-                if (kbd_event.key == 0x101)
+                if (kbd_event.key == 0x101) // enter
                 {
                     printf("\n");
                     exec_cmd();
-                    path_offset = 0;
-                    memset((void*)&path[0], 0, sizeof(path));
+                    command_offset = 0;
+                    memset((void*)&command[0], 0, sizeof(command));
                     if (last_exitcode == NO_EXIT_CODE)
-                        printf("-> ");
+                        printf("+;/> ");
                     else
-                        printf("%d> ", last_exitcode);
+                        printf("%d;/> ", last_exitcode);
                 }
-                else {
-                    path[path_offset++] = kbd_event.key;
-                    path[path_offset] = '\0';
+                else if (kbd_event.key == 0x102 && command_offset > 0) // backspace
+                {
+                    command_offset--;
+                    ioctl(stdout, 1, (void*)1); // CONSOLE_IOCTL_REWIND_CLR
+                }
+                else if (kbd_event.key == 0x136) // arrow up
+                {
+                    if (history_scroll >= 0)
+                    {
+                        memcpy((void*)&command[0], (void*)&history[history_scroll--], 128);
+                        ioctl(stdout, 1, (void*)command_offset); // CONSOLE_IOCTL_REWIND_CLR
+                        printf(command);
+                        command_offset = strlen(command);
+                    }
+                }
+                else if (kbd_event.key == 0x13b) // arrow down
+                {
+                    if (history_scroll < 8 && history_scroll < history_offset)
+                    {
+                        memcpy((void*)&command[0], (void*)&history[history_scroll++], 128);
+                        ioctl(stdout, 1, (void*)command_offset); // CONSOLE_IOCTL_REWIND_CLR
+                        printf(command);
+                        command_offset = strlen(command);
+                    }
+                }
+                else if (kbd_event.key >= 0x20 && kbd_event.key <= 0x7E) { // is ascii
+                    command[command_offset++] = kbd_event.key;
+                    command[command_offset] = '\0';
 
-                    printf("%c", path[path_offset-1]);
+                    printf("%c", command[command_offset-1]);
                 }
             }
         }

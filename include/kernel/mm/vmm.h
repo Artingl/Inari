@@ -20,8 +20,9 @@ extern char vmm_pages_pool;
 #define VMM_VBASE        ((uintptr_t)&vmm_pages_pool)
 
 int vmm_init(void);
-void *vmm_alloc_pages(size_t npages);
-int vmm_free_pages(void *base, size_t npages);
+void *vmm_alloc_user(pagedir_t *target_dir, size_t npages);
+void *vmm_alloc_kernel(size_t npages);
+int vmm_free_pages(pagedir_t *target_dir, void *base, size_t npages);
 int vmm_disable_region(struct reserved_memory region);
 int vmm_enable_region(struct reserved_memory region);
 int vmm_check_flag(uintptr_t start, uintptr_t end, uint8_t flag);

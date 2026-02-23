@@ -2,16 +2,16 @@
 #include <kernel/printk.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
-#include <kernel/mm/page.h>
 #include <kernel/proc/pe.h>
 #include <kernel/errno.h>
 
+#include <arch/paging.h>
 #include <misc/string.h>
 
 extern char kern_virt_start;
 extern char kern_virt_end;
 
-int pe_load(void **entrypoint, uint8_t *buf, size_t sz)
+int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
 {
     int res = 0;
     void *pbase;
@@ -40,7 +40,7 @@ int pe_load(void **entrypoint, uint8_t *buf, size_t sz)
         vmm_disable_region((struct reserved_memory){
             .start = header32->image_base + section->vbase,
             .end = header32->image_base + section->vbase + section->virt_sz });
-        if (!pbase || !page_map((void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
+        if (!pbase || !arch_map_page(proc_pagedir, (void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
         {
             res = -ENOMEM;
             goto end;

@@ -1,7 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/pmm.h>
-#include <kernel/mm/page.h>
 #include <kernel/proc/sched.h>
 
 #include <arch/paging.h>
@@ -29,6 +28,7 @@ int vmm_init(void)
 {
     /* Allocate some memory for the VMM pages pool */
     pages_pool = arch_map_page(
+        arch_get_kernel_pagedir(),
         (void*)VMM_VBASE,
         (void*)pmm_alloc_pages(VMM_SIZE_PAGES),
         VMM_SIZE_BYTES,
@@ -57,6 +57,8 @@ int vmm_check_flag(uintptr_t start, uintptr_t end, uint8_t flag)
     return 0;
 }
 
+/* TODO: vmm reserved memory MUST be pagedir specific IF not in kernel memory! */
+
 int vmm_disable_region(struct reserved_memory region)
 {
     return vmm_mark_region(region.start, region.end, VMM_PAGE_DISABLED);
@@ -67,44 +69,27 @@ int vmm_enable_region(struct reserved_memory region)
     return vmm_mark_region(region.start, region.end, VMM_PAGE_AVAILABLE);
 }
 
-struct thread *__sched_current_thread();
-
-void *vmm_alloc_pages(size_t npages)
+static void *alloc_range(pagedir_t *target_dir, size_t npages, uintptr_t from_mem, uintptr_t to_mem, uint32_t flags)
 {
     struct vmm_page *page;
-    size_t block_offset = 0, block_size = 0;
-    uintptr_t i, end_addr;
-    struct thread *th = NULL;
-    if (sched_is_running())
-        th = __sched_current_thread();
+    /* TODO: try to allocate physical memory in chunks, not contiguous */
+    void *pbase = pmm_alloc_pages(npages);
+    size_t block_offset = 0, block_size = 0, i;
 
-    if (npages == 0)
+    if (npages == 0 || !pbase)
         return NULL;
 
-    /* Allocate in different VM space if not allocating for kernel */
-    if (page_is_kernel_pagedir() || (th && th->flags & SCHED_FLAG_KERNEL_ACCESS))
-    {
-        i = VIRTUAL_ADDR;
-        end_addr = 0xFFFFFFFF;
-    }
-    else
-    {
-        i = MAX(vm_start, 0x800000);
-        end_addr = VIRTUAL_ADDR - PAGE_SIZE;
-    }
-
-
     /* Find free page in the pool */
-    for (; i < end_addr; i += PAGE_SIZE)
+    for (; from_mem < to_mem; from_mem += PAGE_SIZE)
     {
-        page = &pages_pool[i >> 12];
+        page = &pages_pool[from_mem >> 12];
         if (!(page->flags & VMM_PAGE_AVAILABLE) || page->flags & VMM_PAGE_USED || page->flags & VMM_PAGE_DISABLED) {
             block_size = 0;
             continue;
         }
 
         if (block_size == 0)
-            block_offset = i >> 12;
+            block_offset = from_mem >> 12;
 
         block_size++;
         if (block_size >= npages)
@@ -121,18 +106,54 @@ void *vmm_alloc_pages(size_t npages)
         pages_pool[block_offset + i].flags |= VMM_PAGE_USED;
     }
 
-    return (void*)(block_offset * PAGE_SIZE);
+    /* Map all the physical memory to virtual memory and return new vbase */
+    return arch_map_page(target_dir, (void*)(block_offset * PAGE_SIZE), pbase, npages * PAGE_SIZE, flags);
 }
 
-int vmm_free_pages(void *base, size_t npages)
+void *vmm_alloc_user(pagedir_t *target_dir, size_t npages)
+{
+    return alloc_range(
+        target_dir,
+        npages,
+        (uintptr_t)&kern_phys_end + PAGE_SIZE,
+        VIRTUAL_ADDR - PAGE_SIZE,
+        PAGE_PRESENT | PAGE_RW | PAGE_USR
+    );
+}
+
+void *vmm_alloc_kernel(size_t npages)
+{
+    return alloc_range(
+        arch_get_kernel_pagedir(),
+        npages,
+        VIRTUAL_ADDR,
+        0xFFFFFFFF,
+        PAGE_PRESENT | PAGE_RW
+    );
+}
+
+static int free_pagedir(pagedir_t *target_dir, void *base, size_t npages)
 {
     size_t i;
     if (base == NULL)
         return 1;
 
-    for (i = 0; i < npages; i++) {
+    for (i = 0; i < npages; i++)
+    {
+        void *pbase = arch_virt_to_phys(target_dir, base + i * PAGE_SIZE);
+        if (pbase != NULL)
+            pmm_free_pages(pbase, 1);
         pages_pool[((uintptr_t)base >> 12) + i].flags &= ~VMM_PAGE_USED;
     }
 
+    arch_unmap_page(target_dir, base, npages);
     return 0;
+}
+
+int vmm_free_pages(pagedir_t *target_dir, void *base, size_t npages)
+{
+    return free_pagedir(
+        target_dir,
+        base, npages
+    );
 }

@@ -9,12 +9,18 @@
 #define CONSOLE_PANIC  1 << 2
 #define CONSOLE_DEBUG  1 << 3
 
+#define CONSOLE_IOCTL_REWIND       0   // Rewind N chars in the console buffer
+#define CONSOLE_IOCTL_REWIND_CLR   1   // Rewind N chars in the console buffer AND clear them
+#define CONSOLE_IOCTL_CLR          2   // Clear
+
 typedef void (*console_io)(const char *s, uint32_t count);
 
 typedef struct console_dev {
     const char *name;
-    console_io write;
-    console_io read;
+    void (*write)(const char *s, uint32_t count);
+    void (*read)(const char *s, uint32_t count);
+    void (*rewind)(uint32_t count, int clear);
+    void (*clear)();
     uint32_t flags;
 
     struct list_head list;

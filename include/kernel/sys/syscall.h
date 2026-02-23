@@ -27,6 +27,7 @@
 #define SYSCALL_MEMUNMAP        22
 #define SYSCALL_MEMALLOC        23
 #define SYSCALL_MEMFREE         24
+#define SYSCALL_IOCTL           25
 
 
 int syscall_handle(

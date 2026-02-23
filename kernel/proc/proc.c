@@ -152,8 +152,7 @@ void test()
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv)
 {
-    pagedir_t vmem = NULL;
-    pagedir_t prev_dir = NULL;
+    pagedir_t *vmem = NULL;
     size_t size;
     vfs_handle_t hndl;
     void *entrypoint = NULL, *args_pbase = NULL, *tmp_args_base = NULL;
@@ -165,17 +164,11 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     spin_lock_irqsave(&lock, flags);
 
-    /* Copy the path to the executable to temporary buffer so we can later access it when switching to kernel pagedir */
-    char path_copy[256];
-    memset((void*)&path_copy[0], 0, 255);
-    memcpy((void*)&path_copy[0], &path[0], MIN(255, strlen(path)));
+    /* Fork kernel directory for the new process */
+    vmem = arch_fork_pagedir();
 
-    /* Save current pagedir and do necessary allocations in the kernel pagedir */
-    prev_dir = page_get_dir();
-    page_switch_dir(get_kernel_pagedir());
-    vmem = page_fork_dir();
     /* Load process data into memory */
-    if ((res = vfs_open(&hndl, path_copy, VFS_READ)) != 0)
+    if ((res = vfs_open(&hndl, path, VFS_READ)) != 0)
         goto err;
     if ((res = vfs_size(hndl, &size)) != 0)
         goto err;
@@ -186,14 +179,14 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     /* Copy the provided arguments to temporary address to later copy it to new process memory */
     /* TODO: what if argv is larger than tmp_args_base; env vars */
-    page_switch_dir(prev_dir);
     if (argc < 0) argc = 0;
     copy_to_fixed_buffer_witharg(argc, argv, path, tmp_args_base);
-    page_switch_dir(vmem);
+    arch_switch_pagedir(vmem);
 
     /* TODO: args size must not be limited to 8kb */
     args_pbase = pmm_alloc_pages(2);
-    if (page_map(
+    if (arch_map_page(
+        vmem,
         (void*)PROC_ARGS_BASE,
         args_pbase,
         PAGE_SIZE * 2,
@@ -207,10 +200,10 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     copy_to_fixed_buffer(argc + 1, (char**)tmp_args_base, (void*)PROC_ARGS_BASE);
 
     /* Load the PE into non-kernel memory */
-    if ((res = pe_load(&entrypoint, buf, size)) != 0)
+    if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
         goto err;
 
-    page_switch_dir(prev_dir);
+    arch_switch_pagedir(arch_get_kernel_pagedir());
     
     spin_unlock_irqrestore(&lock, flags);
 
@@ -221,9 +214,9 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     
     goto end;
 err:
-    page_switch_dir(prev_dir);
+    arch_switch_pagedir(arch_get_kernel_pagedir());
     if (args_pbase) pmm_free_pages(args_pbase, 2);
-    if (vmem) page_dealloc_dir(vmem);
+    if (vmem) arch_free_pagedir(vmem);
 end:
     if (tmp_args_base) kfree((void*)tmp_args_base);
     if (buf) kfree((void*)buf);

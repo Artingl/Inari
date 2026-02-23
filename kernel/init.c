@@ -4,7 +4,6 @@
 #include <kernel/timer.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
-#include <kernel/mm/page.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/sys/block.h>
 #include <kernel/sys/char.h>
@@ -21,7 +20,6 @@
 #include <misc/string.h>
 #include <misc/format.h>
 
-pagedir_t kernel_page_dir;
 bootinfo_t bootinfo;
 int init_task();
 int mount_root();
@@ -37,10 +35,8 @@ void kearly_init(bootinfo_t b)
 
     assert(pmm_init() == 0, "pmm init failed.");
     assert(vmm_init() == 0, "vmm init failed.");
-    assert(page_init() == 0, "paging init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
 
-    kernel_page_dir = (pagedir_t)arch_get_pagedir();
     printk("kearly_init: done");
 }
 
@@ -132,9 +128,4 @@ int init_task()
 bootinfo_t get_boot_info()
 {
     return bootinfo;
-}
-
-pagedir_t get_kernel_pagedir()
-{
-    return kernel_page_dir;
 }

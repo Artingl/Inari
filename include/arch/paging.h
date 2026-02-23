@@ -2,41 +2,24 @@
 #define _INARI_PAGING_H
 
 #include <misc/types.h>
-#include <kernel/mm/page.h>
 
-#define _TABLE_PRESENT (1 << 0)
-#define _TABLE_RW (1 << 1)
+#define TABLE_PRESENT (1 << 0)
+#define TABLE_RW (1 << 1)
 
-#define _PAGE_PRESENT (1 << 0)
-#define _PAGE_RW (1 << 1)
-#define _PAGE_USR (1 << 2)
-#define _PAGE_DIRTY (1 << 5)
+#define PAGE_PRESENT (1 << 0)
+#define PAGE_RW (1 << 1)
+#define PAGE_USR (1 << 2)
+#define PAGE_DIRTY (1 << 5)
 
-struct page_table
-{
-    uint32_t pages[1024];
-} __attribute__((packed));
+typedef void pagedir_t;
 
-struct paging_directory
-{
-    uintptr_t tables_phys[1024];
-    uintptr_t tables_virt[1024];
-    uint8_t is_kernel;
-} __attribute__((packed));
-
-struct paging_directory_usr
-{
-    struct paging_directory dir;
-    struct page_table tables_pool[1024];
-} __attribute__((packed));
-
-void *arch_virt_to_phys(void *vbase);
-void *arch_map_page(void *vbase, void *pbase, size_t len, uint32_t flags);
-void arch_unmap_page(void *vbase, size_t len);
-void arch_switch_pagedir(struct paging_directory *directory);
-struct paging_directory *arch_get_pagedir(void);
-struct paging_directory *arch_fork_pagedir(void);
-void arch_cleanup_pagedir(struct paging_directory *directory);
-int arch_page_is_kernel_pagedir();
+void *arch_virt_to_phys(pagedir_t *directory, void *vbase);
+void *arch_map_page(pagedir_t *directory, void *vbase, void *pbase, size_t len, uint32_t flags);
+void arch_unmap_page(pagedir_t *directory, void *vbase, size_t len);
+void arch_switch_pagedir(pagedir_t *directory);
+pagedir_t *arch_get_pagedir(void);
+pagedir_t *arch_fork_pagedir(void);
+pagedir_t *arch_get_kernel_pagedir();
+void arch_free_pagedir(pagedir_t *directory);
 
 #endif

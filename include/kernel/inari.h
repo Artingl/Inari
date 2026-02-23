@@ -3,9 +3,10 @@
 
 #include <misc/types.h>
 
-#include <kernel/mm/page.h>
 #include <kernel/fault/panic.h>
 #include <kernel/printk.h>
+
+#include <arch/paging.h>
 
 #define ALIGN(val, alg) (((size_t)(val) + (size_t)(alg) - 1) & ~((size_t)(alg) - 1))
 
@@ -36,7 +37,6 @@ void kearly_init(bootinfo_t bootinfo);
 /* The main kernel entrypoint after the hardware was initialized */
 void kmain(void);
 bootinfo_t get_boot_info();
-pagedir_t get_kernel_pagedir();
 
 #define ARG_MAX_LEN 64
 

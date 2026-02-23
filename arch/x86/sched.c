@@ -3,7 +3,7 @@
 #include <kernel/proc/sched.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
-#include <kernel/mm/page.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/proc/proc.h>
 #include <kernel/sync/spinlock.h>
 
@@ -35,22 +35,30 @@ void arch_sched_load(struct thread *task)
     spin_lock_irqsave(&x86_sched_lock, flags);
     struct interrupt_frame *frame = interrupt_frame();
     struct x86_regs32 *regs;
-    pagedir_t prev_dir = NULL;
     uint32_t esp;
+    pagedir_t *kernel_pagedir;
+    int is_kernel_pagedir;
 
     if (!frame || !task)
     {
         spin_unlock_irqrestore(&x86_sched_lock, flags);
         return;
     }
+    kernel_pagedir = arch_get_kernel_pagedir();
+    is_kernel_pagedir = task->vmem == kernel_pagedir;
     regs = (struct x86_regs32 *)frame->registers.base;
-    prev_dir = page_get_dir();
-    page_switch_dir(task->vmem);
+
+    if (!is_kernel_pagedir)
+        arch_switch_pagedir(task->vmem);
     
     if (!task->stack_pointer)
     {
         /* If the stack pointer is not initialized, that's the first time this task is scheduled */
-        task->stack_pointer = kmalloc(CONFIG_STACK_SIZE + PAGE_SIZE);
+        if (is_kernel_pagedir)
+            task->stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE >> 12) + 1);
+        else
+            task->stack_pointer = vmm_alloc_user(task->vmem, (CONFIG_STACK_SIZE >> 12) + 1);
+        
         if (task->stack_pointer == NULL)
             panic("sched: no memory left.");
 
@@ -73,17 +81,11 @@ void arch_sched_load(struct thread *task)
 
         task->saved_sp = esp;
     }
-    /* Check if syscall needs to overwrite register values */
-    else if (task->flags & SCHED_FLAG_SYSCALL_RSLT)
-    {
-        task->flags &= ~SCHED_FLAG_SYSCALL_RSLT;
-        // ((struct x86_regs32*)task->saved_sp)->ebx = task->syscall_result;
-        printk("caught: 0x%x", task->saved_sp);
-    }
 
-    regs->task_cr3 = (uint32_t)arch_virt_to_phys((void*)task->vmem);
+    regs->task_cr3 = (uint32_t)arch_virt_to_phys(arch_get_kernel_pagedir(), (void*)task->vmem);
     regs->task_esp = task->saved_sp;
 
-    page_switch_dir(prev_dir);
+    if (!is_kernel_pagedir)
+        arch_switch_pagedir(kernel_pagedir);
     spin_unlock_irqrestore(&x86_sched_lock, flags);
 }

@@ -6,9 +6,10 @@
 #include <kernel/proc/signals.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/syscall.h>
-#include <kernel/mm/page.h>
 #include <kernel/console/console.h>
+#include <kernel/mm/vmm.h>
 
+#include <arch/paging.h>
 
 int syscall_handle(
     uint32_t id,
@@ -29,8 +30,7 @@ int syscall_handle(
     if (!tid || !th->proc_data)
         return -ESRCH;
     struct process *proc = (struct process*)th->proc_data;
-    page_switch_dir(proc->descriptor.vmem);
-    th->flags |= SCHED_FLAG_KERNEL_ACCESS;
+    arch_switch_pagedir(proc->descriptor.vmem);
     
     switch (id)
     {
@@ -106,6 +106,16 @@ int syscall_handle(
     
     case SYSCALL_WAITPID:
         res = waitpid((pid_t)param0, th->tid);
+        if (th->state == SCHED_TASK_PAUSED)
+        {
+            sched_yield();
+            
+            if (th->flags & SCHED_FLAG_SYSCALL_RSLT)
+            {
+                res = th->syscall_result;
+                th->flags &= ~SCHED_FLAG_SYSCALL_RSLT;
+            }
+        }
         break;
 
     case SYSCALL_EXECPV:
@@ -113,23 +123,23 @@ int syscall_handle(
         break;
 
     case SYSCALL_MEMMAP:
-        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
-        res = (int)page_map((void*)param0, (void*)param1, (size_t)param2, (uint32_t)param3);
+        res = (int)arch_map_page(proc->descriptor.vmem, (void*)param0, (void*)param1, (size_t)param2, (uint32_t)param3);
         break;
 
     case SYSCALL_MEMUNMAP:
-        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
-        page_unmap((void*)param0, (size_t)param1);
+        arch_unmap_page(proc->descriptor.vmem, (void*)param0, (size_t)param1);
         break;
 
     case SYSCALL_MEMALLOC:
-        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
-        res = (int)page_alloc((size_t)param0, (uint32_t)param1);
+        res = (int)vmm_alloc_user(proc->descriptor.vmem, (size_t)param0);   // todo: ignores flags value (param1)
         break;
 
     case SYSCALL_MEMFREE:
-        th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
-        page_free((void*)param0, (size_t)param1);
+        vmm_free_pages(proc->descriptor.vmem, (void*)param0, (size_t)param1);
+        break;
+    
+    case SYSCALL_IOCTL:
+        res = vfs_ioctl((vfs_handle_t)param0, (unsigned long)param1, (void*)param2);
         break;
 
     default:
@@ -137,6 +147,5 @@ int syscall_handle(
         break;
     }
 
-    th->flags &= ~SCHED_FLAG_KERNEL_ACCESS;
     return res;
 }

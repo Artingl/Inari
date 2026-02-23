@@ -36,8 +36,8 @@ echo ">>> Creating disk image..."
 rm -f $IMAGE_NAME
 truncate -s $IMAGE_SIZE $IMAGE_NAME
 
-# 2. Partitioning (MBR / MSDOS Standard)
-echo ">>> Partitioning (MBR Mode)..."
+# 2. Partitioning (MBR)
+echo ">>> Partitioning..."
 
 # Create MBR Label
 parted -s $IMAGE_NAME mklabel msdos

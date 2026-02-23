@@ -36,12 +36,15 @@ static void serial_putc(int port, const char *s, uint32_t count)
 
 static void console_putc(const char *s, uint32_t count)
 {
+    if (!pc8250_is_initialized)
+        return;
     serial_putc(pc8250_port, s, count);
 }
 
 static struct console_dev console_dev = {
     .name = "pc8250_serial",
     .write = console_putc,
+    .rewind = NULL,
     .read = NULL,
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };

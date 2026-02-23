@@ -5,15 +5,16 @@
 
 int main(int argc, char const *argv[])
 {
-    if (argc < 2)
-    {
-        printf("usage: %s [file]\n", argv[0]);
-        return -1;
-    }
-
     handle_t hndl;
     int res = 0;
     size_t sz;
+
+    if (argc < 2)
+    {
+        printf("usage: %s [file]\n", argv[0]);
+        res = -1;
+        goto end;
+    }
 
     if ((res = open(&hndl, argv[1], READ)) != 0)
     {

@@ -3,6 +3,8 @@
 
 #include <misc/types.h>
 
+#include <arch/paging.h>
+
 #define PE_MAGIC 	0x00004550
 #define PE32_MAGIC  0x010b
 
@@ -73,6 +75,6 @@ struct pe_symbol {
 };
 
 
-int pe_load(void **entrypoint, uint8_t *buf, size_t sz);
+int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz);
 
 #endif

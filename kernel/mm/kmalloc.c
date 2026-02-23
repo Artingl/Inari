@@ -1,5 +1,5 @@
 #include <kernel/inari.h>
-#include <kernel/mm/page.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/mm/kmalloc.h>
 
 #define SMALL_ALLOC_THRESHOLD (PAGE_SIZE / 2)
@@ -19,7 +19,7 @@ void *kmalloc(size_t size)
     if (size > SMALL_ALLOC_THRESHOLD)
     {
         size_t npages = (size + PAGE_SIZE - 1) >> 12;
-        void *page = page_alloc(npages, PAGE_PRESENT | PAGE_RW);
+        void *page = vmm_alloc_kernel(npages);
         if (!page) return NULL;
 
         struct block *b = (struct block*)page;
@@ -44,7 +44,7 @@ void *kmalloc(size_t size)
     }
 
     /* No free block found, allocate new page */
-    void *page = page_alloc(1, PAGE_PRESENT | PAGE_RW);
+    void *page = vmm_alloc_kernel(1);
     if (!page) return NULL;
 
     struct block *b = (struct block*)page;
@@ -69,6 +69,6 @@ void kfree(void *ptr)
         while (*prev && *prev != b) prev = &(*prev)->next;
         if (*prev) *prev = b->next;
 
-        page_free((void*)b, b->size >> 12);
+        vmm_free_pages(arch_get_kernel_pagedir(), (void*)b, b->size >> 12);
     }
 }

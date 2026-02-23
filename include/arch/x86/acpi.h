@@ -11,22 +11,22 @@
  *     array and the length of the array.
  *  2. Get the array element depending on the data size
  */
-#define ACPI_ITERATE(idx, ptr, statement)                                           \
-    {                                                                               \
-        struct XSDP *sdp = x86_acpi_sdp();                                          \
-        struct XSDT *root_sdt = x86_acpi_root_sdt();                                \
-        size_t idx, len = (root_sdt->header.length - sizeof(root_sdt->header)) /    \
-                          (sdp->revision == 2 ? 8 : 4);                             \
-        struct SDT *ptr;                                                            \
-        for (idx = 0; idx < len; idx++)                                             \
-        {                                                                           \
-            if (sdp->revision == 2)                                                 \
-                ptr = (struct SDT *)(uintptr_t)(root_sdt->sdt_pointers[idx]);       \
-            else                                                                    \
-                ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]); \
-            page_map(ptr, ptr, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);                  \
-            statement                                                               \
-        }                                                                           \
+#define ACPI_ITERATE(idx, ptr, statement)                                                       \
+    {                                                                                           \
+        struct XSDP *sdp = x86_acpi_sdp();                                                      \
+        struct XSDT *root_sdt = x86_acpi_root_sdt();                                            \
+        size_t idx, len = (root_sdt->header.length - sizeof(root_sdt->header)) /                \
+                          (sdp->revision == 2 ? 8 : 4);                                         \
+        struct SDT *ptr;                                                                        \
+        for (idx = 0; idx < len; idx++)                                                         \
+        {                                                                                       \
+            if (sdp->revision == 2)                                                             \
+                ptr = (struct SDT *)(uintptr_t)(root_sdt->sdt_pointers[idx]);                   \
+            else                                                                                \
+                ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]);             \
+            arch_map_page(arch_get_kernel_pagedir(), ptr, ptr, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);   \
+            statement                                                                           \
+        }                                                                                       \
     }
 
 struct RSDP

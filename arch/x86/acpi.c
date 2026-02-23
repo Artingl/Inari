@@ -1,10 +1,10 @@
 #include <kernel/inari.h>
 #include <kernel/errno.h>
-#include <kernel/mm/page.h>
 #include <kernel/mm/pmm.h>
 
 #include <misc/string.h>
 
+#include <arch/paging.h>
 #include <arch/x86/acpi.h>
 #include <arch/x86/cpu.h>
 
@@ -95,7 +95,7 @@ int x86_acpi_init(void)
         .end = (uintptr_t)root_sdt + PAGE_SIZE
     });
 
-    page_map(root_sdt, root_sdt, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);
+    arch_map_page(arch_get_kernel_pagedir(), root_sdt, root_sdt, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);
 
     if (root_sdt->header.length == 0)
     {

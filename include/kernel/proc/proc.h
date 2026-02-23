@@ -1,7 +1,7 @@
 #ifndef _INARI_PROC_H
 #define _INARI_PROC_H
 
-#include <kernel/mm/page.h>
+#include <arch/paging.h>
 
 #include <misc/types.h>
 #include <misc/list.h>
@@ -14,7 +14,7 @@ typedef uint64_t pid_t; // Process ID
 
 typedef struct
 {
-    pagedir_t vmem;
+    pagedir_t *vmem;
     void *entrypoint;
 } task_descriptor_t;
 

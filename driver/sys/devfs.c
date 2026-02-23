@@ -323,12 +323,31 @@ static int devfs_mount(struct vfs_mount_point *mount)
     return -EINVFS;
 }
 
+static int devfs_ioctl(struct vfs_mount_point *mount, vfs_handle_t handle, unsigned long req, void *arg)
+{
+    if (!mount) return -EINVAL;
+    struct char_device *chardev = NULL;
+    struct block_device *bdev = NULL;
+    struct devfs_group_item *item = get_item_by_handle(handle);
+    if (!item) return -ENOENT;
+    if (item->is_blk) bdev = block_get(item->dev);
+    else chardev = char_get(item->dev);
+
+    if (bdev)
+        return bdev->ops->ioctl(bdev, req, arg);
+    else
+        return chardev->ops->ioctl(chardev, req, arg);
+
+    return -ENODEV;
+}
+
 static struct vfs_layer_ops devfs_ops = {
     .readdir = &devfs_readdir,
     .read = &devfs_read,
     .write = &devfs_write,
     .open = &devfs_open,
     .close = &devfs_close,
+    .ioctl = &devfs_ioctl,
 };
 
 static struct vfs_layer devfs_layer = {

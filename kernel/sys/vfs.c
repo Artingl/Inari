@@ -232,6 +232,24 @@ int vfs_write(vfs_handle_t handle, const void *buf, size_t sz)
     return -EBADHNDL;
 }
 
+int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg)
+{
+    struct list_head *pos;
+    struct vfs_handle *entry;
+
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->ioctl)
+                return entry->mount->layer->ops->ioctl(entry->mount, handle, req, arg);
+            return -ENOSYS;
+        }
+    }
+
+    return -EBADHNDL;
+}
+
 int vfs_seek(vfs_handle_t handle, size_t offset)
 {
     struct list_head *pos;
