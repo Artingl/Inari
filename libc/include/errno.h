@@ -19,6 +19,25 @@
 #define	EFAULT		14	/* Bad address */
 #define	ENOEXEC		15	/* Exec format error */
 
+static const char *errstr[] = 
+{
+    [ ENODEV ] = "No such device",
+    [ EPERM ] = "Operation not permitted",
+    [ EBUSY ] = "Device or resource busy",
+    [ EINVAL ] = "Invalid argument",
+    [ ENOMEM ] = "Out of memory",
+    [ EINVFS ] = "Invalid file-system",
+    [ EIO ] = "I/O error",
+    [ ETIMEDOUT ] = "Connection timed out",
+    [ ENOENT ] = "No such file or directory",
+    [ EBADHNDL ] = "Bad handle",
+    [ ENOSYS ] = "Function not implemented",
+    [ ESRCH ] = "No such process",
+    [ EACCES ] = "Permission denied",
+    [ EFAULT ] = "Bad address",
+    [ ENOEXEC ] = "Exec format error",
+};
+
 // 
 // #define	ENOENT		 2	/* No such file or directory */
 // #define	ESRCH		 3	/* No such process */

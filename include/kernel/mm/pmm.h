@@ -14,11 +14,11 @@ typedef struct pmm_page {
     uint8_t flags;
 } pmm_page_t;
 
-extern int pmm_init(void);
-extern void pmm_reserve_memory(struct reserved_memory region);
-extern void *pmm_alloc_pages(size_t npages);
-extern int pmm_free_pages(void *base, size_t npages);
-extern size_t pmm_usage();
-extern size_t pmm_total();
+int pmm_init(void);
+void pmm_reserve_memory(struct reserved_memory region);
+void *pmm_alloc_pages(size_t npages);
+int pmm_free_pages(void *base, size_t npages);
+size_t pmm_usage();
+size_t pmm_total();
 
 #endif

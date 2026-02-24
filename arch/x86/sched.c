@@ -47,12 +47,11 @@ void arch_sched_load(struct thread *task)
     kernel_pagedir = arch_get_kernel_pagedir();
     is_kernel_pagedir = task->vmem == kernel_pagedir;
     regs = (struct x86_regs32 *)frame->registers.base;
-
-    if (!is_kernel_pagedir)
-        arch_switch_pagedir(task->vmem);
     
     if (!task->stack_pointer)
     {
+        if (!is_kernel_pagedir)
+            arch_switch_pagedir(task->vmem);
         /* If the stack pointer is not initialized, that's the first time this task is scheduled */
         if (is_kernel_pagedir)
             task->stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE >> 12) + 1);
@@ -72,20 +71,18 @@ void arch_sched_load(struct thread *task)
         esp -= 4*2;                           // int_no, err_code
         esp -= 4*8;                           // regs edi-eax
 
-        // esp -= 4; *(((uint32_t*)esp)) = (uint32_t)arch_virt_to_phys((void*)task->vmem); // cr3
-
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // ds
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // es
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // fs
         esp -= 4; *(((uint32_t*)esp)) = 0x10; // gs
 
         task->saved_sp = esp;
+
+        if (!is_kernel_pagedir)
+            arch_switch_pagedir(kernel_pagedir);
     }
 
     regs->task_cr3 = (uint32_t)arch_virt_to_phys(arch_get_kernel_pagedir(), (void*)task->vmem);
     regs->task_esp = task->saved_sp;
-
-    if (!is_kernel_pagedir)
-        arch_switch_pagedir(kernel_pagedir);
     spin_unlock_irqrestore(&x86_sched_lock, flags);
 }

@@ -73,7 +73,6 @@ static int sched_remove_thread(tid_t tid)
 {
     struct list_head *pos, *n;
     struct thread *entry;
-    pagedir_t *prev_dir = NULL;
 
     list_for_each_safe(pos, n, &sched_task_list) {
         entry = list_entry(pos, struct thread, list);
@@ -81,9 +80,8 @@ static int sched_remove_thread(tid_t tid)
         if (entry->tid == tid)
         {
             /* Deallocate the stack and the entry itself */
-            if (entry->stack_pointer)
-                vmm_free_pages(entry->vmem, entry->stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
-
+            // if (entry->stack_pointer && entry->vmem)
+            //     vmm_free_pages(entry->vmem, entry->stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
             list_del(pos);
             return 0;
         }
@@ -144,10 +142,11 @@ static void sched_reschedule(struct sched_core *core)
             entry->state = SCHED_TASK_ACTIVE;
         else if (entry->state == SCHED_TASK_DEAD)
         {
-            sched_handle_death(entry);
-            sched_remove_thread(entry->tid);
             if (core->task == entry)
                 core->task = (struct thread *)NULL;
+            sched_remove_thread(entry->tid);
+            sched_handle_death(entry);
+            kfree((void*)entry);
         }
     }
 

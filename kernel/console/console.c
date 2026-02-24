@@ -173,9 +173,8 @@ static void console_thread(void* arg)
     while (1)
     {
         /* If there's nothing to do, wait a bit to avoid busy spin. */
-        if (!console_flush()) {
+        if (!console_flush())
             usleep(100000);
-        }
     }
 }
 
@@ -289,6 +288,7 @@ int console_register(struct console_dev *dev)
                 return -EBUSY;
         }
 
+    printk("console: new device %s registered", dev->name);
     list_add(&dev->list, &consoles_list);
     return 0;
 }
@@ -298,6 +298,7 @@ int console_unregister(struct console_dev *dev)
     if (!dev)
         return -EINVAL;
     
+    printk("console: device %s unregistered", dev->name);
     list_del(&dev->list);
     return 0;
 }

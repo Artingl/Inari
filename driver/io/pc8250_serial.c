@@ -121,6 +121,14 @@ int pc8250_serial_probe()
     return 0;
 }
 
+int pc8250_serial_early_probe()
+{
+    if (pc8250_serial_init() != 0)
+        return -ENODEV;
+    console_register(&console_dev);
+    return 0;
+}
+
 void pc8250_serial_cleanup()
 {
     if (pc8250_is_initialized)
@@ -138,10 +146,13 @@ void pc8250_serial_cleanup()
     }
 }
 
+void pc8250_serial_early_cleanup()
+{}
+
 earlycon_device(
     "pc8250",
-    pc8250_serial_probe,
-    pc8250_serial_cleanup
+    pc8250_serial_early_probe,
+    pc8250_serial_early_cleanup
 );
 
 module_t pc8250_module = {

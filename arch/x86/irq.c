@@ -10,8 +10,8 @@
 #include <arch/x86/irq.h>
 #include <arch/x86/interrupts.h>
 
-#define DECL_DIRECT(n) extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, n, 0x08, 0x8e)
-#define DECL_IRQ(n)    extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, 32 + n, 0x08, 0x8e)
+#define DECL_DIRECT(n, flags) extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, n, 0x08, flags)
+#define DECL_IRQ(n)           extern void _arch_irq##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_irq##n, 32 + n, 0x08, IDT_PRESENT | IDT_INT32_GATE)
 
 void x86_irq_setup(struct x86_cpu *core)
 {
@@ -34,8 +34,8 @@ void x86_irq_setup(struct x86_cpu *core)
     DECL_IRQ(15);
 
     /* SWI */
-    DECL_DIRECT(0x80);  // SWI_RESCHEDULE
-    DECL_DIRECT(0x81);  // SWI_SYSCALL
+    DECL_DIRECT(0x80, IDT_PRESENT | IDT_INT32_GATE);                // SWI_RESCHEDULE
+    DECL_DIRECT(0x81, IDT_PRESENT | IDT_INT32_GATE | IDT_DLP_USR);  // SWI_SYSCALL
 }
 
 void x86_irq_handler(struct x86_regs32 regs)

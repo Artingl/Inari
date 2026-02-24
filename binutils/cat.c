@@ -33,7 +33,7 @@ int main(int argc, char const *argv[])
 
     if (read(hndl, data, sz, NULL) == 0)
         write(stdout, data, sz);
-
+    
     free(data);
 close:
     close(hndl);

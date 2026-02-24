@@ -117,7 +117,7 @@ void *pmm_alloc_pages(size_t npages)
     /* Check if we have available memory */
     if (pages_used + npages > available_pages)
     {
-        panic("pmm: no physical memory left!");
+        panic("pmm: OOM during page allocation.");
         return NULL;
     }
 

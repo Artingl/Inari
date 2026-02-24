@@ -30,17 +30,17 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
         off = i * 40 + 128 + header->optional_header_sz + sizeof(struct pe_header);
         section = (struct pe_image_section*)&buf[off];
 
-        if (vmm_check_flag(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz, VMM_PAGE_RESERVED))
+        if (!VMM_IS_USERSPACE(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz))
         {
             res = -EFAULT;
             goto end;
         }
 
         pbase = pmm_alloc_pages((section->virt_sz >> 12) + 1);
-        vmm_disable_region((struct reserved_memory){
+        vmm_disable_region(proc_pagedir, (struct reserved_memory){
             .start = header32->image_base + section->vbase,
             .end = header32->image_base + section->vbase + section->virt_sz });
-        if (!pbase || !arch_map_page(proc_pagedir, (void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT))
+        if (!pbase || !arch_map_page(proc_pagedir, (void*)(header32->image_base + section->vbase), pbase, section->virt_sz, PAGE_RW | PAGE_PRESENT | PAGE_USR))
         {
             res = -ENOMEM;
             goto end;

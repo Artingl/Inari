@@ -122,6 +122,7 @@ static void thread_cleanup(struct thread *th, struct process *proc)
             }
         }
 
+        arch_free_pagedir(proc->descriptor.vmem);
         list_del(&proc->list);
         /* TODO: cleanup process's virtual memory! */
     }
@@ -143,11 +144,6 @@ int exit(pid_t pid, int exit_code)
 int execp(pid_t *pid, const char *path)
 {
     execpv(pid, path, 0, NULL);
-}
-
-void test()
-{
-    printk("test!!!");
 }
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv)
@@ -190,11 +186,11 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
         (void*)PROC_ARGS_BASE,
         args_pbase,
         PAGE_SIZE * 2,
-        PAGE_PRESENT | PAGE_RW) == NULL)
+        PAGE_PRESENT | PAGE_RW | PAGE_USR) == NULL)
     {
         goto err;
     }
-    vmm_disable_region((struct reserved_memory){
+    vmm_disable_region(vmem, (struct reserved_memory){
         .start = PROC_ARGS_BASE,
         .end = PROC_ARGS_BASE + PAGE_SIZE * 2 });
     copy_to_fixed_buffer(argc + 1, (char**)tmp_args_base, (void*)PROC_ARGS_BASE);
@@ -217,11 +213,11 @@ err:
     arch_switch_pagedir(arch_get_kernel_pagedir());
     if (args_pbase) pmm_free_pages(args_pbase, 2);
     if (vmem) arch_free_pagedir(vmem);
+    spin_unlock_irqrestore(&lock, flags);
 end:
     if (tmp_args_base) kfree((void*)tmp_args_base);
     if (buf) kfree((void*)buf);
     if (hndl) vfs_close(hndl);
-    spin_unlock_irqrestore(&lock, flags);
     return res;
 }
 

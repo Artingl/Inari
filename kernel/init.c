@@ -32,6 +32,7 @@ void kearly_init(bootinfo_t b)
 
     /* Initialize the early console for atleast some output */
     earlycon_init();
+    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
     assert(pmm_init() == 0, "pmm init failed.");
     assert(vmm_init() == 0, "vmm init failed.");
@@ -57,10 +58,9 @@ void kmain(void)
 
     assert(console_init() == 0, "console init failed.");
 
-    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
-
     enable_int();
     modules_init();
+
     assert(mount_root() == 0, "no root found.");
     assert(init_task() == 0, "unable to launch init.");
     sched_enter_core();
@@ -110,13 +110,13 @@ static void init_stub_thread()
     vfs_mount(0, "/dev");
 
     char init_file[ARG_MAX_LEN];
-    strcpy(&init_file[0], "/init.exe");
+    strcpy(&init_file[0], "/prog/init.exe");
     parse_cmdline_argument("init", &init_file[0]);
     
     pid_t pid;
     int res;
     if ((res = execp(&pid, init_file)) != 0)
-        panic("unable to launch init; code %d.", res);
+        panic("init: Unable to launch init process: %s.", errstr[-res]);
 }
 
 int init_task()

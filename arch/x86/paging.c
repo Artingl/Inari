@@ -1,5 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/mm/pmm.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/mm/kmalloc.h>
 #include <arch/paging.h>
 
@@ -52,7 +53,10 @@ void arch_unmap_page(pagedir_t *directory, void *vbase, size_t len)
     {
         table = get_table((struct x86_paging_directory*)directory, i >> 22);
         table->pages[i >> 12 & 0x03FF] &= ~PAGE_PRESENT;
+        table->pages[i >> 12 & 0x03FF] &= ~PAGE_USR;
         table->pages[i >> 12 & 0x03FF] |= PAGE_DIRTY;
+        if (directory == (pagedir_t*)x86_current_dir)
+            flush_tlb((uintptr_t)i);
     }
 }
 
@@ -94,15 +98,21 @@ pagedir_t *arch_fork_pagedir(void)
         }
     }
 
+    vmm_init_directory((pagedir_t*)&new_dir->dir);
+
     return (pagedir_t*)&new_dir->dir;
 }
 
 void arch_free_pagedir(pagedir_t *directory)
 {
-    // if (!directory)
-    //     kfree((void*)directory);
+    if (directory)
+        return;
+    
+    /* Cleanup all allocated resources, vmm will do it for us */
+    vmm_cleanup_directory(directory);
 
-    printk("arch_free_pagedir: not implemented");
+    /* Finally, deallocate it */    
+    kfree((void*)directory);
 }
 
 pagedir_t *arch_get_kernel_pagedir()

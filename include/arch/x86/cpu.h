@@ -1,5 +1,5 @@
-#ifndef _INARI_X86_CPU
-#define _INARI_X86_CPU
+#ifndef _INARI_X86_CPU_H
+#define _INARI_X86_CPU_H
 
 #include <misc/types.h>
 
@@ -72,11 +72,23 @@ struct x86_regs32
 {
     uint32_t task_cr3, task_esp;
 
-    uint32_t gs, fs, es, ds;//, cr3;
+    uint32_t gs, fs, es, ds;
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
     uint32_t int_no, err_code;
     uint32_t eip, cs, eflags, useresp, ss;
 } __attribute__((packed));
+
+enum {
+    IDT_PRESENT = 1 << 7,
+    IDT_DLP_KERN = 0b00,
+    IDT_DLP_USR  = 0b11,
+    IDT_TASK_GATE = 0x5,
+    IDT_INT16_GATE = 0x6,
+    IDT_TRAP16_GATE = 0x7,
+    IDT_INT32_GATE = 0xE,
+    IDT_TRAP32_GATE = 0xF,
+
+};
 
 struct x86_cpu_idt_descriptor
 {

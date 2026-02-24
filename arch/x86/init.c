@@ -6,6 +6,7 @@
 
 #include <arch/sys.h>
 #include <arch/x86/cpu.h>
+#include <arch/x86/gdt.h>
 #include <arch/x86/arch.h>
 #include <arch/paging.h>
 
@@ -57,6 +58,8 @@ _lo_text static void x86_map_section(
 
 static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 {
+    x86_gdt_init();
+
     kearly_init((bootinfo_t){
         .bootloader_magic = magic,
         .bootloader_info = multiboot,

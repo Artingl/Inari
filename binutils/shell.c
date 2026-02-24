@@ -10,6 +10,7 @@
 
 char command[128] = {0};
 char history[8][128] = {0};
+char current_dir[128] = {'/', NULL};
 int history_offset = 0, history_scroll = 0;
 int command_offset = 0, last_exitcode = NO_EXIT_CODE;
 uint32_t last_kb_event;
@@ -93,12 +94,38 @@ char** split_into_buffer(void *buffer, const char *input, int *argc, char **firs
     return new_argv;
 }
 
-void exec_cmd()
+int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, const char *bin_path, int argc, char **argv)
 {
     pid_t pid;
+    int res, offset = 0;
+
+    char combined_path[128];
+    memset((void*)&combined_path[0], 0, sizeof(combined_path));
+    if (prefix)
+    {
+        strcpy(combined_path, prefix);
+        combined_path[strlen(prefix)] = '/';
+        offset = strlen(prefix) + 1;
+        strcpy(combined_path + offset, bin_path);
+    }
+    else strcpy(combined_path, bin_path);
+    offset += strlen(bin_path);
+    if (suffix)
+    {
+        strcpy(combined_path + offset, suffix);
+    }
+
+    if ((res = execpv(&pid, combined_path, argc, argv)) != 0)
+        return res;
+
+    // *exit_code = ;
+    waitpid(pid);
+    return 0;
+}
+
+void exec_cmd()
+{
     int res, i;
-    int is_bg = command[command_offset - 1] == '&';
-    if (is_bg) command[command_offset - 1] = '\0';
     char buff[256] = {0};
     char *exec_path = NULL;
     int argc = 0;
@@ -119,17 +146,41 @@ void exec_cmd()
         exit(0);
         return;
     }
+    else if (strcmp(exec_path, "cd") == 0) {
+        if (argc < 1)
+        {
+            printf("cd: requires at least one param.\n");
+            return;
+        }
+        struct fs_node node = {0};
+        int cmd_res = readdir(argv[0], &node);
+        if (cmd_res == -ENOENT)
+        {
+            if (errstr[-cmd_res] == NULL)
+                printf("cd: Invalid error.\n");
+            else 
+                printf("cd: %s\n", errstr[-cmd_res]);
+            return;
+        }
+
+        memset((void*)&current_dir[0], 0, sizeof(current_dir));
+        strcpy(current_dir, argv[0]);
+        return;
+    }
     else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
         return;
     }
-    if ((res = execpv(&pid, exec_path, argc, argv)) != 0) {
-        printf("error: code %d\n", res);
-        return;
-    }
 
-    if (!is_bg)
-        last_exitcode = waitpid(pid);
+    if ((res = try_to_execute_at("/prog", NULL, &last_exitcode, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/prog", ".exe", &last_exitcode, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, exec_path, argc, argv)) == 0) return;
+
+    if (errstr[-res] == NULL)
+        printf("%s: Invalid error.\n", exec_path);
+    else 
+        printf("%s: %s\n", exec_path, errstr[-res]);
 }
 
 int main(int argc, char const *argv[])
@@ -145,7 +196,11 @@ int main(int argc, char const *argv[])
         exit(1);
     }
 
-    printf("+;/> ");
+    printf("Testing ring3 (the following code must trigger an exception)\n");
+    __asm__ volatile("sti");
+    printf("We're in ring3!\n");
+
+    printf("+@%s> ", current_dir);
     command_offset = 0;
     history_offset = 0;
     history_scroll = 0;
@@ -166,9 +221,9 @@ int main(int argc, char const *argv[])
                     command_offset = 0;
                     memset((void*)&command[0], 0, sizeof(command));
                     if (last_exitcode == NO_EXIT_CODE)
-                        printf("+;/> ");
+                        printf("+@%s> ", current_dir);
                     else
-                        printf("%d;/> ", last_exitcode);
+                        printf("%d@%s> ", current_dir, last_exitcode);
                 }
                 else if (kbd_event.key == 0x102 && command_offset > 0) // backspace
                 {

@@ -8,9 +8,9 @@
 #include <arch/x86/arch.h>
 #include <arch/x86/exception.h>
 
-#define DECL_EXCP(n) extern void _arch_excp##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_excp##n, n, 0x08, 0x8e)
+#define DECL_EXCP(n) extern void _arch_excp##n(void);x86_cpu_install_idt(core->core_id, (unsigned)_arch_excp##n, n, 0x08, IDT_PRESENT | IDT_INT32_GATE)
 
-static const char *EXCEPTIONS_NAMES[] =
+static const char *exceptionstr[] =
 {
     [ 0x0 ] = "Division_Error",
     [ 0x1 ] = "Debug_Exception",
@@ -80,14 +80,14 @@ void x86_exception_handler(struct x86_regs32 regs)
             case 0x6:  signo = SIGILL; break;
             case 0x0:  signo = SIGILL; break;
             default:
-                printk("arch: exception %s; eip=0x%x", EXCEPTIONS_NAMES[regs.int_no], regs.eip);
+                printk("arch: exception %s; eip=0x%x", exceptionstr[regs.int_no], regs.eip);
         }
         
         sched_signal_thread(tid, signo);
     }
     else {
         /* Exception in kernel code */
-        panic("kernel exception %s", EXCEPTIONS_NAMES[regs.int_no]);
+        panic("kernel exception %s", exceptionstr[regs.int_no]);
     }
 
     /* Use interrupt dispatcher to reschedule */
