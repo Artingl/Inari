@@ -7,6 +7,7 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/sys/block.h>
 #include <kernel/sys/char.h>
+#include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/proc.h>
@@ -57,12 +58,8 @@ void kmain(void)
     register_chardev_group(MOUSE_DRIVER, "mouse");
 
     assert(console_init() == 0, "console init failed.");
-
-    enable_int();
-    modules_init();
-
-    assert(mount_root() == 0, "no root found.");
     assert(init_task() == 0, "unable to launch init.");
+
     sched_enter_core();
     panic("Reached end of kmain");
 }
@@ -77,7 +74,7 @@ int mount_root()
     parse_cmdline_argument("root", &device[0]);
 
     /* Iterate through all block devices to find the required one */
-    struct block_device *bdev;
+    struct device *bdev;
     dev_t devs[128];
     int offset = 0, count = 0;
     while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
@@ -103,9 +100,9 @@ found_dev:
 
 static void init_stub_thread()
 {
-    /* This thread is only created to delay a little the execution
-     * of the init task, so critical kernel modules have time to initialize. */
-    usleep(400000);
+    /* Initialize the rest of the kernel and mount root */
+    modules_init();
+    assert(mount_root() == 0, "no root found.");
 
     vfs_mount(0, "/dev");
 
@@ -122,7 +119,7 @@ static void init_stub_thread()
 int init_task()
 {
     tid_t tid;
-    return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL);
+    return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL, NULL);
 }
 
 bootinfo_t get_boot_info()

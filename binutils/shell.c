@@ -6,13 +6,11 @@
 #include <errno.h>
 #include <alloc.h>
 
-#define NO_EXIT_CODE 0xFFFFFFFF
-
 char command[128] = {0};
 char history[8][128] = {0};
 char current_dir[128] = {'/', NULL};
 int history_offset = 0, history_scroll = 0;
-int command_offset = 0, last_exitcode = NO_EXIT_CODE;
+int command_offset = 0, last_exitcode = 0;
 uint32_t last_kb_event;
 handle_t kb_hndl;
 struct
@@ -118,8 +116,7 @@ int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, co
     if ((res = execpv(&pid, combined_path, argc, argv)) != 0)
         return res;
 
-    // *exit_code = ;
-    waitpid(pid);
+    *exit_code = waitpid(pid);
     return 0;
 }
 
@@ -195,8 +192,8 @@ int main(int argc, char const *argv[])
 {
     pid_t pid;
     char *cat_argv[] = { "/sys/motd.txt", NULL };
-    if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
-        waitpid(pid);
+    // if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
+    //     waitpid(pid);
 
     if (open(&kb_hndl, "/dev/input/char_kbd0", READ) != 0)
     {
@@ -204,15 +201,11 @@ int main(int argc, char const *argv[])
         exit(1);
     }
 
-    printf("Testing ring3 (the following code must trigger an exception)\n");
-    __asm__ volatile("sti");
-    printf("We're in ring0!\n");
-
-    printf("+@%s> ", current_dir);
+    printf("0@%s> ", current_dir);
     command_offset = 0;
     history_offset = 0;
     history_scroll = 0;
-    last_exitcode = NO_EXIT_CODE;
+    last_exitcode = 0;
     memset((void*)&command[0], 0, sizeof(command));
 
     do
@@ -228,10 +221,7 @@ int main(int argc, char const *argv[])
                     exec_cmd();
                     command_offset = 0;
                     memset((void*)&command[0], 0, sizeof(command));
-                    if (last_exitcode == NO_EXIT_CODE)
-                        printf("+@%s> ", current_dir);
-                    else
-                        printf("%d@%s> ", current_dir, last_exitcode);
+                    printf("%d@%s> ", last_exitcode, current_dir);
                 }
                 else if (kbd_event.key == 0x102 && command_offset > 0) // backspace
                 {

@@ -5,39 +5,7 @@
 #include <misc/list.h>
 
 #include <kernel/sys/driver.h>
-
-#define CHAR_DEV_NAME_SIZE 16
-
-struct char_device;
-struct char_device_group;
-
-struct char_ops
-{
-    int (*read)(struct char_device *chardev, uint8_t *buf, size_t sz);
-    int (*write)(struct char_device *chardev, const uint8_t *buf, size_t sz);
-    int (*ioctl)(struct char_device *chardev, unsigned long req, void *arg);
-};
-
-struct char_device
-{
-    void *driver_data;
-
-    dev_t dev;
-    struct char_device_group *group;
-    struct char_ops *ops;
-
-    struct list_head list;
-};
-
-struct char_device_group
-{
-    char name[CHAR_DEV_NAME_SIZE + 1]; // 1 byte for null
-
-    uint32_t driver;
-    uint32_t char_size;
-    
-    struct list_head char_devices;
-};
+#include <kernel/sys/device.h>
 
 int chardev_init();
 
@@ -52,6 +20,6 @@ int unregister_chardev(dev_t dev);
  * Returns the amount of found bdevs or 0 if none */
 int char_get_refs(dev_t *devs, uint32_t offset, uint32_t limit);
 
-struct char_device *char_get(dev_t dev);
+struct device *char_get(dev_t dev);
 
 #endif

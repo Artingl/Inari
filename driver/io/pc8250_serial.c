@@ -5,6 +5,7 @@
 #include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
 #include <kernel/sys/char.h>
+#include <kernel/sys/device.h>
 #include <kernel/module.h>
 #include <kernel/errno.h>
 
@@ -87,7 +88,7 @@ int pc8250_serial_init()
     return 0;
 }
 
-static int serial_write_chardev(struct char_device *chardev, const uint8_t *buf, size_t sz)
+static int serial_write_chardev(struct device *chardev, const uint8_t *buf, size_t sz)
 {
     if (!buf) return -EINVAL;
     serial_putc((int)chardev->driver_data, (const char*)buf, sz);

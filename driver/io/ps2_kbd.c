@@ -6,6 +6,7 @@
 #include <kernel/console/console.h>
 #include <kernel/input/kbd.h>
 #include <kernel/sys/char.h>
+#include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
 #include <kernel/errno.h>
 #include <kernel/module.h>
@@ -127,7 +128,7 @@ static int ps2_kbd_irq(uint32_t irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-static int kbd_read(struct char_device *chardev, uint8_t *buf, size_t sz)
+static int kbd_read(struct device *chardev, uint8_t *buf, size_t sz)
 {
     if (sz > sizeof(struct kbd_event))
         sz = sizeof(struct kbd_event);

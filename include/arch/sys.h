@@ -18,13 +18,13 @@
 #define idle() _arch_idle()
 #define trigger_interrupt(int) _arch_trigger_interrupt(int)
 
-extern void _arch_disable_int(void);
-extern void _arch_enable_int(void);
-extern void _arch_hlt(void);
-extern void _arch_idle(void);
-extern uint32_t _arch_core_id(void);
-extern void _arch_trigger_interrupt(uint32_t interrupt);
-extern uint32_t _arch_local_irq_save(void);
-extern void _arch_local_irq_restore(uint32_t flags);
+void _arch_disable_int(void);
+void _arch_enable_int(void);
+void _arch_hlt(void);
+void _arch_idle(void);
+uint32_t _arch_core_id(void);
+void _arch_trigger_interrupt(uint32_t interrupt);
+uint32_t _arch_local_irq_save(void);
+void _arch_local_irq_restore(uint32_t flags);
 
 #endif

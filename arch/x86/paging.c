@@ -92,8 +92,8 @@ pagedir_t *arch_fork_pagedir(void)
         {
             struct x86_page_table *new_table = &new_dir->tables_pool[i];
             new_table = (struct x86_page_table*)ALIGN((uintptr_t)new_table, PAGE_SIZE);
-            new_dir->dir.tables_virt[i] = (uintptr_t)new_table | TABLE_PRESENT | TABLE_RW;
-            new_dir->dir.tables_phys[i] = (uintptr_t)arch_virt_to_phys(x86_kernel_dir, (void*)new_dir->dir.tables_virt[i]);
+            new_dir->dir.tables_virt[i] = (uintptr_t)new_table | TABLE_PRESENT | TABLE_RW | TABLE_USR;
+            new_dir->dir.tables_phys[i] = (uintptr_t)arch_virt_to_phys(x86_kernel_dir, (void*)new_dir->dir.tables_virt[i]) | TABLE_PRESENT | TABLE_RW | TABLE_USR;
         }
     }
 

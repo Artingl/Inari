@@ -5,40 +5,7 @@
 #include <misc/list.h>
 
 #include <kernel/sys/driver.h>
-
-#define BLOCK_DEV_NAME_SIZE 16
-
-struct block_device;
-struct block_device_group;
-
-struct block_ops
-{
-    int (*read_blocks)(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks);
-    int (*write_blocks)(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks);
-    int (*ioctl)(struct block_device *bdev, unsigned long req, void *arg);
-};
-
-struct block_device
-{
-    uint64_t size;
-    void *driver_data;
-
-    dev_t dev;
-    struct block_device_group *group;
-    struct block_ops *ops;
-
-    struct list_head list;
-};
-
-struct block_device_group
-{
-    char name[BLOCK_DEV_NAME_SIZE + 1]; // 1 byte for null
-
-    uint32_t driver;
-    uint32_t block_size;
-    
-    struct list_head block_devices;
-};
+#include <kernel/sys/device.h>
 
 int blkdev_init();
 
@@ -54,6 +21,6 @@ int unregister_blkdev(dev_t dev);
  * Returns the amount of found bdevs or 0 if none */
 int block_get_refs(dev_t *devs, uint32_t offset, uint32_t limit);
 
-struct block_device *block_get(dev_t dev);
+struct device *block_get(dev_t dev);
 
 #endif

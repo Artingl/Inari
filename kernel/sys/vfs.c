@@ -97,7 +97,7 @@ int vfs_mount(dev_t dev, const char* path)
 {
     struct list_head *pos;
     struct vfs_layer *entry;
-    struct block_device *bdev = block_get(dev);
+    struct device *bdev = block_get(dev);
 
     struct vfs_mount_point *mount = (struct vfs_mount_point*)kmalloc(sizeof(struct vfs_mount_point));
     if (!mount) return -ENOMEM;
@@ -131,7 +131,7 @@ int vfs_unmount(const char* path)
 {
     struct list_head *pos;
     struct vfs_mount_point *entry;
-    struct block_device *bdev;
+    struct device *bdev;
 
     list_for_each(pos, &vfs_mount_points) {
         entry = list_entry(pos, struct vfs_mount_point, list);
@@ -175,7 +175,7 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
-    struct block_device *bdev;
+    struct device *bdev;
 
     /* Search mount point that owns this path */
     list_for_each(pos, &vfs_mount_points) {

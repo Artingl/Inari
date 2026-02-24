@@ -2,11 +2,6 @@ section .text
 extern x86_irq_handler
 extern x86_exception_handler
 
-
-;; eflags, cs, eip, regs, seg ; save task esp
-
-;; restore task esp, pop seg, pop regs, iretd
-
 _arch_excp_base:
     pushad
 	push ds
@@ -14,12 +9,16 @@ _arch_excp_base:
 	push fs
 	push gs
 	push esp
+	mov eax, cr3
+	push eax
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
     call x86_exception_handler
+	pop eax
+	mov cr3, eax
 	pop esp
 	pop gs
 	pop fs
@@ -28,12 +27,10 @@ _arch_excp_base:
 	popad
     add esp, 8
 	sti
-	iretd
+	iret
 
 _arch_irq_base:
     pushad
-	; mov eax, cr3
-	; push eax
 	push ds
 	push es
 	push fs
@@ -54,12 +51,10 @@ _arch_irq_base:
 	pop fs
 	pop es
 	pop ds
-	; pop eax
-	; mov cr3, eax
 	popad
     add esp, 8
 	sti
-	iretd
+	iret
 
 %macro SWI_HANDLER 1
 global _arch_irq%1

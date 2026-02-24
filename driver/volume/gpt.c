@@ -1,13 +1,14 @@
 #ifdef CONFIG_DRV_GPT
-#include "kernel/module.h"
-#include "kernel/event.h"
-#include "kernel/sys/driver.h"
-#include "kernel/sys/block.h"
-#include "kernel/mm/kmalloc.h"
-#include "kernel/errno.h"
-#include "kernel/printk.h"
+#include <kernel/module.h>
+#include <kernel/event.h>
+#include <kernel/sys/driver.h>
+#include <kernel/sys/block.h>
+#include <kernel/mm/kmalloc.h>
+#include <kernel/errno.h>
+#include <kernel/printk.h>
+#include <kernel/sys/device.h>
 
-#include "misc/string.h"
+#include <misc/string.h>
 
 #define GPT_UNUSED_ENTRY "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 #define GPT_MAGIC "EFI PART"
@@ -55,26 +56,26 @@ static char* helper_utf16le_to_ascii(char* utf16le_str, size_t len) {
     return utf16le_str;
 }
 
-static int gpt_read_blocks(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks)
+static int gpt_read_blocks(struct device *bdev, uint64_t lba, void *buf, size_t nblocks)
 {
     gpt_partition_t *partition = (gpt_partition_t*)bdev->driver_data;
     if (!partition) return -ENODEV;
-    struct block_device *disk_bdev = block_get(partition->disk_bdev);
+    struct device *disk_bdev = block_get(partition->disk_bdev);
     if (!bdev) return -ENODEV;
     /* Check that we don't exceed the partition boundaries */
     if (lba > partition->entry.end_lba - partition->entry.start_lba) return -EINVAL;
-    return disk_bdev->ops->read_blocks(disk_bdev, lba + partition->entry.start_lba, buf, nblocks);
+    return ((struct block_ops*)disk_bdev->ops)->read_blocks(disk_bdev, lba + partition->entry.start_lba, buf, nblocks);
 }
 
-static int gpt_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
+static int gpt_write_blocks(struct device *bdev, uint64_t lba, const void *buf, size_t nblocks)
 {
     gpt_partition_t *partition = (gpt_partition_t*)bdev->driver_data;
     if (!partition) return -ENODEV;
-    struct block_device *disk_bdev = block_get(partition->disk_bdev);
+    struct device *disk_bdev = block_get(partition->disk_bdev);
     if (!bdev) return -ENODEV;
     /* Check that we don't exceed the partition boundaries */
     if (lba > partition->entry.end_lba - partition->entry.start_lba) return -EINVAL;
-    return disk_bdev->ops->write_blocks(disk_bdev, lba + partition->entry.start_lba, buf, nblocks);
+    return ((struct block_ops*)disk_bdev->ops)->write_blocks(disk_bdev, lba + partition->entry.start_lba, buf, nblocks);
 }
 
 static struct block_ops gpt_block_ops = {
@@ -90,13 +91,13 @@ static void handle_block_dev_load(dev_t dev)
     gpt_partition_t *partition;
     struct gpt_entry entry;
     struct gpt_header header;
-    struct block_device *bdev = block_get(dev);
+    struct device *bdev = block_get(dev);
     uint8_t *lba = (uint8_t*)kmalloc(bdev->group->block_size);
     size_t offset = 0, lba_offset = 0, i, partitions = 0;
 
     if (!bdev) goto end;
 
-    if (bdev->ops->read_blocks(bdev, 1, (void*)&lba[0], 1) != 0)
+    if (((struct block_ops*)bdev->ops)->read_blocks(bdev, 1, (void*)&lba[0], 1) != 0)
     {
         lba_offset = 1;
         goto read_err;
@@ -107,7 +108,7 @@ static void handle_block_dev_load(dev_t dev)
     if (memcmp(GPT_MAGIC, (void*)&header.magic[0], 8) != 0) goto end;
 
     /* Read lba of partition entries */
-    if (bdev->ops->read_blocks(bdev, header.entries_lba, (void*)&lba[0], 1) != 0)
+    if (((struct block_ops*)bdev->ops)->read_blocks(bdev, header.entries_lba, (void*)&lba[0], 1) != 0)
     {
         lba_offset = header.entries_lba;
         goto read_err;
@@ -146,7 +147,7 @@ static void handle_block_dev_load(dev_t dev)
         {
             /* Request more info */
             lba_offset++;
-            if (bdev->ops->read_blocks(bdev, header.entries_lba + lba_offset, (void*)&lba[0], 1) != 0)
+            if (((struct block_ops*)bdev->ops)->read_blocks(bdev, header.entries_lba + lba_offset, (void*)&lba[0], 1) != 0)
             {
                 lba_offset = header.entries_lba + lba_offset;
                 goto read_err;

@@ -6,6 +6,7 @@
 #include <kernel/sys/block.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/errno.h>
+#include <kernel/sys/device.h>
 
 #include <misc/string.h>
 
@@ -30,9 +31,9 @@ DRESULT ff_disk_read(
 	UINT count		/* Number of sectors to read */
 )
 {
-    struct block_device *device = block_get(pdrv);
+    struct device *device = block_get(pdrv);
     if (!device) return RES_NOTRDY;
-    device->ops->read_blocks(device, sector, (void*)buff, count);
+    ((struct block_ops*)device->ops)->read_blocks(device, sector, (void*)buff, count);
 	return RES_OK;
 }
 

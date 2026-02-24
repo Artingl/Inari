@@ -5,6 +5,7 @@
 #include <kernel/console/earlycon.h>
 #include <kernel/proc/sched.h>
 #include <kernel/sys/char.h>
+#include <kernel/sys/device.h>
 #include <kernel/errno.h>
 #include <kernel/timer.h>
 
@@ -179,13 +180,13 @@ static void console_thread(void* arg)
 }
 
 static dev_t console_dev = 0;
-static int console_write_char(struct char_device *chardev, const uint8_t *buf, size_t sz)
+static int console_write_char(struct device *chardev, const uint8_t *buf, size_t sz)
 {
     console_printc(CONSOLE_PRINTK, (const char *)buf, sz);
     return 0;
 }
 
-static int console_ioctl_char(struct char_device *chardev, unsigned long req, void *arg)
+static int console_ioctl_char(struct device *chardev, unsigned long req, void *arg)
 {
     int ret = 0;
     unsigned long flags;
@@ -269,7 +270,7 @@ int console_init(void)
     console_pool_init();
 
     register_chardev(TTY_DRIVER, &console_ops, NULL, &console_dev);
-    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL);
+    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL, NULL);
     return ret;
 }
 

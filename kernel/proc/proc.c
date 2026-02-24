@@ -81,6 +81,11 @@ static int get_process(struct process **proc, pid_t pid)
 
 struct thread *__sched_get_thread(tid_t tid);
 
+static void signal_handler(uint32_t signo)
+{
+    // ...
+}
+
 static void thread_cleanup(struct thread *th, struct process *proc)
 {
     if (!proc) return;
@@ -154,7 +159,7 @@ int execp(pid_t *pid, const char *path)
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv)
 {
-    pagedir_t *vmem = NULL;
+    pagedir_t *vmem = NULL, *prev_dir = arch_get_pagedir();
     size_t size;
     vfs_handle_t hndl;
     void *entrypoint = NULL, *args_pbase = NULL, *tmp_args_base = NULL;
@@ -205,7 +210,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
         goto err;
 
-    arch_switch_pagedir(arch_get_kernel_pagedir());
+    arch_switch_pagedir(prev_dir);
     
     spin_unlock_irqrestore(&lock, flags);
 
@@ -216,7 +221,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     
     goto end;
 err:
-    arch_switch_pagedir(arch_get_kernel_pagedir());
+    arch_switch_pagedir(prev_dir);
     if (args_pbase) pmm_free_pages(args_pbase, 2);
     if (vmem) arch_free_pagedir(vmem);
     spin_unlock_irqrestore(&lock, flags);
@@ -284,7 +289,7 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
-    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
+    if ((res = sched_create_thread(&i_tid, entrypoint, &signal_handler, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);

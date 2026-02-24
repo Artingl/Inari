@@ -124,8 +124,8 @@ static void sched_reschedule(struct sched_core *core)
             list_del(&entry->list);
             if (core->task == entry)
                 core->task = (struct thread *)NULL;
-            if (entry->kernel_stack_pointer && entry->vmem) vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer, (CONFIG_KERN_STACK_SIZE >> 12) + 1);
-            if (entry->thread_stack_pointer && entry->vmem) vmm_free_pages(entry->vmem, entry->thread_stack_pointer, (CONFIG_USR_STACK_SIZE >> 12) + 1);
+            if (entry->kernel_stack_pointer && entry->vmem) vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
+            if (entry->thread_stack_pointer && entry->vmem) vmm_free_pages(entry->vmem, entry->thread_stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
             sched_handle_death(entry);
             kfree((void*)entry);
         }
@@ -253,7 +253,7 @@ void sched_call()
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, thread_signal_t signal_handler, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
@@ -267,6 +267,7 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *v
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
     node->flags = 0;
+    node->signal_handler = signal_handler;
     node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
     node->state = SCHED_TASK_SLEEPING;
     list_add_tail(&node->list, &sched_task_list);
@@ -333,15 +334,14 @@ int sched_signal_thread(tid_t tid, uint32_t signo)
     switch (signo)
     {
         case SIGKILL:
+        case SIGSEGV:
         case SIGSTOP:
-            // printk("sched%llu: signal %u", task->tid, signo);
             task->state = SCHED_TASK_DEAD;
             break;
 
         default:
             if (!task->signal_handler || task->flags & SCHED_FLAG_IN_SIGNAL)
             {
-                // printk("sched%llu: signal %u", task->tid, signo);
                 task->state = SCHED_TASK_DEAD;
                 break;
             }
@@ -392,5 +392,6 @@ void sched_enter_core()
     sched_cores[core_id].core_id = core_id;
     sched_cores[core_id].active = 1;
     sched_cores[core_id].task = (struct thread*)NULL;
+    enable_int();
     idle();
 }

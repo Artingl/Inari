@@ -5,6 +5,7 @@
 #include <kernel/module.h>
 #include <kernel/errno.h>
 #include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
 #include <kernel/sys/block.h>
 
 #include <driver/disk/ata/ata.h>
@@ -15,14 +16,14 @@
 
 static struct ata_drive ata_drives[ATA_MAX_DRIVES];
 
-static int ata_read_blocks(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks)
+static int ata_read_blocks(struct device *bdev, uint64_t lba, void *buf, size_t nblocks)
 {
     struct ata_drive *drive = bdev->driver_data;
     if (!drive) return -ENODEV;
     return drive->ops->read(drive, lba, buf, nblocks);
 }
 
-static int ata_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
+static int ata_write_blocks(struct device *bdev, uint64_t lba, const void *buf, size_t nblocks)
 {
     struct ata_drive *drive = bdev->driver_data;
     if (!drive) return -ENODEV;

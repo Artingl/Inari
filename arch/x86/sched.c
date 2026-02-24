@@ -7,6 +7,7 @@
 #include <kernel/proc/proc.h>
 #include <kernel/sync/spinlock.h>
 
+#include <arch/x86/tss.h>
 #include <arch/x86/cpu.h>
 #include <arch/paging.h>
 #include <misc/string.h>
@@ -51,43 +52,47 @@ void arch_sched_load(struct thread *task)
     /* If the stack pointer is not initialized, that's the first time this task is scheduled */
     if (!task->kernel_stack_pointer)
     {
-        if (!is_kernel_pagedir)
-            arch_switch_pagedir(task->vmem);
-
-        task->kernel_stack_pointer = vmm_alloc_kernel((CONFIG_KERN_STACK_SIZE >> 12) + 1);
+        task->kernel_stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE >> 12) + 1);
         if (task->kernel_stack_pointer == NULL)
-            panic("sched: no memory left.");
+            panic("sched: OOM when allocating kernel stack.");
 
-        if (is_kernel_pagedir)
-            task->thread_stack_pointer = vmm_alloc_kernel((CONFIG_USR_STACK_SIZE >> 12) + 1);
-        else
-            task->thread_stack_pointer = vmm_alloc_user(task->vmem, (CONFIG_USR_STACK_SIZE >> 12) + 1);
+        esp = (uint32_t)task->kernel_stack_pointer + (uint32_t)CONFIG_STACK_SIZE;
         
-        if (task->thread_stack_pointer == NULL)
-            panic("sched: no memory left.");
+        /* Stack for kernel and userspace tasks is different */
+        if (is_kernel_pagedir)
+        {
+            esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->eflags;
+            esp -= 4; *(((uint32_t*)esp)) = 0x08;
+            esp -= 4; *(((uint32_t*)esp)) = (uint32_t)&sched_thread_preentry;
+        }
+        else {
+            task->thread_stack_pointer = vmm_alloc_user(task->vmem, (CONFIG_STACK_SIZE >> 12) + 1);
+            if (task->thread_stack_pointer == NULL)
+                panic("sched: OOM when allocating user stack.");
 
-        esp = (uint32_t)task->kernel_stack_pointer + (uint32_t)CONFIG_KERN_STACK_SIZE;
-        esp -= 4; *(((uint32_t*)esp)) = 0x10;   // ss
-        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->thread_stack_pointer + (uint32_t)CONFIG_USR_STACK_SIZE;   // useresp
-        esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->eflags;
-        esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->cs;
-        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)&sched_thread_preentry;
+            esp -= 4; *(((uint32_t*)esp)) = 0x23; // ss
+            esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->thread_stack_pointer + (uint32_t)CONFIG_STACK_SIZE;   // useresp
+            esp -= 4; *(((uint32_t*)esp)) = 0x200;
+            esp -= 4; *(((uint32_t*)esp)) = 0x1b;
+            esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->entrypoint;
+        }
 
         esp -= 4*2;                           // int_no, err_code
         esp -= 4*8;                           // regs edi-eax
 
-        esp -= 4; *(((uint32_t*)esp)) = 0x10; // ds
-        esp -= 4; *(((uint32_t*)esp)) = 0x10; // es
-        esp -= 4; *(((uint32_t*)esp)) = 0x10; // fs
-        esp -= 4; *(((uint32_t*)esp)) = 0x10; // gs
+        esp -= 4; *(((uint32_t*)esp)) = is_kernel_pagedir ? 0x10 : 0x23; // ds
+        esp -= 4; *(((uint32_t*)esp)) = is_kernel_pagedir ? 0x10 : 0x23; // es
+        esp -= 4; *(((uint32_t*)esp)) = is_kernel_pagedir ? 0x10 : 0x23; // fs
+        esp -= 4; *(((uint32_t*)esp)) = is_kernel_pagedir ? 0x10 : 0x23; // gs
 
         task->saved_sp = esp;
-
-        if (!is_kernel_pagedir)
-            arch_switch_pagedir(kernel_pagedir);
     }
 
     regs->task_cr3 = (uint32_t)arch_virt_to_phys(arch_get_kernel_pagedir(), (void*)task->vmem);
     regs->task_esp = task->saved_sp;
+
+    extern struct tss_entry_struct tss_entry;
+    tss_entry.esp0 = (uint32_t)task->kernel_stack_pointer + CONFIG_STACK_SIZE;
+
     spin_unlock_irqrestore(&x86_sched_lock, flags);
 }

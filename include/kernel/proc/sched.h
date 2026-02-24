@@ -13,8 +13,8 @@
 #define SCHED_TASK_PAUSED        3
 
 #define SCHED_FLAG_SYSTEM        (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
-#define SCHED_FLAG_IN_SIGNAL     (1 << 2)
-#define SCHED_FLAG_SYSCALL_RSLT  (1 << 3)
+#define SCHED_FLAG_IN_SIGNAL     (1 << 1)
+#define SCHED_FLAG_SYSCALL_RSLT  (1 << 2)
 
 struct thread;
 
@@ -57,7 +57,7 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *data);
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, thread_signal_t signal_handler, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data);
 int sched_signal_thread(tid_t tid, uint32_t signo);
 void sched_yield();
 void sched_enter_core();

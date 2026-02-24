@@ -68,17 +68,24 @@ void x86_exception_setup(struct x86_cpu *core)
 
 void x86_exception_handler(struct x86_regs32 regs)
 {
+    arch_switch_pagedir(arch_get_kernel_pagedir());
     console_switch_early();
     tid_t tid;
     uint32_t signo = SIGTERM;
     if (sched_current_thread(&tid) == 0)
     {
+        uint32_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        printk("Page Fault caused by accessing address: 0x%x\n", cr2);
+        printk("arch: exception %s; eip=0x%x; esp=0x%x", exceptionstr[regs.int_no], regs.eip, regs.esp);
+
         switch (regs.int_no)
         {
             case 0xe:  signo = SIGSEGV; break;
             case 0x10: signo = SIGFPE; break;
-            case 0x6:  signo = SIGILL; break;
-            case 0x0:  signo = SIGILL; break;
+            case 0x6:  signo = SIGKILL; break;
+            case 0x0:  signo = SIGKILL; break;
+            case 0xd:  signo = SIGKILL; break;
             default:
                 printk("arch: exception %s; eip=0x%x", exceptionstr[regs.int_no], regs.eip);
         }

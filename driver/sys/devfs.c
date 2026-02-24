@@ -4,6 +4,7 @@
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/block.h>
 #include <kernel/sys/char.h>
+#include <kernel/sys/device.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/printk.h>
 
@@ -57,8 +58,8 @@ static struct list_head *get_dev_group(dev_t dev, char **name)
 static void handle_dev_load(uint8_t is_blk, dev_t dev)
 {
     struct list_head *group;
-    struct block_device *bdev = NULL;
-    struct char_device *chardev = NULL;
+    struct device *bdev = NULL;
+    struct device *chardev = NULL;
     char *name, *group_name = "invalid";
     if (is_blk && (bdev = block_get(dev)))
         group_name = bdev->group->name;
@@ -87,8 +88,8 @@ static void handle_dev_load(uint8_t is_blk, dev_t dev)
 static void handle_dev_unload(dev_t dev)
 {
     struct list_head *group;
-    struct block_device *bdev = NULL;
-    struct char_device *chardev = NULL;
+    struct device *bdev = NULL;
+    struct device *chardev = NULL;
     char *name, *group_name = "invalid";
     if (!(group = get_dev_group(dev, &name)))
         return; /* Ignore invalid driver groups */
@@ -149,8 +150,8 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     struct list_head *group = NULL;
     struct list_head *pos;
     struct devfs_group_item *entry;
-    struct block_device *bdev = NULL;
-    struct char_device *chardev = NULL;
+    struct device *bdev = NULL;
+    struct device *chardev = NULL;
     char *group_name = NULL;
     char dev_name[256];
     if (!mount || !path || !node) return -EINVAL;
@@ -203,8 +204,8 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
 static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
 {
     if (!mount || !buf) return -EINVAL;
-    struct char_device *chardev = NULL;
-    struct block_device *bdev = NULL;
+    struct device *chardev = NULL;
+    struct device *bdev = NULL;
     struct devfs_group_item *item = get_item_by_handle(handle);
     if (!item) return -ENOENT;
     if (item->is_blk) bdev = block_get(item->dev);
@@ -215,10 +216,10 @@ static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
     if (bdev)
     {
         size_t block = len / bdev->group->block_size;
-        return bdev->ops->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
+        return ((struct block_ops*)bdev->ops)->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
     }
     else
-        return chardev->ops->read(chardev, (uint8_t*)buf, len);
+        return ((struct char_ops*)chardev->ops)->read(chardev, (uint8_t*)buf, len);
 
     return -ENODEV;
 }
@@ -226,17 +227,17 @@ static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
 static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const void *buf, size_t sz)
 {
     if (!mount || !buf) return -EINVAL;
-    struct char_device *chardev = NULL;
-    struct block_device *bdev = NULL;
+    struct device *chardev = NULL;
+    struct device *bdev = NULL;
     struct devfs_group_item *item = get_item_by_handle(handle);
     if (!item) return -ENOENT;
     if (item->is_blk) bdev = block_get(item->dev);
     else chardev = char_get(item->dev);
 
     if (bdev)
-        return bdev->ops->write_blocks(bdev, sz, buf, 0);
+        return ((struct block_ops*)bdev->ops)->write_blocks(bdev, sz, buf, 0);
     else
-        return chardev->ops->write(chardev, (const uint8_t*)buf, sz);
+        return ((struct char_ops*)chardev->ops)->write(chardev, (const uint8_t*)buf, sz);
 
     return -ENODEV;
 }
@@ -254,8 +255,8 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
     size_t i;
     struct list_head *pos;
     struct devfs_group_item *entry;
-    struct block_device *bdev = NULL;
-    struct char_device *chardev = NULL;
+    struct device *bdev = NULL;
+    struct device *chardev = NULL;
     struct list_head *group = NULL;
     char *group_name;
     char *dev_group_name = NULL;
@@ -326,17 +327,17 @@ static int devfs_mount(struct vfs_mount_point *mount)
 static int devfs_ioctl(struct vfs_mount_point *mount, vfs_handle_t handle, unsigned long req, void *arg)
 {
     if (!mount) return -EINVAL;
-    struct char_device *chardev = NULL;
-    struct block_device *bdev = NULL;
+    struct device *chardev = NULL;
+    struct device *bdev = NULL;
     struct devfs_group_item *item = get_item_by_handle(handle);
     if (!item) return -ENOENT;
     if (item->is_blk) bdev = block_get(item->dev);
     else chardev = char_get(item->dev);
 
     if (bdev)
-        return bdev->ops->ioctl(bdev, req, arg);
+        return ((struct block_ops*)bdev->ops)->ioctl(bdev, req, arg);
     else
-        return chardev->ops->ioctl(chardev, req, arg);
+        return ((struct char_ops*)chardev->ops)->ioctl(chardev, req, arg);
 
     return -ENODEV;
 }
@@ -387,7 +388,7 @@ void devfs_cleanup()
 {
     size_t i;
     struct list_head *group;
-    struct block_device *bdev;
+    struct device *bdev;
     struct list_head *pos;
     struct devfs_group_item *entry;
 

@@ -1,13 +1,14 @@
 #ifdef CONFIG_DRV_MBR
-#include "kernel/module.h"
-#include "kernel/event.h"
-#include "kernel/sys/driver.h"
-#include "kernel/sys/block.h"
-#include "kernel/mm/kmalloc.h"
-#include "kernel/errno.h"
-#include "kernel/printk.h"
+#include <kernel/module.h>
+#include <kernel/event.h>
+#include <kernel/sys/driver.h>
+#include <kernel/sys/block.h>
+#include <kernel/mm/kmalloc.h>
+#include <kernel/errno.h>
+#include <kernel/printk.h>
+#include <kernel/sys/device.h>
 
-#include "misc/string.h"
+#include <misc/string.h>
 
 #define MBR_SIGNATURE 0xaa55
 
@@ -42,26 +43,26 @@ typedef struct
     dev_t disk_bdev;
 } mbr_partition_t;
 
-static int mbr_read_blocks(struct block_device *bdev, uint64_t lba, void *buf, size_t nblocks)
+static int mbr_read_blocks(struct device *bdev, uint64_t lba, void *buf, size_t nblocks)
 {
     mbr_partition_t *partition = (mbr_partition_t*)bdev->driver_data;
     if (!partition) return -ENODEV;
-    struct block_device *disk_bdev = block_get(partition->disk_bdev);
+    struct device *disk_bdev = block_get(partition->disk_bdev);
     if (!bdev) return -ENODEV;
     /* Check that we don't exceed the partition boundaries */
     if (lba > partition->end_lba - partition->start_lba) return -EINVAL;
-    return disk_bdev->ops->read_blocks(disk_bdev, lba + partition->start_lba, buf, nblocks);
+    return ((struct block_ops*)disk_bdev->ops)->read_blocks(disk_bdev, lba + partition->start_lba, buf, nblocks);
 }
 
-static int mbr_write_blocks(struct block_device *bdev, uint64_t lba, const void *buf, size_t nblocks)
+static int mbr_write_blocks(struct device *bdev, uint64_t lba, const void *buf, size_t nblocks)
 {
     mbr_partition_t *partition = (mbr_partition_t*)bdev->driver_data;
     if (!partition) return -ENODEV;
-    struct block_device *disk_bdev = block_get(partition->disk_bdev);
+    struct device *disk_bdev = block_get(partition->disk_bdev);
     if (!bdev) return -ENODEV;
     /* Check that we don't exceed the partition boundaries */
     if (lba > partition->end_lba - partition->start_lba) return -EINVAL;
-    return disk_bdev->ops->write_blocks(disk_bdev, lba + partition->start_lba, buf, nblocks);
+    return ((struct block_ops*)disk_bdev->ops)->write_blocks(disk_bdev, lba + partition->start_lba, buf, nblocks);
 }
 
 static struct block_ops mbr_block_ops = {
@@ -69,7 +70,7 @@ static struct block_ops mbr_block_ops = {
     .write_blocks = &mbr_write_blocks
 };
 
-static void register_partition_table(struct block_device *bdev, struct mbr_header header, struct mbr_partition_table tbl)
+static void register_partition_table(struct device *bdev, struct mbr_header header, struct mbr_partition_table tbl)
 {
     if (!(tbl.attr & (1 << 7))) return;
 
@@ -101,13 +102,13 @@ static void handle_block_dev_load(dev_t dev)
    if (!ISGROUP(DRVID(dev), DRIVER_DISKS_GROUP)) return;
 
     struct mbr_header header;
-    struct block_device *bdev = block_get(dev);
+    struct device *bdev = block_get(dev);
     uint8_t *lba = (uint8_t*)kmalloc(bdev->group->block_size);
     size_t lba_offset = 0;
 
     if (!bdev) goto end;
 
-    if (bdev->ops->read_blocks(bdev, 0, (void*)&lba[0], 1) != 0)
+    if (((struct block_ops*)bdev->ops)->read_blocks(bdev, 0, (void*)&lba[0], 1) != 0)
     {
         lba_offset = 0;
         goto read_err;

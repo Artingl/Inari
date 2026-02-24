@@ -1,1 +1,0 @@
- - Unify char_device and block_device structures into struct device

@@ -120,11 +120,16 @@ void *vmm_alloc_user(pagedir_t *target_dir, size_t npages)
 {
     struct vmm_pool_entry *entry = get_pool_entry(target_dir);
     if (!entry) return NULL;
-
+    
+    uintptr_t start_addr = (uintptr_t)&kern_phys_end + PAGE_SIZE;
+    if (start_addr < 0x800000) {
+        start_addr = 0x800000;
+    }
+    
     return alloc_range(
         entry,
         npages,
-        (uintptr_t)&kern_phys_end + PAGE_SIZE,
+        start_addr,
         VIRTUAL_ADDR - PAGE_SIZE,
         PAGE_PRESENT | PAGE_RW | PAGE_USR
     );
@@ -186,7 +191,11 @@ void vmm_init_directory(pagedir_t *pagedir)
     memset((void*)entry->pages_pool, VMM_PAGE_AVAILABLE, VMM_USR_SIZE_BYTES);
 
     /* Disable lower physical memory */
-    mark_region(entry, 0, (uintptr_t)&kern_phys_end + PAGE_SIZE, VMM_PAGE_RESERVED);
+    uintptr_t reserve_end = (uintptr_t)&kern_phys_end + PAGE_SIZE;
+    if (reserve_end < 0x800000) {
+        reserve_end = 0x800000;
+    }
+    mark_region(entry, 0, reserve_end, VMM_PAGE_RESERVED);
 
     INIT_LIST_HEAD(&entry->list);
     list_add(&entry->list, &pagedir_pool);
