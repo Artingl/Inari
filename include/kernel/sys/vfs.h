@@ -5,6 +5,7 @@
 #include <misc/list.h>
 
 #include <kernel/sys/block.h>
+#include <kernel/proc/proc.h>
 
 #define	VFS_READ			0x01
 #define	VFS_WRITE			0x02
@@ -90,6 +91,6 @@ int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
 void *vfs_handle_data(vfs_handle_t handle);
-void vfs_kill_handle(vfs_handle_t handle);
+void vfs_kill_proc_handles(pid_t proc_pid);
 
 #endif

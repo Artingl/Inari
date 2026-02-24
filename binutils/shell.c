@@ -171,6 +171,10 @@ void exec_cmd()
         syscall(100, 0, 0, 0, 0, 0);
         return;
     }
+    else if (strcmp(exec_path, "malloc") == 0) {
+        memalloc(100, 0);
+        return;
+    }
     else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
         return;

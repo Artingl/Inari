@@ -253,7 +253,7 @@ void sched_call()
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, void *proc_data)
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);

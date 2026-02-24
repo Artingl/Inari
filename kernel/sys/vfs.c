@@ -2,8 +2,11 @@
 #include <kernel/sys/block.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/sys/stat.h>
+#include <kernel/proc/proc.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/errno.h>
+#include <kernel/proc/proc.h>
+#include <kernel/proc/sched.h>
 
 #include <misc/list.h>
 #include <misc/string.h>
@@ -20,6 +23,8 @@ struct vfs_handle
     struct vfs_mount_point *mount;
     void *data;
 
+    pid_t proc;
+
     struct list_head list;
 };
 
@@ -31,28 +36,45 @@ int vfs_init()
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data)
 {
+    tid_t tid;
+    struct thread *th;
+    struct vfs_handle *base;
+
     if (!handle) return -EINVAL;
-    struct vfs_handle *base = (struct vfs_handle*)kmalloc(sizeof(struct vfs_handle));
+    base = (struct vfs_handle*)kmalloc(sizeof(struct vfs_handle));
     if (!base)   return -ENOMEM;
     base->id = last_handle++;
     base->mount = mount;
     base->data = data;
+    base->proc = 0;
+
+    /* Link handle to a process */
+    if (sched_current_thread(&tid) != 0)
+        goto end;
+    if (sched_get_thread(tid, &th) != 0)
+        goto end;
+    if (!tid || !th->proc_data)
+        goto end;
+    base->proc = th->proc_data->pid;
+end:
     list_add(&base->list, &vfs_handles);
     *handle = base->id;
     return 0;
 }
 
-void vfs_kill_handle(vfs_handle_t handle)
+void vfs_kill_proc_handles(pid_t proc_pid)
 {
-    struct list_head *pos;
+    struct list_head *pos, *n;
     struct vfs_handle *entry;
-   
-    list_for_each(pos, &vfs_handles) {
+
+    list_for_each_safe(pos, n, &vfs_handles) {
         entry = list_entry(pos, struct vfs_handle, list);
-        if (entry->id == handle)
+        if (entry->proc == proc_pid)
         {
+            if (entry->mount->layer->ops->close)
+                entry->mount->layer->ops->close(entry->mount, entry->id);
+            list_del(&entry->list);
             kfree(entry);
-            return;
         }
     }
 }

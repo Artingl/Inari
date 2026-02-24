@@ -1,5 +1,1 @@
- - VMM and PMM allocations must be pagedir specific. If pagedir is deallocated, release resources in PMM and VMM (only if kernel memory)
- - VMM disabled regions must be pagedir specific (except kernel memory). E.g. if region 0x10000 is disabled in DIR_B, DIR_A must ignore that
- - When process dies, close all handles opened by it
  - Unify char_device and block_device structures into struct device
- - BUG: if variable is set outside of function in PE executable, the value is ignored (e.g. in shell the history_offset variable)

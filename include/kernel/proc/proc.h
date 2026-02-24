@@ -27,6 +27,8 @@ struct process
     /* TODO: should there be a limit? */
     tid_t threads[CONFIG_PROC_MAX_THREADS];
 
+    struct list_head handles;
+
     struct list_head list;
 };
 

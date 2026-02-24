@@ -34,7 +34,7 @@ struct thread
     void *thread_stack_pointer;
     void *kernel_stack_pointer;
     thread_cleanup_t cleanup_handler;
-    void *proc_data;
+    struct process *proc_data;
 
     /* Count of reschedules for this task */
     size_t reschedules_count;
@@ -57,7 +57,7 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, void *data);
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *data);
 int sched_signal_thread(tid_t tid, uint32_t signo);
 void sched_yield();
 void sched_enter_core();

@@ -123,6 +123,11 @@ static void thread_cleanup(struct thread *th, struct process *proc)
         }
 
         list_del(&proc->list);
+
+        /* Don't forget to close handles! */
+        vfs_kill_proc_handles(proc->pid);
+
+        /* Cleanup memory */
         pmm_free_pages(arch_virt_to_phys(proc->descriptor.vmem, (void*)PROC_ARGS_BASE), 2);
         arch_free_pagedir(proc->descriptor.vmem);
         kfree((void*)proc);
@@ -279,7 +284,7 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
-    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, (void*)proc)) != 0)
+    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);
