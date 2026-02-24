@@ -31,7 +31,8 @@ struct thread
     uint32_t saved_sp;
     uint32_t flags;
     size_t sleep_timeout;
-    void *stack_pointer;
+    void *thread_stack_pointer;
+    void *kernel_stack_pointer;
     thread_cleanup_t cleanup_handler;
     void *proc_data;
 

@@ -122,9 +122,10 @@ static void thread_cleanup(struct thread *th, struct process *proc)
             }
         }
 
-        arch_free_pagedir(proc->descriptor.vmem);
         list_del(&proc->list);
-        /* TODO: cleanup process's virtual memory! */
+        pmm_free_pages(arch_virt_to_phys(proc->descriptor.vmem, (void*)PROC_ARGS_BASE), 2);
+        arch_free_pagedir(proc->descriptor.vmem);
+        kfree((void*)proc);
     }
 
     spin_unlock_irqrestore(&lock, flags);
@@ -160,9 +161,6 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     spin_lock_irqsave(&lock, flags);
 
-    /* Fork kernel directory for the new process */
-    vmem = arch_fork_pagedir();
-
     /* Load process data into memory */
     if ((res = vfs_open(&hndl, path, VFS_READ)) != 0)
         goto err;
@@ -172,6 +170,9 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
         { res = -ENOMEM; goto err; }
     if ((res = vfs_read(hndl, (void*)buf, size, NULL)) != 0)
         goto err;
+
+    /* Fork kernel directory for the new process */
+    vmem = arch_fork_pagedir();
 
     /* Copy the provided arguments to temporary address to later copy it to new process memory */
     /* TODO: what if argv is larger than tmp_args_base; env vars */

@@ -69,27 +69,6 @@ end:
     idle();
 }
 
-static int sched_remove_thread(tid_t tid)
-{
-    struct list_head *pos, *n;
-    struct thread *entry;
-
-    list_for_each_safe(pos, n, &sched_task_list) {
-        entry = list_entry(pos, struct thread, list);
-        if (!entry) continue;
-        if (entry->tid == tid)
-        {
-            /* Deallocate the stack and the entry itself */
-            // if (entry->stack_pointer && entry->vmem)
-            //     vmm_free_pages(entry->vmem, entry->stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
-            list_del(pos);
-            return 0;
-        }
-    }
-
-    return -1;
-}
-
 struct thread *__sched_get_thread(tid_t tid)
 {
     struct list_head *pos;
@@ -142,9 +121,11 @@ static void sched_reschedule(struct sched_core *core)
             entry->state = SCHED_TASK_ACTIVE;
         else if (entry->state == SCHED_TASK_DEAD)
         {
+            list_del(&entry->list);
             if (core->task == entry)
                 core->task = (struct thread *)NULL;
-            sched_remove_thread(entry->tid);
+            if (entry->kernel_stack_pointer && entry->vmem) vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer, (CONFIG_KERN_STACK_SIZE >> 12) + 1);
+            if (entry->thread_stack_pointer && entry->vmem) vmm_free_pages(entry->vmem, entry->thread_stack_pointer, (CONFIG_USR_STACK_SIZE >> 12) + 1);
             sched_handle_death(entry);
             kfree((void*)entry);
         }

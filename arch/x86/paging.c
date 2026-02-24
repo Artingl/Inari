@@ -77,8 +77,7 @@ void arch_switch_pagedir(pagedir_t *directory)
 pagedir_t *arch_fork_pagedir(void)
 {
     size_t i;
-    struct x86_paging_directory_usr *new_dir = (struct x86_paging_directory_usr*)kmalloc(sizeof(struct x86_paging_directory_usr) + PAGE_SIZE);
-    new_dir = (struct x86_paging_directory_usr*)ALIGN((uintptr_t)new_dir, PAGE_SIZE);
+    struct x86_paging_directory_usr *new_dir = (struct x86_paging_directory_usr*)vmm_alloc_kernel((sizeof(struct x86_paging_directory_usr) >> 12) + 1);
     memset((void*)new_dir, 0, sizeof(struct x86_paging_directory_usr));
     
     /* TODO: Dynamic allocation */
@@ -105,14 +104,15 @@ pagedir_t *arch_fork_pagedir(void)
 
 void arch_free_pagedir(pagedir_t *directory)
 {
-    if (directory)
+    if (!directory)
         return;
     
     /* Cleanup all allocated resources, vmm will do it for us */
     vmm_cleanup_directory(directory);
 
-    /* Finally, deallocate it */    
-    kfree((void*)directory);
+    /* Finally, deallocate it; Also switch to kernel directory just in case */
+    arch_switch_pagedir(arch_get_kernel_pagedir());
+    vmm_free_pages(arch_get_kernel_pagedir(), (void*)directory, (sizeof(struct x86_paging_directory_usr) >> 12) + 1);
 }
 
 pagedir_t *arch_get_kernel_pagedir()

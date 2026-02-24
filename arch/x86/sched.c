@@ -19,7 +19,7 @@ void arch_sched_save(struct thread *task)
     spin_lock_irqsave(&x86_sched_lock, flags);
     struct interrupt_frame *frame = interrupt_frame();
     struct x86_regs32 *regs;
-    if (!frame || !task || !task->stack_pointer)
+    if (!frame || !task || !task->kernel_stack_pointer)
     {
         spin_unlock_irqrestore(&x86_sched_lock, flags);
         return;
@@ -48,22 +48,27 @@ void arch_sched_load(struct thread *task)
     is_kernel_pagedir = task->vmem == kernel_pagedir;
     regs = (struct x86_regs32 *)frame->registers.base;
     
-    if (!task->stack_pointer)
+    /* If the stack pointer is not initialized, that's the first time this task is scheduled */
+    if (!task->kernel_stack_pointer)
     {
         if (!is_kernel_pagedir)
             arch_switch_pagedir(task->vmem);
-        /* If the stack pointer is not initialized, that's the first time this task is scheduled */
-        if (is_kernel_pagedir)
-            task->stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE >> 12) + 1);
-        else
-            task->stack_pointer = vmm_alloc_user(task->vmem, (CONFIG_STACK_SIZE >> 12) + 1);
-        
-        if (task->stack_pointer == NULL)
+
+        task->kernel_stack_pointer = vmm_alloc_kernel((CONFIG_KERN_STACK_SIZE >> 12) + 1);
+        if (task->kernel_stack_pointer == NULL)
             panic("sched: no memory left.");
 
-        esp = (uint32_t)task->stack_pointer + (uint32_t)CONFIG_STACK_SIZE;
+        if (is_kernel_pagedir)
+            task->thread_stack_pointer = vmm_alloc_kernel((CONFIG_USR_STACK_SIZE >> 12) + 1);
+        else
+            task->thread_stack_pointer = vmm_alloc_user(task->vmem, (CONFIG_USR_STACK_SIZE >> 12) + 1);
+        
+        if (task->thread_stack_pointer == NULL)
+            panic("sched: no memory left.");
+
+        esp = (uint32_t)task->kernel_stack_pointer + (uint32_t)CONFIG_KERN_STACK_SIZE;
         esp -= 4; *(((uint32_t*)esp)) = 0x10;   // ss
-        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->stack_pointer + (uint32_t)CONFIG_STACK_SIZE;   // useresp
+        esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->thread_stack_pointer + (uint32_t)CONFIG_USR_STACK_SIZE;   // useresp
         esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->eflags;
         esp -= 4; *(((uint32_t*)esp)) = ((struct x86_regs32*)frame->registers.base)->cs;
         esp -= 4; *(((uint32_t*)esp)) = (uint32_t)&sched_thread_preentry;

@@ -69,7 +69,7 @@ int vmm_init(void)
 
 int vmm_disable_region(pagedir_t *target_dir, struct reserved_memory region)
 {
-    return mark_region(get_pool_entry(target_dir), region.start, region.end, VMM_PAGE_RESERVED);
+    return mark_region(get_pool_entry(target_dir), region.start, region.end, VMM_PAGE_USED);
 }
 
 static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t from_mem, uintptr_t to_mem, uint32_t flags)
@@ -149,11 +149,14 @@ static int free_pagedir(struct vmm_pool_entry *entry, void *base, size_t npages)
 
     for (i = 0; i < npages; i++)
     {
-        void *pbase = arch_virt_to_phys(entry->pagedir, base + i * PAGE_SIZE);
-        if (pbase != NULL)
-            pmm_free_pages(pbase, 1);
-        entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_USED);
-        entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_AVAILABLE;
+        if (entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags & VMM_PAGE_USED)
+        {
+            void *pbase = arch_virt_to_phys(entry->pagedir, base + i * PAGE_SIZE);
+            if (pbase != NULL)
+                pmm_free_pages(pbase, 1);
+            entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_USED);
+            entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_AVAILABLE;
+        }
     }
 
     arch_unmap_page(entry->pagedir, base, npages);
@@ -194,15 +197,30 @@ void vmm_cleanup_directory(pagedir_t *pagedir)
     if (!pagedir)
         return;
 
+    size_t i;
+    uintptr_t vaddr;
+    void *pbase;
     struct list_head *pos, *n;
     struct vmm_pool_entry *entry;
 
     list_for_each_safe(pos, n, &pagedir_pool) {
         entry = list_entry(pos, struct vmm_pool_entry, list);
         if (entry->pagedir == pagedir) {
-            list_del(pos);
-            /* TODO: cleanup all allocated physical */
-            kfree(entry->pagedir);
+            list_del(&entry->list);
+
+            /* Clean up all physical memory used by thi directory */
+            for (i = 0; i < VMM_USR_SIZE_BYTES / sizeof(struct vmm_page); i++)
+            {
+                if (entry->pages_pool[i].flags & VMM_PAGE_USED)
+                {
+                    vaddr = entry->pool_offset + (i * PAGE_SIZE);
+                    pbase = arch_virt_to_phys(pagedir, (void*)vaddr);
+                    if (pbase)
+                        pmm_free_pages(pbase, 1);
+                }
+            }
+
+            kfree(entry->pages_pool);
             kfree(entry);
             return;
         }

@@ -1,5 +1,6 @@
 #include <kernel/inari.h>
 #include <kernel/mm/pmm.h>
+#include <kernel/errno.h>
 
 #include <misc/string.h>
 
@@ -125,7 +126,7 @@ void *pmm_alloc_pages(size_t npages)
     for (i = first_good_page; i < PMM_POOL_SIZE; i++)
     {
         page = &pages_pool[i];
-        if (!(page->flags & PMM_PAGE_AVAILABLE) || page->flags & PMM_PAGE_USED) {
+        if (!(page->flags & PMM_PAGE_AVAILABLE)) {
             block_size = 0;
             continue;
         }
@@ -146,6 +147,7 @@ void *pmm_alloc_pages(size_t npages)
     /* Flag all blocks as used */
     for (i = 0; i < block_size; i++) {
         pages_pool[block_offset + i].flags |= PMM_PAGE_USED;
+        pages_pool[block_offset + i].flags &= ~PMM_PAGE_AVAILABLE;
     }
 
     pages_used += npages;
@@ -156,9 +158,10 @@ int pmm_free_pages(void *base, size_t npages)
 {
     size_t i;
     if (base == NULL)
-        return 1;
+        return -EINVAL;
 
     for (i = 0; i < npages; i++) {
+        pages_pool[((uintptr_t)base >> 12) + i].flags |= PMM_PAGE_AVAILABLE;
         pages_pool[((uintptr_t)base >> 12) + i].flags &= ~PMM_PAGE_USED;
     }
 

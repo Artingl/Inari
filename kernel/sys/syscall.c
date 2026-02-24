@@ -8,6 +8,7 @@
 #include <kernel/sys/syscall.h>
 #include <kernel/console/console.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/mm/pmm.h>
 
 #include <arch/paging.h>
 
@@ -140,6 +141,10 @@ int syscall_handle(
     
     case SYSCALL_IOCTL:
         res = vfs_ioctl((vfs_handle_t)param0, (unsigned long)param1, (void*)param2);
+        break;
+
+    case 100: // debug
+        printk("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
         break;
 
     default:

@@ -167,6 +167,10 @@ void exec_cmd()
         strcpy(current_dir, argv[0]);
         return;
     }
+    else if (strcmp(exec_path, "stats") == 0) {
+        syscall(100, 0, 0, 0, 0, 0);
+        return;
+    }
     else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
         return;
@@ -198,7 +202,7 @@ int main(int argc, char const *argv[])
 
     printf("Testing ring3 (the following code must trigger an exception)\n");
     __asm__ volatile("sti");
-    printf("We're in ring3!\n");
+    printf("We're in ring0!\n");
 
     printf("+@%s> ", current_dir);
     command_offset = 0;
@@ -258,7 +262,6 @@ int main(int argc, char const *argv[])
                 }
             }
         }
-
     } while(1);
 
     return 0;
