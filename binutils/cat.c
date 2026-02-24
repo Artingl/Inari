@@ -1,7 +1,7 @@
 #include <io.h>
 #include <sys.h>
 #include <errno.h>
-#include <alloc.h>
+#include <lib.h>
 
 int main(int argc, char const *argv[])
 {

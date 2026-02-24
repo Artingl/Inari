@@ -27,17 +27,15 @@ int mount_root();
 
 #define assert(cond, fmt, ...) {if (!(cond)) {panic(fmt, ##__VA_ARGS__);}}
 
-void kearly_init(bootinfo_t b)
+void kearly_init()
 {
-    bootinfo = b;
-
     /* Initialize the early console for atleast some output */
-    earlycon_init();
     printk("Inari kernel cmdline: %s", bootinfo.cmdline);
 
     assert(pmm_init() == 0, "pmm init failed.");
     assert(vmm_init() == 0, "vmm init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
+
 
     printk("kearly_init: done");
 }
@@ -94,7 +92,7 @@ int mount_root()
 
     return -ENODEV;
 found_dev:
-    printk("root: mounting %s as /", name_buff);
+    printk("init: mounting %s as /", name_buff);
     return vfs_mount(bdev->dev, "/");
 }
 
@@ -112,14 +110,15 @@ static void init_stub_thread()
     
     pid_t pid;
     int res;
+    printk("init: running init at %s", init_file);
     if ((res = execp(&pid, init_file)) != 0)
-        panic("init: Unable to launch init process: %s.", errstr[-res]);
+        panic("init: unable to launch init process: %s.", errstr[-res]);
 }
 
 int init_task()
 {
     tid_t tid;
-    return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL, NULL);
+    return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL);
 }
 
 bootinfo_t get_boot_info()

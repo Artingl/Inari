@@ -32,7 +32,7 @@ typedef struct reserved_memory {
 } reserved_memory_t;
 
 /* Performs all early initialization: earlycon device, etc. */
-void kearly_init(bootinfo_t bootinfo);
+void kearly_init();
 
 /* The main kernel entrypoint after the hardware was initialized */
 void kmain(void);

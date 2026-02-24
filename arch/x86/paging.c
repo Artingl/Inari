@@ -83,7 +83,7 @@ pagedir_t *arch_fork_pagedir(void)
     /* TODO: Dynamic allocation */
     for (i = 0; i < 1024; i++)
     {
-        if (i >= 768 || i < 2)
+        if (i >= 768 || i < 4)
         {
             new_dir->dir.tables_phys[i] = x86_kernel_dir->tables_phys[i];
             new_dir->dir.tables_virt[i] = x86_kernel_dir->tables_virt[i];

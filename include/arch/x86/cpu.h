@@ -78,6 +78,16 @@ struct x86_regs32
     uint32_t eip, cs, eflags, useresp, ss;
 } __attribute__((packed));
 
+struct x86_regs32_ring0
+{
+    uint32_t task_cr3, task_esp;
+
+    uint32_t gs, fs, es, ds;
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    uint32_t int_no, err_code;
+    uint32_t eip, cs, eflags;
+} __attribute__((packed));
+
 enum {
     IDT_PRESENT = 1 << 7,
     IDT_DLP_KERN = 0b00,

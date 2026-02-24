@@ -22,7 +22,7 @@ static tid_t sched_last_id = 0xff;
 static struct sched_core sched_cores[CONFIG_MAX_CORES];
 static struct thread *sched_idle_task;
 static int sched_initialized = 0;
-static spinlock_t sched_lock;
+static spinlock_t sched_lock = {0};
 
 static void __sched_idle()
 {
@@ -84,13 +84,16 @@ struct thread *__sched_get_thread(tid_t tid)
 }
 
 void arch_sched_save(struct thread *task);
-void arch_sched_load(struct thread *task);
+int arch_sched_load(struct thread *task);
 
 static void sched_save(struct thread *task)
 {
     uint32_t core_id = core_id();
-    if (!task)
+    if (!task || task->flags & SCHED_FLAG_SIGRETURN)
+    {
+        task->flags &= ~SCHED_FLAG_SIGRETURN;
         return;
+    }
     
     task->reschedules_count++;
     task->cpu_time += timer_get_ticks() - sched_cores[core_id].last_schedule_ticks;
@@ -98,11 +101,11 @@ static void sched_save(struct thread *task)
     arch_sched_save(task);
 }
 
-static void sched_load(struct thread *task)
+static int sched_load(struct thread *task)
 {
     if (!task)
-        return;
-    arch_sched_load(task);
+        return -1;
+    return arch_sched_load(task);
 }
 
 static void sched_reschedule(struct sched_core *core)
@@ -187,10 +190,10 @@ int sched_init()
     sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
     sched_idle_task->state = SCHED_TASK_ACTIVE;
+    sched_idle_task->sig_saved_stack = NULL;
     sched_idle_task->flags = 0;
     list_add_tail(&sched_idle_task->list, &sched_task_list);
 
-    spinlock_init(&sched_lock);
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
     if (ret != 0) return ret;
     ret = swi_request(SWI_RESCHEDULE, &sched_swi, NULL);
@@ -242,18 +245,20 @@ void sched_call()
         spin_unlock_irqrestore(&sched_lock, flags);
         return;
     }
-    
-    sched_reschedule(&sched_cores[core_id]);
+
+    int load_result = -1, tries = 0;
+    do {
+        sched_reschedule(&sched_cores[core_id]);
+        if (sched_cores[core_id].task)
+            load_result = sched_load(sched_cores[core_id].task);
+    } while (load_result != 0 && tries++ < 5);
     if (!sched_cores[core_id].task)
-    {
         panic("sched: no tasks to schedule cpu%u", core_id);
-    }
-    else sched_load(sched_cores[core_id].task);
     sched_cores[core_id].last_schedule_ticks = timer_get_ticks();
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, thread_signal_t signal_handler, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
 {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
@@ -266,8 +271,8 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, thread_signa
     node->entrypoint = entrypoint;
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
+    node->sig_saved_stack = NULL;
     node->flags = 0;
-    node->signal_handler = signal_handler;
     node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
     node->state = SCHED_TASK_SLEEPING;
     list_add_tail(&node->list, &sched_task_list);
@@ -324,35 +329,20 @@ err:
     return -1;
 }
 
-int sched_signal_thread(tid_t tid, uint32_t signo)
+int sched_kill_thread(tid_t tid)
 {
-    uint32_t flags;
+    uint32_t flags, res = 0;
     spin_lock_irqsave(&sched_lock, flags);
     struct thread *task = __sched_get_thread(tid);
-    if (!task) goto err;
-    
-    switch (signo)
+    if (!task)
     {
-        case SIGKILL:
-        case SIGSEGV:
-        case SIGSTOP:
-            task->state = SCHED_TASK_DEAD;
-            break;
-
-        default:
-            if (!task->signal_handler || task->flags & SCHED_FLAG_IN_SIGNAL)
-            {
-                task->state = SCHED_TASK_DEAD;
-                break;
-            }
-            /* TODO: implement other signals */
+        res = -EINVAL;
+        goto end;
     }
-
+    task->state = SCHED_TASK_DEAD;
+end:
     spin_unlock_irqrestore(&sched_lock, flags);
-    return 0;
-err:
-    spin_unlock_irqrestore(&sched_lock, flags);
-    return -1;
+    return res;
 }
 
 int sched_current_thread(tid_t *tid)

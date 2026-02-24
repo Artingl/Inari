@@ -1,4 +1,4 @@
-// #define CONFIG_DEBUG
+#define CONFIG_DEBUG
 
 #define CONFIG_DRV_PC8250_SERIAL
 #define CONFIG_DRV_VGA_TEXT

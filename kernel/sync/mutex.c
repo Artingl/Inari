@@ -14,7 +14,8 @@ void mutex_lock(mutex_t *lock)
 {
     if (!lock) return;
     while (atomic_flag_test_and_set_explicit(&lock->lock, memory_order_acquire))
-        sched_yield();
+        ;
+        // sched_yield();
 }
 
 int mutex_test(mutex_t *lock)

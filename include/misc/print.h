@@ -107,6 +107,35 @@ static inline int do_printkn(const char *fmt, va_list args,
             num = va_arg(args, unsigned int);
             count += printnum(fn, ud, num, 8, flags);
             break;
+        case 'f': {
+            double fnum = va_arg(args, double);
+            
+            if (fnum < 0.0) {
+                count += emit_char(fn, ud, '-');
+                fnum = -fnum;
+            }
+
+            double rounding = 0.5;
+            double precision = 6;
+            for (unsigned i = 0; i < precision; i++) {
+                rounding /= 10.0;
+            }
+            fnum += rounding;
+
+            unsigned long long int_part = (unsigned long long)fnum;
+            double frac_part = fnum - (double)int_part;
+            count += printnum(fn, ud, (unsigned long)int_part, 10, 0);
+
+            
+            count += emit_char(fn, ud, '.');
+            for (unsigned i = 0; i < precision; i++) {
+                frac_part *= 10.0;
+                unsigned int digit = (unsigned int)frac_part;
+                count += emit_char(fn, ud, '0' + digit);
+                frac_part -= digit;
+            }
+            break;
+        }
         case '%':
             count += emit_char(fn, ud, '%');
             break;

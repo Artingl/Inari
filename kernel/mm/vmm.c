@@ -49,12 +49,7 @@ int vmm_init(void)
     /* Allocate some memory for the kernel page pool */
     kernel_pool_entry.pagedir = arch_get_kernel_pagedir();
     kernel_pool_entry.pool_offset = VIRTUAL_ADDR;
-    kernel_pool_entry.pages_pool = arch_map_page(
-        kernel_pool_entry.pagedir,
-        (void*)VMM_KERN_VBASE,
-        (void*)pmm_alloc_pages(VMM_KERN_SIZE_PAGES),
-        VMM_KERN_SIZE_BYTES,
-        PAGE_PRESENT | PAGE_RW);
+    kernel_pool_entry.pages_pool = (struct vmm_page *)VMM_KERN_VBASE;
 
     /* Mark the whole kernel's virtual memory as available at first */
     memset((void*)kernel_pool_entry.pages_pool, VMM_PAGE_AVAILABLE, VMM_KERN_SIZE_BYTES);
@@ -122,8 +117,8 @@ void *vmm_alloc_user(pagedir_t *target_dir, size_t npages)
     if (!entry) return NULL;
     
     uintptr_t start_addr = (uintptr_t)&kern_phys_end + PAGE_SIZE;
-    if (start_addr < 0x800000) {
-        start_addr = 0x800000;
+    if (start_addr < 0x1000000) {
+        start_addr = 0x1000000;
     }
     
     return alloc_range(
@@ -192,8 +187,8 @@ void vmm_init_directory(pagedir_t *pagedir)
 
     /* Disable lower physical memory */
     uintptr_t reserve_end = (uintptr_t)&kern_phys_end + PAGE_SIZE;
-    if (reserve_end < 0x800000) {
-        reserve_end = 0x800000;
+    if (reserve_end < 0x1000000) {
+        reserve_end = 0x1000000;
     }
     mark_region(entry, 0, reserve_end, VMM_PAGE_RESERVED);
 

@@ -28,7 +28,9 @@
 #define SYSCALL_MEMALLOC        23
 #define SYSCALL_MEMFREE         24
 #define SYSCALL_IOCTL           25
-
+#define SYSCALL_SIGNAL          26
+#define SYSCALL_INST_SIG        27  // install signal handler
+#define SYSCALL_SIGRETURN       28
 
 int syscall_handle(
     uint32_t id,

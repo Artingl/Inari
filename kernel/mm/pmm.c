@@ -1,6 +1,7 @@
 #include <kernel/inari.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/errno.h>
+#include <kernel/proc/elf.h>
 
 #include <misc/string.h>
 
@@ -76,6 +77,28 @@ int pmm_init(void)
             });
         }
 
+    }
+
+    if (multiboot->flags & MULTIBOOT_INFO_ELF_SHDR) 
+    {
+        struct elf32_shdr* shdr = (struct elf32_shdr*)multiboot->u.elf_sec.addr;
+        
+        uint32_t shdr_size = multiboot->u.elf_sec.num * multiboot->u.elf_sec.size;
+        pmm_reserve_memory((struct reserved_memory){
+            .start = (uintptr_t)shdr,
+            .end = (uintptr_t)shdr + shdr_size
+        });
+
+        for (uint32_t i = 0; i < multiboot->u.elf_sec.num; i++) 
+        {
+            if (shdr[i].sh_size > 0 && shdr[i].sh_addr > 0) 
+            {
+                pmm_reserve_memory((struct reserved_memory){
+                    .start = (uintptr_t)shdr[i].sh_addr,
+                    .end = (uintptr_t)shdr[i].sh_addr + shdr[i].sh_size
+                });
+            }
+        }
     }
 
 end:

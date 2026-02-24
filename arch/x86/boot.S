@@ -19,8 +19,8 @@ _arch_entry_point:
     mov esp, _arch_lo_stack
 
     ;; push multiboot values onto the stack
-    push ebx                                  ;; multiboot2: info structure base
-    push eax                                  ;; multiboot2: magic value
+    push ebx                                  ;; multiboot: info structure base
+    push eax                                  ;; multiboot: magic value
 
     call x86_entrypoint
     hlt

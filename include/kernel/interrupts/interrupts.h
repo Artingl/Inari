@@ -17,6 +17,6 @@ struct interrupt_frame
 
 extern void interrupts_trigger(uint32_t interrupt);
 extern void interrupt_dispatch(struct interrupt_frame frame);
-extern struct interrupt_frame *interrupt_frame();
+extern struct interrupt_frame *interrupt_get_frame();
 
 #endif

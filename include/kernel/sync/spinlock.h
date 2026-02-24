@@ -20,12 +20,12 @@
 
 typedef struct spinlock
 {
-    atomic_flag lock;
+    atomic_bool lock;
 } spinlock_t;
 
-extern void spinlock_init(spinlock_t *lock);
-extern void spin_lock(spinlock_t *lock);
-extern void spin_unlock(spinlock_t *lock);
+int spin_lock_is_free(spinlock_t *lock);
+void spin_lock(spinlock_t *lock);
+void spin_unlock(spinlock_t *lock);
 
 
 #endif

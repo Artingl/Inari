@@ -7,6 +7,7 @@
 typedef int64_t handle_t;
 
 typedef void (*thread_entrypoint_t)();
+typedef void (*proc_signal_t)(uint32_t);
 typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 typedef unsigned int dev_t;
@@ -60,6 +61,11 @@ void memfree(void *vbase, size_t npages);
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags);
 void memunmap(void *vbase, size_t len);
 int ioctl(handle_t hndl, unsigned long req, void *arg);
+int signal(pid_t pid, uint32_t signo);
+int signal_handler(proc_signal_t handler, uint32_t signo);
+void sigreturn();
+// int shmem_alloc(pid_t pid, uintptr_t *base, size_t size);  // allocate shared mem between current process and pid process
+// int shmem_free(uintptr_t *base, size_t size);
 
 int syscall(
     uint32_t id,

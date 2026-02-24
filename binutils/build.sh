@@ -6,10 +6,16 @@ make -C ../libc clean
 make -C ../libc build -j4
 
 $CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c ls.c -o ls.o -fleading-underscore
-$LD --entry=__start -no-pie -nostdlib -o ls.exe -m i386pe ls.o -L../libc -lc --image-base 0x010000000
+$LD --entry=__start -no-pie -nostdlib -o ls.exe -m i386pe ls.o -L../libc -lc --image-base 0x020000000
 
 $CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c shell.c -o shell.o -fleading-underscore
-$LD --entry=__start -no-pie -nostdlib -o shell.exe -m i386pe shell.o -L../libc -lc --image-base 0x010000000
+$LD --entry=__start -no-pie -nostdlib -o shell.exe -m i386pe shell.o -L../libc -lc --image-base 0x020000000
 
 $CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c cat.c -o cat.o -fleading-underscore
-$LD --entry=__start -no-pie -nostdlib -o cat.exe -m i386pe cat.o -L../libc -lc --image-base 0x010000000
+$LD --entry=__start -no-pie -nostdlib -o cat.exe -m i386pe cat.o -L../libc -lc --image-base 0x020000000
+
+$CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c ipc.c -o ipc.o -fleading-underscore
+$LD --entry=__start -no-pie -nostdlib -o ipc.exe -m i386pe ipc.o -L../libc -lc --image-base 0x020000000
+
+$CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c signal.c -o signal.o -fleading-underscore
+$LD --entry=__start -no-pie -nostdlib -o signal.exe -m i386pe signal.o -L../libc -lc --image-base 0x020000000

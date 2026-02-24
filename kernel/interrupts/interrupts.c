@@ -7,7 +7,7 @@
 
 struct interrupt_frame *interrupt_frames_core[CONFIG_MAX_CORES];
 
-struct interrupt_frame *interrupt_frame()
+struct interrupt_frame *interrupt_get_frame()
 {
     uint32_t core_id = core_id();
     if (!interrupt_frames_core[core_id])

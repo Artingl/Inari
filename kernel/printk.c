@@ -1,4 +1,5 @@
 #include <kernel/inari.h>
+#include <kernel/timer.h>
 #include <arch/sys.h>
 #include <kernel/console/console.h>
 
@@ -25,6 +26,7 @@ int printk(const char *fmt, ...)
     va_start(args, fmt);
     int c = 0;
 
+    c += print("[  %f ] ", (double)timer_get_ticks() / (double)timer_get_resolution());
     c += do_printkn(fmt, args, &do_printf_handler, NULL);
     c += print("\n");
 

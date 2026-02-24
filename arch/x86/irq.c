@@ -34,23 +34,23 @@ void x86_irq_setup(struct x86_cpu *core)
     DECL_IRQ(15);
 
     /* SWI */
-    DECL_DIRECT(0x80, IDT_PRESENT | IDT_INT32_GATE);                // SWI_RESCHEDULE
+    DECL_DIRECT(0x80, IDT_PRESENT | IDT_INT32_GATE | IDT_DLP_USR);  // SWI_RESCHEDULE
     DECL_DIRECT(0x81, IDT_PRESENT | IDT_INT32_GATE | IDT_DLP_USR);  // SWI_SYSCALL
 }
 
-void x86_irq_handler(struct x86_regs32 regs)
+void x86_irq_handler(struct x86_regs32 *regs)
 {
     arch_switch_pagedir(arch_get_kernel_pagedir());
-    uint32_t irq = regs.int_no;
+    uint32_t irq = regs->int_no;
 
-    if (regs.int_no == X86_PIT_IRQ)
+    if (regs->int_no == X86_PIT_IRQ)
     {
         x86_pit_irq();
         irq = IRQ_TIMER_INTERRUPT;
     }
-    else if (regs.int_no == X86_SWI_RESCHEDULE) irq = SWI_RESCHEDULE;
-    else if (regs.int_no == X86_SWI_SYSCALL) {
-        regs.ebx = syscall_handle(regs.ebx, (void*)regs.ecx, (void*)regs.edx, (void*)regs.esi, (void*)regs.edi, (void*)regs.ebp);
+    else if (regs->int_no == X86_SWI_RESCHEDULE) irq = SWI_RESCHEDULE;
+    else if (regs->int_no == X86_SWI_SYSCALL) {
+        regs->ebx = syscall_handle(regs->ebx, (void*)regs->ecx, (void*)regs->edx, (void*)regs->esi, (void*)regs->edi, (void*)regs->ebp);
         irq = SWI_SYSCALL;
 
         /* Restore kernel pagedir just in case */
@@ -61,10 +61,10 @@ void x86_irq_handler(struct x86_regs32 regs)
     interrupt_dispatch((struct interrupt_frame){
         .int_no = irq,
         .registers = {
-            .base = &regs,
+            .base = regs,
             .size = sizeof(struct x86_regs32)
         }
     });
-    x86_cpu_ack_irq(regs.int_no);
+    x86_cpu_ack_irq(regs->int_no);
 }
 

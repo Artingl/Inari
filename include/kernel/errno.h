@@ -18,6 +18,8 @@
 #define	EACCES		13	/* Permission denied */
 #define	EFAULT		14	/* Bad address */
 #define	ENOEXEC		15	/* Exec format error */
+#define	EINTR		16	/* Interrupted */
+#define	EKILLED		17	/* Killed */
 
 static const char *errstr[] = 
 {

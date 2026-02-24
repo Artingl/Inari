@@ -6,9 +6,10 @@
 #include <misc/types.h>
 #include <misc/list.h>
 
-#define PROC_ARGS_BASE  0x900000
+#define PROC_ARGS_BASE  0x1900000
 
 typedef void (*thread_entrypoint_t)(void*);
+typedef void (*proc_signal_t)(uint32_t);
 typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 
@@ -22,6 +23,10 @@ struct process
 {
     pid_t pid;
     int exit_code;
+    
+    uint32_t pending_signal;
+    proc_signal_t signal_handler[32];
+
     task_descriptor_t descriptor;
 
     /* TODO: should there be a limit? */
@@ -45,7 +50,8 @@ int proc_init();
 int exit(pid_t pid, int exit_code);
 int execp(pid_t *pid, const char *path);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
-
+int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo);
+int proc_signal(pid_t pid, uint32_t signo);
 int kill_process(pid_t pid, int exit_code);
 int spawn_process(pid_t *pid, task_descriptor_t descriptor);
 int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint);

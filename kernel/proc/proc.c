@@ -13,7 +13,7 @@
 #include <misc/string.h>
 #include <misc/list.h>
 
-static spinlock_t lock;
+static spinlock_t lock = {0};
 static pid_t last_pid = 1;
 
 static LIST_HEAD(processes);
@@ -81,11 +81,6 @@ static int get_process(struct process **proc, pid_t pid)
 
 struct thread *__sched_get_thread(tid_t tid);
 
-static void signal_handler(uint32_t signo)
-{
-    // ...
-}
-
 static void thread_cleanup(struct thread *th, struct process *proc)
 {
     if (!proc) return;
@@ -143,7 +138,6 @@ static void thread_cleanup(struct thread *th, struct process *proc)
 
 int proc_init()
 {
-    spinlock_init(&lock);
     return 0;
 }
 
@@ -245,6 +239,8 @@ int spawn_process(pid_t *pid, task_descriptor_t descriptor)
     proc->pid = last_pid++;
     proc->exit_code = 0;
     proc->descriptor = descriptor;
+    proc->pending_signal = 0;
+    memset((void*)&proc->signal_handler[0], 0, sizeof(proc->signal_handler));
     memset((void*)&proc->threads[0], 0, sizeof(proc->threads));
     list_add(&proc->list, &processes);
     if (pid)
@@ -255,12 +251,46 @@ int spawn_process(pid_t *pid, task_descriptor_t descriptor)
     return 0;
 }
 
+int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo)
+{
+    int res = 0;
+    size_t i;
+    uint32_t flags;
+    struct process *proc;
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    proc->signal_handler[signo] = handler;
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    return res;
+}
+
+int proc_signal(pid_t pid, uint32_t signo)
+{
+    int res = 0;
+    uint32_t flags;
+    struct process *proc;
+    if (signo >= 32) return -EINVAL;
+
+    // spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    if (!proc->signal_handler[signo] || proc->pending_signal != 0)
+        { res = -EINVAL; goto end; }
+    proc->pending_signal = signo;
+end:
+    // spin_unlock_irqrestore(&lock, flags);
+    return res;
+}
+
 int kill_process(pid_t pid, int exit_code)
 {
     int res = 0;
     size_t i;
     uint32_t flags;
     struct process *proc;
+    struct thread *th;
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
@@ -270,8 +300,8 @@ int kill_process(pid_t pid, int exit_code)
     for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
         if (proc->threads[i] != 0)
         {
-            /* NOTE: SIGKILL will kill a thread immediately */
-            sched_signal_thread(proc->threads[i], SIGKILL);
+            if ((th = __sched_get_thread(proc->threads[i])) != NULL)
+                th->state = SCHED_TASK_DEAD;
         }
 end:
     spin_unlock_irqrestore(&lock, flags);
@@ -289,7 +319,7 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
-    if ((res = sched_create_thread(&i_tid, entrypoint, &signal_handler, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
+    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);
@@ -325,7 +355,7 @@ int waitpid(pid_t pid, tid_t observer_tid)
     if ((res = get_process(&proc, pid)) != 0)
         goto err;
     if ((th = __sched_get_thread(observer_tid)) == NULL)
-        goto err;
+        { res = -EINVAL; goto err; }
 
     wait->pid = pid;
     wait->observer_tid = observer_tid;

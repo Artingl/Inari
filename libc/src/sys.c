@@ -152,3 +152,18 @@ int ioctl(handle_t hndl, unsigned long req, void *arg)
 {
     return (void*)syscall(25, (uint32_t)hndl, (uint32_t)req, (uint32_t)arg, 0, 0);
 }
+
+int signal(pid_t pid, uint32_t signo)
+{
+    return (void*)syscall(26, (uint32_t)pid, (uint32_t)signo, 0, 0, 0);
+}
+
+int signal_handler(proc_signal_t handler, uint32_t signo)
+{
+    return (void*)syscall(27, (uint32_t)handler, (uint32_t)signo, 0, 0, 0);
+}
+
+void sigreturn()
+{
+    syscall(28, 0, 0, 0, 0, 0);
+}

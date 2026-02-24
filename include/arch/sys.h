@@ -17,7 +17,9 @@
 #define core_id() _arch_core_id()
 #define idle() _arch_idle()
 #define trigger_interrupt(int) _arch_trigger_interrupt(int)
+#define print_stacktrace(print)  _print_stacktrace(print)
 
+void _print_stacktrace(void *print_handler);
 void _arch_disable_int(void);
 void _arch_enable_int(void);
 void _arch_hlt(void);

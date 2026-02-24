@@ -16,7 +16,9 @@ _arch_excp_base:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
+	push esp
     call x86_exception_handler
+	pop esp
 	pop eax
 	mov cr3, eax
 	pop esp
@@ -43,7 +45,9 @@ _arch_irq_base:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
+	push esp
     call x86_irq_handler
+	pop esp
 	pop eax
 	mov cr3, eax
 	pop esp

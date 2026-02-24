@@ -27,7 +27,7 @@ LIST_HEAD(console_lazy_list); /* buffers awaiting printing */
 
 static struct console_lazy_buffer *console_latest_buffer = (struct console_lazy_buffer *)NULL;
 
-static spinlock_t console_lock;
+static spinlock_t console_lock = {0};
 
 static struct console_lazy_buffer console_pool[CONFIG_CONSOLE_POOL_SZ];
 static LIST_HEAD(console_pool_free_list);
@@ -266,11 +266,10 @@ int console_init(void)
 {
     int ret;
 
-    spinlock_init(&console_lock);
     console_pool_init();
 
     register_chardev(TTY_DRIVER, &console_ops, NULL, &console_dev);
-    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL, NULL);
+    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL);
     return ret;
 }
 

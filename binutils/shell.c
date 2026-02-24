@@ -4,7 +4,7 @@
 #include <string.h>
 #include <sys.h>
 #include <errno.h>
-#include <alloc.h>
+#include <lib.h>
 
 char command[128] = {0};
 char history[8][128] = {0};
@@ -92,7 +92,7 @@ char** split_into_buffer(void *buffer, const char *input, int *argc, char **firs
     return new_argv;
 }
 
-int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, const char *bin_path, int argc, char **argv)
+int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, int is_background, const char *bin_path, int argc, char **argv)
 {
     pid_t pid;
     int res, offset = 0;
@@ -116,7 +116,9 @@ int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, co
     if ((res = execpv(&pid, combined_path, argc, argv)) != 0)
         return res;
 
-    *exit_code = waitpid(pid);
+    if (!is_background)
+        *exit_code = waitpid(pid);
+    else *exit_code = 0;
     return 0;
 }
 
@@ -125,6 +127,8 @@ void exec_cmd()
     int res, i;
     char buff[256] = {0};
     char *exec_path = NULL;
+    int is_background = command[command_offset-1] == ';';
+    if (is_background) command[command_offset-1] = '\0';
     int argc = 0;
     char **argv = split_into_buffer((void*)&buff[0], command, &argc, &exec_path);
     if (!exec_path) return;
@@ -177,10 +181,10 @@ void exec_cmd()
         return;
     }
 
-    if ((res = try_to_execute_at("/prog", NULL, &last_exitcode, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at("/prog", ".exe", &last_exitcode, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/prog", NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/prog", ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
 
     if (errstr[-res] == NULL)
         printf("%s: Invalid error.\n", exec_path);
@@ -192,8 +196,8 @@ int main(int argc, char const *argv[])
 {
     pid_t pid;
     char *cat_argv[] = { "/sys/motd.txt", NULL };
-    // if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
-    //     waitpid(pid);
+    if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
+        waitpid(pid);
 
     if (open(&kb_hndl, "/dev/input/char_kbd0", READ) != 0)
     {

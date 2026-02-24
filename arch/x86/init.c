@@ -58,14 +58,19 @@ _lo_text static void x86_map_section(
 
 static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 {
-    x86_gdt_init();
-
-    kearly_init((bootinfo_t){
+    extern bootinfo_t bootinfo;
+    bootinfo = (bootinfo_t){
         .bootloader_magic = magic,
         .bootloader_info = multiboot,
         .cmdline = (const char*)multiboot->cmdline,
-    });
-    
+    };
+
+    x86_gdt_init();
+    earlycon_init();
+    if (magic != MULTIBOOT_LKERNOADER_MAGIC)
+        panic("init: invalid multiboot magic; 0x%x != 0x%x.", magic, MULTIBOOT_HEADER_MAGIC);
+
+    kearly_init();
     x86_cpu_init();
     
     /* Jump to kernel! */
@@ -84,7 +89,7 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
         x86_alloc_table(i);
 
     /* Map crucial memory regions */
-    x86_map_section((uintptr_t)&kern_phys_start, (uintptr_t)&kern_phys_end, (uintptr_t)&kern_phys_start);
+    x86_map_section(0, 0x1000000, 0);
     x86_map_section((uintptr_t)&kern_virt_start, (uintptr_t)&kern_virt_end, (uintptr_t)&kern_phys_end);
 
     /* Enable paging */
