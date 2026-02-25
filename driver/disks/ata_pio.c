@@ -60,7 +60,7 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
         x86_insw(io_port + ATA_DATA, &((uint16_t*)&buf[0])[i * 256], 256);
 
         /* 400ns delay */
-        usleep(400);
+        usleep(400);    /* If scheduler is active, it will yield to avoid busylooping */
     }
 
     return 0;

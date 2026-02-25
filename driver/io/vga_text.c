@@ -127,7 +127,7 @@ static void vga_putc(const char *s, uint32_t count)
 }
 
 static struct console_dev console_dev = {
-    .name = "pc_vga_text",
+    .name = "vga_text",
     .write = vga_putc,
     .rewind = vga_rewind,
     .clear = vga_clear,
@@ -135,7 +135,7 @@ static struct console_dev console_dev = {
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };
 
-int pc_vga_text_init()
+static int pc_vga_text_init()
 {
     if (pc_vga_text_is_initialized)
         return 0;
@@ -151,19 +151,23 @@ int pc_vga_text_init()
         *base++ = DEF_COLOR;
     }
 
+    console_register(&console_dev);
     pc_vga_text_is_initialized = 1;
     return 0;
 }
 
-int pc_vga_text_probe()
+static int pc_vga_text_probe()
 {
     if (pc_vga_text_init() != 0)
         return -ENODEV;
-    return console_register(&console_dev);
+    if (!pc_vga_text_is_initialized)
+        return console_register(&console_dev);
+    return 0;
 }
 
-void pc_vga_text_cleanup()
+static void pc_vga_text_cleanup()
 {
+    console_unregister(&console_dev);
     uint8_t *base = (uint8_t*)VGA_BASE;
     while ((uintptr_t)base < VGA_BASE+VGA_SIZE*2)
         *base++ = 0;

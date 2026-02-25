@@ -261,7 +261,7 @@ void vmm_cleanup_directory(pagedir_t *pagedir)
     list_for_each_safe(pos, n, &pagedir_pool) {
         entry = list_entry(pos, struct vmm_pool_entry, list);
         if (entry->pagedir == pagedir) {
-            list_del(&entry->list);
+            list_del(pos);
 
             /* Clean up all physical memory used by thi directory */
             for (i = 0; i < VMM_USR_SIZE_BYTES / sizeof(struct vmm_page); i++)

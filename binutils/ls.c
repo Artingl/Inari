@@ -9,7 +9,7 @@ int main(int argc, char const *argv[])
         printf("usage: %s [dir]\n", argv[0]);
         return -1;
     }
-
+    
     printf("Contents of %s:\n", argv[1]);
     struct fs_node node = {0};
     char *name;
@@ -25,7 +25,7 @@ int main(int argc, char const *argv[])
         else if (node.st_mode & STAT_CHAR)
             name = "chardev  ";
 
-        printf("   %ssz %llukb   stat 0x%x     %s\n", name, node.size >> 10, (uint32_t)node.st_mode, node.name);
+        printf("   %ssz %llu%s\tstat 0x%x\t%s\n", name, node.size >= 1024 ? node.size >> 10 : node.size, node.size >= 1024 ? "kb" : "b", (uint32_t)node.st_mode, node.name);
         found_files = 1;
     }
 

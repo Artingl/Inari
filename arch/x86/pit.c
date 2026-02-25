@@ -33,7 +33,7 @@
 #define PIT_CHANNEL2 0x42
 #define PIT_COMMAND  0x43
 
-#define PIT_DIVIDER      0xff
+#define PIT_DIVIDER      250
 #define PIT_FREQUENCY_HZ 1193182
 
 int x86_pit_init()

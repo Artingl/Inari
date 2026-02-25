@@ -40,7 +40,6 @@ void x86_irq_setup(struct x86_cpu *core)
 
 void x86_irq_handler(struct x86_regs32 *regs)
 {
-    arch_switch_pagedir(arch_get_kernel_pagedir());
     uint32_t irq = regs->int_no;
 
     if (regs->int_no == X86_PIT_IRQ)
@@ -52,9 +51,6 @@ void x86_irq_handler(struct x86_regs32 *regs)
     else if (regs->int_no == X86_SWI_SYSCALL) {
         regs->ebx = syscall_handle(regs->ebx, (void*)regs->ecx, (void*)regs->edx, (void*)regs->esi, (void*)regs->edi, (void*)regs->ebp);
         irq = SWI_SYSCALL;
-
-        /* Restore kernel pagedir just in case */
-        arch_switch_pagedir(arch_get_kernel_pagedir());
     }
     else irq -= X86_IRQ_OFFSET;
 

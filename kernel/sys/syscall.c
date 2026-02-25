@@ -46,6 +46,10 @@ int syscall_handle(
     case SYSCALL_USLEEP:
         sched_usleep(tid, (size_t)param0);
         break;
+    
+    case SYSCALL_DEBUG:
+        printk("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
+        break;
 
     case SYSCALL_OPEN:
         res = vfs_open((vfs_handle_t*)param0, (const char*)param1, (int)param2);
@@ -192,13 +196,13 @@ int syscall_handle(
         break;
 
     case SYSCALL_LSMOD:
-        res = modules_ls((int)param0, (char*)param1, (uintptr_t*)param2);
+        res = modules_ls((int)param0, (char*)param1, (uintptr_t*)param2, (uint32_t*)param3);
         break;
     
     case SYSCALL_LSPROC:
         res = proc_ls((int)param0, (char*)param1, (pid_t*)param2, (double*)param3);
         break;
-
+    
     default:
         proc_signal(proc->pid, SIGSYS);
         res = -EINVAL;

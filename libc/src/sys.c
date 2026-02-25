@@ -130,7 +130,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
 void *memalloc(size_t npages, uint32_t flags)
 {
-    return (int)syscall(23, (uint32_t)npages, (uint32_t)flags, 0, 0, 0);
+    return (void*)syscall(23, (uint32_t)npages, (uint32_t)flags, 0, 0, 0);
 }
 
 void memfree(void *vbase, size_t npages)
@@ -140,7 +140,7 @@ void memfree(void *vbase, size_t npages)
 
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags)
 {
-    return (int)syscall(21, (uint32_t)vbase, (uint32_t)pbase, (uint32_t)len, (uint32_t)flags, 0);
+    return (void*)syscall(21, (uint32_t)vbase, (uint32_t)pbase, (uint32_t)len, (uint32_t)flags, 0);
 }
 
 void memunmap(void *vbase, size_t len)
@@ -188,9 +188,9 @@ int insmod(const char *name)
     return (int)syscall(32, (uint32_t)name, 0, 0, 0, 0);
 }
 
-int lsmod(int idx, char *name, uintptr_t *ptr)
+int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t state)
 {
-    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, 0, 0);
+    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, state, 0);
 }
 
 int lsproc(int idx, char *name, pid_t *pid, double *usg)

@@ -1,6 +1,7 @@
 #ifndef _INARI_DEVICE_H
 #define _INARI_DEVICE_H
 
+#include <misc/types.h>
 #include <misc/list.h>
 
 #define DEV_NAME_SIZE 16
@@ -8,8 +9,15 @@
 #define DEV_GRP_BLOCK     0
 #define DEV_GRP_CHAR      1
 
+#define DRVID(dev)         (((dev) >> 16) & 0xFFFF)
+#define DEVID(dev)         ((dev) & 0xFFFF)
+#define MKDEV(driver, dev) (((driver) << 16) | (dev))
+
+typedef unsigned int dev_t;
+
 struct device;
 struct device_group;
+struct net_device;
 
 struct char_ops
 {

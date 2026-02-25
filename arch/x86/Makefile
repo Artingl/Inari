@@ -18,7 +18,7 @@ $(arch_objects_c): ../../build/arch/$(TARGET)/%.o: ./%.c
 
 $(arch_objects_s): ../../build/arch/$(TARGET)/%.o: ./%.S
 	mkdir -p $(dir $@)
-	$(AS) -f elf32 $< -o $@
+	$(AS) -g -F dwarf -f elf32 $< -o $@
 
 clean:
 	-rm -rf kernel.elf

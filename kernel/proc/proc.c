@@ -71,7 +71,7 @@ static int get_process(struct process **proc, pid_t pid)
         entry = list_entry(pos, struct process, list);
         if (entry->pid == pid)
         {
-            *proc = entry;
+            if (proc) *proc = entry;
             return 0;
         }
     }
@@ -116,13 +116,15 @@ static void thread_cleanup(struct thread *th, struct process *proc)
                     observer_th->syscall_result = proc->exit_code;
                     observer_th->flags |= SCHED_FLAG_SYSCALL_RSLT;
                 }
-                list_del(&entry->list);
+                list_del(pos);
                 kfree(entry);
                 break;
             }
         }
 
         list_del(&proc->list);
+
+        spin_unlock_irqrestore(&lock, flags);
 
         /* Don't forget to close handles! */
         vfs_kill_proc_handles(proc->pid);
@@ -132,8 +134,8 @@ static void thread_cleanup(struct thread *th, struct process *proc)
         arch_free_pagedir(proc->descriptor.vmem);
         kfree((void*)proc);
     }
-
-    spin_unlock_irqrestore(&lock, flags);
+    else
+        spin_unlock_irqrestore(&lock, flags);
 }
 
 int proc_init()
@@ -148,22 +150,19 @@ int exit(pid_t pid, int exit_code)
 
 int execp(pid_t *pid, const char *path)
 {
-    execpv(pid, path, 0, NULL);
+    return execpv(pid, path, 0, NULL);
 }
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv)
 {
     pagedir_t *vmem = NULL, *prev_dir = arch_get_pagedir();
     size_t size;
-    vfs_handle_t hndl;
+    vfs_handle_t hndl = (vfs_handle_t)NULL;
     void *entrypoint = NULL, *args_pbase = NULL, *tmp_args_base = NULL;
     uint8_t *buf = NULL;
     int res = 0;
-    uint32_t flags;
 
     if (!path) return -EINVAL;
-
-    spin_lock_irqsave(&lock, flags);
 
     /* Load process data into memory */
     if ((res = vfs_open(&hndl, path, VFS_READ)) != 0)
@@ -177,6 +176,9 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     /* Fork kernel directory for the new process */
     vmem = arch_fork_pagedir();
+
+    uint32_t flags;
+    spin_lock_irqsave(&lock, flags);
 
     /* Copy the provided arguments to temporary address to later copy it to new process memory */
     /* TODO: what if argv is larger than tmp_args_base; env vars */
@@ -193,6 +195,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
         PAGE_SIZE * 2,
         PAGE_PRESENT | PAGE_RW | PAGE_USR) == NULL)
     {
+        spin_unlock_irqrestore(&lock, flags);
         goto err;
     }
     vmm_disable_region(vmem, (struct reserved_memory){
@@ -202,12 +205,14 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     /* Load the PE into non-kernel memory */
     if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
+    {
+        spin_unlock_irqrestore(&lock, flags);
         goto err;
+    }
 
+    spin_unlock_irqrestore(&lock, flags);
     arch_switch_pagedir(prev_dir);
     
-    spin_unlock_irqrestore(&lock, flags);
-
     spawn_process(pid, path, (task_descriptor_t){ 
         .entrypoint = entrypoint, 
         .vmem = vmem
@@ -218,7 +223,6 @@ err:
     arch_switch_pagedir(prev_dir);
     if (args_pbase) pmm_free_pages(args_pbase, 2);
     if (vmem) arch_free_pagedir(vmem);
-    spin_unlock_irqrestore(&lock, flags);
 end:
     if (tmp_args_base) kfree((void*)tmp_args_base);
     if (buf) kfree((void*)buf);
@@ -259,6 +263,8 @@ int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo)
     size_t i;
     uint32_t flags;
     struct process *proc;
+    if (signo >= 32) return -EINVAL;
+
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
@@ -275,14 +281,14 @@ int proc_signal(pid_t pid, uint32_t signo)
     struct process *proc;
     if (signo >= 32) return -EINVAL;
 
-    // spin_lock_irqsave(&lock, flags);
+    spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
     if (!proc->signal_handler[signo] || proc->pending_signal != 0)
         { res = -EINVAL; goto end; }
     proc->pending_signal = signo;
 end:
-    // spin_unlock_irqrestore(&lock, flags);
+    spin_unlock_irqrestore(&lock, flags);
     return res;
 }
 
@@ -290,9 +296,11 @@ int proc_ls(int idx, char *name, pid_t *pid, double *usg)
 {
     struct list_head *pos;
     struct process *entry;
-    size_t i = 0;
     struct thread *th;
+    size_t i = 0;
+    uint32_t flags;
 
+    spin_lock_irqsave(&lock, flags);
     list_for_each(pos, &processes) {
         entry = list_entry(pos, struct process, list);
         if (i++ >= idx)
@@ -307,13 +315,15 @@ int proc_ls(int idx, char *name, pid_t *pid, double *usg)
                     if (entry->threads[i] != 0)
                     {
                         if ((th = __sched_get_thread(entry->threads[i])) != NULL)
-                            *usg += ((double)th->cpu_time / (double)th->reschedules_count);
+                            *usg += th->cpu_time;
                     }
             }
+
+            spin_unlock_irqrestore(&lock, flags);
             return 1;
         }
     }
-
+    spin_unlock_irqrestore(&lock, flags);
     return 0;
 }
 
@@ -345,13 +355,26 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint)
 {
     size_t i;
     tid_t i_tid;
-    int res = 0;
+    int res = 0, has_free_thread_spot = 0;
     struct process *proc;
     uint32_t flags;
 
     spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto end;
+
+    for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
+        if (proc->threads[i] == 0)
+        {
+            has_free_thread_spot = 1;
+            break;
+        }
+    if (!has_free_thread_spot)
+    {
+        spin_unlock_irqrestore(&lock, flags);
+        return -EINVAL;
+    }
+
     if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void*)&thread_cleanup, proc)) != 0)
         goto end;
     if (pid == 1)
@@ -379,12 +402,9 @@ int waitpid(pid_t pid, tid_t observer_tid)
     struct thread *th;
     struct process_waitpid *wait = NULL;
     
-    spin_lock_irqsave(&lock, flags);
     if ((wait = (struct process_waitpid*)kmalloc(sizeof(struct process_waitpid))) == NULL)
-    {
-        res = -ENOMEM;
-        goto end;
-    }
+        return -ENOMEM;
+    spin_lock_irqsave(&lock, flags);
     if ((res = get_process(&proc, pid)) != 0)
         goto err;
     if ((th = __sched_get_thread(observer_tid)) == NULL)
@@ -394,10 +414,11 @@ int waitpid(pid_t pid, tid_t observer_tid)
     wait->observer_tid = observer_tid;
     th->state = SCHED_TASK_PAUSED;
     list_add(&wait->list, &waitpid_threads);
+    spin_unlock_irqrestore(&lock, flags);
     goto end;
 err:
+    spin_unlock_irqrestore(&lock, flags);
     if (wait) kfree(wait);
 end:
-    spin_unlock_irqrestore(&lock, flags);
     return res;
 }

@@ -186,6 +186,11 @@ static int console_write_char(struct device *chardev, const uint8_t *buf, size_t
     return 0;
 }
 
+static int console_read(struct device *chardev, uint8_t *buf, size_t sz)
+{
+    return -1;
+}
+
 static int console_ioctl_char(struct device *chardev, unsigned long req, void *arg)
 {
     int ret = 0;
@@ -259,6 +264,7 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
 
 static struct char_ops console_ops = {
     .write = &console_write_char,
+    .read = &console_read,
     .ioctl = &console_ioctl_char
 };
 
@@ -288,8 +294,8 @@ int console_register(struct console_dev *dev)
                 return -EBUSY;
         }
 
-    printk("console: new device %s registered", dev->name);
     list_add(&dev->list, &consoles_list);
+    printk("console: new device %s registered", dev->name);
     return 0;
 }
 
@@ -298,8 +304,8 @@ int console_unregister(struct console_dev *dev)
     if (!dev)
         return -EINVAL;
     
-    printk("console: device %s unregistered", dev->name);
     list_del(&dev->list);
+    printk("console: device %s unregistered", dev->name);
     return 0;
 }
 

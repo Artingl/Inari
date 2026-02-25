@@ -141,7 +141,7 @@ static struct char_ops ps2_kbd_ops = {
     .read = &kbd_read,
 };
 
-int ps2_kbd_probe()
+static int ps2_kbd_probe()
 {
     uint8_t in, b0, b1;
 
@@ -192,7 +192,7 @@ int ps2_kbd_probe()
     return 0;
 }
 
-void ps2_kbd_cleanup()
+static void ps2_kbd_cleanup()
 {
     if (ps2_kb_initialized)
     {

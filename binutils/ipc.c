@@ -27,16 +27,16 @@ int main(int argc, char *argv[])
     signal_handler(&sigquit_handler, SIGQUIT);
     pid_t pid;
     get_pid(&pid);
-    printf("ipc: working! my pid is %llu\n", pid);
+    printf("ipc: working! my pid is %llu\n", pid);    
 
-    while (1)
-    {
+    // while (1)
+    // {
         // printf("testing!\n");
         // addr[0] = 'a';
         // printf("works!\n");
         /* Avoid busy looping */
         // usleep(1000000);
-    }
+    // }
 
     /* Lets try to switch video mode */
     if (argc < 3)
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     }
 
     handle_t hndl;
-    if (open(&hndl, "/dev/video/char_vesa0", WRITE) != 0)
+    if (open(&hndl, "/dev/video/char_video0", WRITE) != 0)
     {
         printf("ipc: unable to open vesa device.\n");
         return -1;

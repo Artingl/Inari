@@ -1,7 +1,7 @@
 #ifndef _INARI_KBD_H
 #define _INARI_KBD_H
 
-#include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
 #include <misc/types.h>
 
 /* special keycodes start above ASCII range */

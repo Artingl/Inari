@@ -2,4 +2,4 @@ ___
  |  ._   _. ._ o
 _|_ | | (_| |  |  
                                                           
-Welcome to Inari shell.
+Welcome to Inari shell!

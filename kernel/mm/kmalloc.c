@@ -1,9 +1,13 @@
 #include <kernel/inari.h>
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/kmalloc.h>
+#include <kernel/sync/spinlock.h>
+
+#include <misc/string.h>
 
 #define SMALL_ALLOC_THRESHOLD (PAGE_SIZE / 2)
 
+static spinlock_t heap_lock = {0};
 static struct block *heap_start = NULL;
 
 int kmalloc_init(void)
@@ -13,14 +17,20 @@ int kmalloc_init(void)
 
 void *kmalloc(size_t size)
 {
-    size = ALIGN(size + PAGE_SIZE, BLOCK_ALIGN);
+    uint32_t flags;
+    spin_lock_irqsave(&heap_lock, flags);
+    size = ALIGN(size + sizeof(struct block), BLOCK_ALIGN);
 
     /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD)
     {
         size_t npages = (size + PAGE_SIZE - 1) >> 12;
         void *page = vmm_alloc_kernel(npages);
-        if (!page) return NULL;
+        if (!page)
+        {
+            spin_unlock_irqrestore(&heap_lock, flags);
+            return NULL;
+        }
 
         struct block *b = (struct block*)page;
         b->size = npages * PAGE_SIZE;
@@ -28,6 +38,8 @@ void *kmalloc(size_t size)
         b->next = heap_start;
         b->large = 1;
         heap_start = b;
+        spin_unlock_irqrestore(&heap_lock, flags);
+        memset((void*)(b + 1), 0, size);
         return (void*)(b + 1);
     }
 
@@ -38,6 +50,8 @@ void *kmalloc(size_t size)
         if (curr->free && !curr->large && curr->size >= size)
         {
             curr->free = 0;
+            spin_unlock_irqrestore(&heap_lock, flags);
+            memset((void*)(curr + 1), 0, size);
             return (void*)(curr + 1);
         }
         curr = curr->next;
@@ -45,7 +59,11 @@ void *kmalloc(size_t size)
 
     /* No free block found, allocate new page */
     void *page = vmm_alloc_kernel(1);
-    if (!page) return NULL;
+    if (!page)
+    {
+        spin_unlock_irqrestore(&heap_lock, flags);
+        return NULL;
+    }
 
     struct block *b = (struct block*)page;
     b->size = PAGE_SIZE - sizeof(struct block);
@@ -53,13 +71,19 @@ void *kmalloc(size_t size)
     b->large = 0;
     b->next = heap_start;
     heap_start = b;
+    spin_unlock_irqrestore(&heap_lock, flags);
+    memset((void*)(b + 1), 0, size);
     return (void*)(b + 1);
 }
 
 void kfree(void *ptr)
 {
     if (!ptr) return;
+    uint32_t flags;
+    spin_lock_irqsave(&heap_lock, flags);
     struct block *b = ((struct block*)ptr) - 1;
+    if (b->free)
+        panic("kfree: double free!");
     b->free = 1;
 
     if (b->large)
@@ -71,4 +95,5 @@ void kfree(void *ptr)
 
         vmm_free_pages(arch_get_kernel_pagedir(), (void*)b, b->size >> 12);
     }
+    spin_unlock_irqrestore(&heap_lock, flags);
 }

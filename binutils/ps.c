@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     printf("  PID\tUSG\tPATH\n");
     while (lsproc(idx++, &cmd[0], &pid, &usg) > 0)
     {
-        printf("  %llu\t%2f%%\t%s\n", pid, usg * 100, cmd);
+        printf("  %llu\t%2f\t%s\n", pid, usg * 100, cmd);
     }
 
     return 0;

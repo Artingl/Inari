@@ -28,6 +28,7 @@ int pmm_init(void)
 {
     bootinfo_t info = get_boot_info();
     multiboot_info_t *multiboot = (multiboot_info_t*)info.bootloader_info;
+    multiboot_module_t *module;
 
     /* TODO: The memory map should be bootloader-agnostic */
     size_t i, j, len, mmap_length = multiboot->mmap_length / sizeof(struct multiboot_mmap_entry);
@@ -77,6 +78,18 @@ int pmm_init(void)
             });
         }
 
+    }
+
+    if (multiboot->flags & MULTIBOOT_INFO_MODS)
+    {
+        for (i = 0; i < multiboot->mods_count; i++)
+        {
+            module = &((multiboot_module_t *)multiboot->mods_addr)[i];
+            pmm_reserve_memory((struct reserved_memory){
+                .start = module->mod_start,
+                .end = module->mod_end
+            });
+        }
     }
 
     if (multiboot->flags & MULTIBOOT_INFO_ELF_SHDR) 
@@ -184,11 +197,14 @@ int pmm_free_pages(void *base, size_t npages)
         return -EINVAL;
 
     for (i = 0; i < npages; i++) {
-        pages_pool[((uintptr_t)base >> 12) + i].flags |= PMM_PAGE_AVAILABLE;
-        pages_pool[((uintptr_t)base >> 12) + i].flags &= ~PMM_PAGE_USED;
+        if (pages_pool[((uintptr_t)base >> 12) + i].flags & PMM_PAGE_USED)
+        {
+            pages_pool[((uintptr_t)base >> 12) + i].flags |= PMM_PAGE_AVAILABLE;
+            pages_pool[((uintptr_t)base >> 12) + i].flags &= ~PMM_PAGE_USED;
+            pages_used--;
+        }
     }
 
-    pages_used -= npages;
     return 0;
 }
 

@@ -8,7 +8,7 @@
 #include <arch/x86/arch.h>
 
 #define PIC1_OFFSET 0x20
-#define PIC2_OFFSET 0x2
+#define PIC2_OFFSET 0x28
 
 #define PIC1	            0x20		/* IO base address for master PIC */
 #define PIC2	            0xA0		/* IO base address for slave PIC */
@@ -75,9 +75,15 @@ int x86_pic_init(void)
 
 void x86_pic_acknowledge(uint8_t irq_no)
 {
-    if (irq_no >= 12)
+    /* If the interrupt vector came from the Slave PIC's range */
+    if (irq_no >= PIC2_OFFSET && irq_no <= (PIC2_OFFSET + 7)) {
         x86_outb(PIC2_COMMAND, 0x20);
-    x86_outb(PIC1_COMMAND, 0x20);
+    }
+    
+    /* Always send EOI to the Master PIC because the Slave is cascaded through it */
+    if (irq_no >= PIC1_OFFSET && irq_no <= (PIC1_OFFSET + 7)) {
+        x86_outb(PIC1_COMMAND, 0x20);
+    }
 }
 
 void x86_pic_irq_mask(uint8_t irq_line)

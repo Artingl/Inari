@@ -34,3 +34,6 @@ $LD --entry=__start -no-pie -nostdlib -o lsmod.exe -m i386pe lsmod.o -L../libc -
 
 $CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c ps.c -o ps.o -fleading-underscore
 $LD --entry=__start -no-pie -nostdlib -o ps.exe -m i386pe ps.o -L../libc -lc --image-base 0x020000000
+
+$CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c debug.c -o debug.o -fleading-underscore
+$LD --entry=__start -no-pie -nostdlib -o debug.exe -m i386pe debug.o -L../libc -lc --image-base 0x020000000

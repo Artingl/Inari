@@ -16,8 +16,14 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
     int res = 0;
     void *pbase;
     size_t i, off;
-    struct pe_header *header = (struct pe_header*)&buf[128];
-    struct pe32_header *header32 = (struct pe32_header*)&buf[128 + sizeof(struct pe_header)];
+
+    uint32_t pe_offset = 124;//*(uint32_t*)&buf[0x3C];
+    // if (pe_offset >= sz || pe_offset < 64) return -ENOEXEC;
+    
+    void *dest;
+    size_t copy_size;
+    struct pe_header *header = (struct pe_header*)&buf[pe_offset + 4];
+    struct pe32_header *header32 = (struct pe32_header*)&buf[pe_offset + 4 + sizeof(struct pe_header)];
     struct pe_image_section *section;
     struct pe_symbol *symbol;
     
@@ -27,7 +33,9 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
     /* Load all sections */
     for (i = 0; i < header->sections_number; i++)
     {
-        off = i * 40 + 128 + header->optional_header_sz + sizeof(struct pe_header);
+        off = i * 40 + pe_offset + 4 + header->optional_header_sz + sizeof(struct pe_header);
+        if (off >= sz) break;
+
         section = (struct pe_image_section*)&buf[off];
 
         if (!VMM_IS_USERSPACE(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz))
@@ -45,8 +53,22 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
             res = -ENOMEM;
             goto end;
         }
+        
+        dest = (void*)(header32->image_base + section->vbase);
+        copy_size = section->phys_sz;
+        
+        /* Cap the copy size so we don't read past the file buffer */
+        if (section->pbase + copy_size > sz) 
+            copy_size = sz - section->pbase;
+        if (copy_size > section->virt_sz) 
+            copy_size = section->virt_sz;
 
-        memcpy((void*)header32->image_base + section->vbase, (void*)&buf[section->pbase], section->virt_sz);
+        if (copy_size > 0 && section->pbase > 0)
+            memcpy(dest, (void*)&buf[section->pbase], copy_size);
+            
+        /* Zero out the remainder */
+        if (section->virt_sz > copy_size)
+            memset((uint8_t*)dest + copy_size, 0, section->virt_sz - copy_size);
     }
 
     *entrypoint = (void*)(header32->image_base + header32->address_of_entry_point);

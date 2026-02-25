@@ -50,7 +50,7 @@ static struct console_dev console_dev = {
     .flags = CONSOLE_EARLY | CONSOLE_PRINTK
 };
 
-int pc8250_serial_init()
+static int pc8250_serial_init()
 {
     if (pc8250_is_initialized)
         return 0;
@@ -101,7 +101,7 @@ static struct char_ops serial_block_ops = {
 
 static dev_t char_devices[8] = {0};
 
-int pc8250_serial_probe()
+static int pc8250_serial_probe()
 {
     if (pc8250_serial_init() != 0)
         return -ENODEV;
@@ -122,7 +122,7 @@ int pc8250_serial_probe()
     return 0;
 }
 
-int pc8250_serial_early_probe()
+static int pc8250_serial_early_probe()
 {
     if (pc8250_serial_init() != 0)
         return -ENODEV;
@@ -130,7 +130,7 @@ int pc8250_serial_early_probe()
     return 0;
 }
 
-void pc8250_serial_cleanup()
+static void pc8250_serial_cleanup()
 {
     if (pc8250_is_initialized)
     {
@@ -147,7 +147,7 @@ void pc8250_serial_cleanup()
     }
 }
 
-void pc8250_serial_early_cleanup()
+static void pc8250_serial_early_cleanup()
 {}
 
 earlycon_device(

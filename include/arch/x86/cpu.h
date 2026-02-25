@@ -157,12 +157,12 @@ struct x86_paging_directory_usr
     struct x86_page_table tables_pool[1024];
 } __attribute__((packed));
 
-extern int x86_cpu_init(void);
-extern const char *x86_cpu_vendor(void);
-extern const char *x86_cpu_model(void);
-extern uint32_t x86_cpu_features_ecx(void);
-extern uint32_t x86_cpu_features_edx(void);
-extern void x86_cpu_ack_irq(uint8_t irq);
+int x86_cpu_init(void);
+const char *x86_cpu_vendor(void);
+const char *x86_cpu_model(void);
+uint32_t x86_cpu_features_ecx(void);
+uint32_t x86_cpu_features_edx(void);
+void x86_cpu_ack_irq(uint8_t irq);
 
 static inline void x86_cpu_install_idt(uint32_t core_id, uintptr_t base, uint8_t num, uint16_t sel, uint8_t flags)
 {

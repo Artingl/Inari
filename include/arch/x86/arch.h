@@ -52,6 +52,8 @@ static const char *exceptionstr[] =
     [ 0x1e ] = "Security_Violation",
 };
 
+uint32_t x86_inl(uint16_t port);
+void x86_outl(uint16_t port, uint32_t val);
 void x86_outb(uint16_t port, uint8_t val);
 void x86_outw(uint16_t port, uint16_t val);
 void x86_outsw(unsigned short int __port, const void *__addr,

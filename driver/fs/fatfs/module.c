@@ -171,12 +171,12 @@ static struct vfs_layer fatfs_layer = {
     .ops = &fatfs_ops
 };
 
-int fatfs_probe()
+static int fatfs_probe()
 {
     return vfs_add_layer(&fatfs_layer);
 }
 
-void fatfs_cleanup()
+static void fatfs_cleanup()
 {
     vfs_remove_layer(&fatfs_layer);
 }

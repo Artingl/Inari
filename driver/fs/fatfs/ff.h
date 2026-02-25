@@ -22,7 +22,7 @@
 #ifndef FF_DEFINED
 #define FF_DEFINED	80386	/* Revision ID */
 
-#include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
 
 #ifdef __cplusplus
 extern "C" {

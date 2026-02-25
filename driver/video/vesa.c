@@ -341,7 +341,7 @@ struct char_ops ops = {
     .ioctl = &vesa_ioctl
 };
 
-int vesa_probe()
+static int vesa_probe()
 {
     struct x86_regs16 r;
     uint32_t x, y, bpp = 32;
@@ -370,15 +370,14 @@ int vesa_probe()
         y = edid_record.desc1.vt_active_tm | ((int) (edid_record.desc1.vt_active_blanking_tm & 0xF0) << 4);
     }
 
-    register_chardev_group(VESA_DRIVER, "vesa");
-    register_chardev(VESA_DRIVER, &ops, NULL, &vesa_chardev);
+    register_chardev(VIDEO_DRIVER, &ops, NULL, &vesa_chardev);
 
     vesa_switch_mode(x, y, bpp, 1);
     printk("vesa: initialized");
     return 0;
 }
 
-void vesa_cleanup()
+static void vesa_cleanup()
 {
     printk("vesa: cleaning up");
 
@@ -434,7 +433,8 @@ void vesa_cleanup()
 
 module_t vesa_module = {
     .probe = vesa_probe,
-    .cleanup = vesa_cleanup
+    .cleanup = vesa_cleanup,
+    .flags = MODULE_LAZY_LOAD,
 };
 
 

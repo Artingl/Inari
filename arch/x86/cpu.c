@@ -17,6 +17,7 @@ static uint32_t features_ecx, features_edx;
 static char s_cpu_vendor[16];
 static char s_cpu_model[64];
 static uint32_t phys_cpus;
+static int is_ready = 0;
 
 struct x86_cpu x86_cpus_pool[CONFIG_MAX_CORES];
 
@@ -99,7 +100,13 @@ int x86_cpu_init(void)
     if (x86_pit_init())
         panic("cpu: pit init failed");
 
+    is_ready = 1;
     return 0;
+}
+
+int _arch_is_cpu_initalized(void)
+{
+    return is_ready;
 }
 
 void x86_cpu_ack_irq(uint8_t irq)

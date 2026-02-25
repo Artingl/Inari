@@ -2,15 +2,15 @@
 set -e
 
 # Configuration
-IMAGE_NAME="build/boot.img"
-IMAGE_SIZE="40M"
+BOOTABLE_IMAGE_NAME="build/boot.iso"
+GRUB_DIR="./grub"
+IMAGE_NAME="build/rootfs.img"
+IMAGE_SIZE="10M"
 MOUNT_DIR="./fs"
 KERNEL_BIN="build/kernel.elf" 
 GRUB_CFG="grub.cfg"
 
-# --- CLEANUP TRAP ---
 cleanup() {
-    # Silence cleanup noise unless there is an error
     if mountpoint -q $MOUNT_DIR; then
         echo ">>> Unmounting..."
         umount $MOUNT_DIR
@@ -22,21 +22,33 @@ cleanup() {
     fi
     
     rm -rf $MOUNT_DIR
+
+
+
+    # Install GRUB
+    echo ">>> Installing GRUB..."
+    mkdir -p $GRUB_DIR/boot/grub
+    cp $KERNEL_BIN $GRUB_DIR/kernel.bin
+    cp $GRUB_CFG $GRUB_DIR/boot/grub/grub.cfg
+    cp $IMAGE_NAME $GRUB_DIR
+    grub-mkrescue -d /usr/lib/grub/i386-pc -o $BOOTABLE_IMAGE_NAME $GRUB_DIR 
+    chown $SUDO_USER:$SUDO_USER $BOOTABLE_IMAGE_NAME
+    
+    rm -rf $GRUB_DIR
 }
 trap cleanup EXIT
 
-# --- CHECKS ---
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root (sudo)"
   exit 1
 fi
 
-# 1. Create empty file
+# Create empty file
 echo ">>> Creating disk image..."
 rm -f $IMAGE_NAME
 truncate -s $IMAGE_SIZE $IMAGE_NAME
 
-# 2. Partitioning (MBR)
+# Partitioning (MBR)
 echo ">>> Partitioning..."
 
 # Create MBR Label
@@ -48,41 +60,36 @@ parted -s $IMAGE_NAME mkpart primary fat32 1MiB 100%
 # Set the 'Boot' flag
 parted -s $IMAGE_NAME set 1 boot on
 
-# 3. Setup Loopback
+# Setup Loopback
 echo ">>> Setting up loop device..."
 LOOP_DEV=$(losetup -P --show -f $IMAGE_NAME)
 echo "    Attached to $LOOP_DEV"
 
-# 4. Format Partition 1
+# Format Partition 1
 echo ">>> Formatting FAT32..."
-mkfs.fat -F 32 -n "Inari" "${LOOP_DEV}p1"
+mkfs.fat -F 16 -n "Inari" "${LOOP_DEV}p1"
 
-# 5. Mount Partition 1
+# Mount Partition 1
 echo ">>> Mounting..."
 mkdir -p $MOUNT_DIR
 mount "${LOOP_DEV}p1" $MOUNT_DIR
 
-# 6. Copy Files
+# Copy Files
 echo ">>> Copying kernel and config..."
-mkdir -p $MOUNT_DIR/boot/grub
 mkdir -p $MOUNT_DIR/prog
 mkdir -p $MOUNT_DIR/sys
 mkdir -p $MOUNT_DIR/dev
-cp $KERNEL_BIN $MOUNT_DIR/boot/kernel.bin
-cp $GRUB_CFG $MOUNT_DIR/boot/grub/grub.cfg
 cp binutils/*.exe $MOUNT_DIR/prog
 cp motd.txt $MOUNT_DIR/sys
 
-# 7. Install GRUB
-echo ">>> Installing GRUB..."
-grub-install \
-    --target=i386-pc \
-    --boot-directory=$MOUNT_DIR/boot \
-    --no-floppy \
-    --modules="normal part_msdos fat multiboot" \
-    $LOOP_DEV
+# grub-install \
+#     --target=i386-pc \
+#     --boot-directory=$MOUNT_DIR/boot \
+#     --no-floppy \
+#     --modules="normal part_msdos fat multiboot" \
+#     $LOOP_DEV
 
-# 8. Permissions Fix
+# Permissions Fix
 if [ ! -z "$SUDO_USER" ]; then
     echo ">>> Fixing permissions for $SUDO_USER..."
     chown $SUDO_USER:$SUDO_USER $IMAGE_NAME

@@ -132,7 +132,7 @@ static int ata_identify(uint8_t drive_id)
     return 0;
 }
 
-int ata_probe()
+static int ata_probe()
 {
     int ret = 0;
 
@@ -147,7 +147,7 @@ int ata_probe()
     return ret;
 }
 
-void ata_cleanup()
+static void ata_cleanup()
 {
     unregister_blkdev_group(ATA_DRIVER);
 }

@@ -75,17 +75,18 @@ int modules_insmod(const char *name)
     return -1;
 }
 
-int modules_ls(int idx, char *name, uintptr_t *ptr)
+int modules_ls(int idx, char *name, uintptr_t *ptr, uint32_t *state)
 {
     size_t i = 0;
     for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (dev->module->is_loaded && i++ >= idx)
+        if (i++ >= idx)
         {
-            if (ptr) *ptr = (uintptr_t)dev->module->probe;
-            if (name) memcpy((void*)name, (void*)dev->name, strlen(dev->name) + 1);
+            if (ptr)    *ptr = (uintptr_t)dev->module->probe;
+            if (name)    memcpy((void*)name, (void*)dev->name, strlen(dev->name) + 1);
+            if (state)  *state = dev->module->is_loaded;
             return 1;
         }
     }
@@ -126,10 +127,13 @@ int modules_init()
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
+        if (dev->module->flags & MODULE_LAZY_LOAD)
+            continue;
+
         if (dev->module->probe && (ret = dev->module->probe()) != 0)
         {
 #ifdef CONFIG_DEBUG
-            printk("%s: error %d", dev->name, ret);
+            printk("%s: %s.", dev->name, errstr[-ret] ? errstr[-ret] : "Invalid error");
 #endif
         }
 

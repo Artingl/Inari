@@ -106,7 +106,7 @@ static void handle_block_dev_load(dev_t dev)
     uint8_t *lba = (uint8_t*)kmalloc(bdev->group->block_size);
     size_t lba_offset = 0;
 
-    if (!bdev) goto end;
+    if (!bdev || !((struct block_ops*)bdev->ops)->read_blocks) goto end;
 
     if (((struct block_ops*)bdev->ops)->read_blocks(bdev, 0, (void*)&lba[0], 1) != 0)
     {
@@ -129,7 +129,7 @@ end:
     kfree((void*)lba);
 }
 
-int mbr_probe()
+static int mbr_probe()
 {
     register_blkdev_group(MBR_DRIVER, 512, "mbr");
 
@@ -148,7 +148,7 @@ int mbr_probe()
     return 0;
 }
 
-int mbr_event_handler(event_t event)
+static int mbr_event_handler(event_t event)
 {
     switch (event.type)
     {

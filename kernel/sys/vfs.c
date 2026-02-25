@@ -7,10 +7,13 @@
 #include <kernel/errno.h>
 #include <kernel/proc/proc.h>
 #include <kernel/proc/sched.h>
+#include <kernel/sync/spinlock.h>
 
 #include <misc/list.h>
 #include <misc/string.h>
 #include <misc/format.h>
+
+static spinlock_t vfs_lock = {0};
 
 static LIST_HEAD(vfs_layers);
 static LIST_HEAD(vfs_mount_points);
@@ -43,6 +46,7 @@ int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *
     if (!handle) return -EINVAL;
     base = (struct vfs_handle*)kmalloc(sizeof(struct vfs_handle));
     if (!base)   return -ENOMEM;
+
     base->id = last_handle++;
     base->mount = mount;
     base->data = data;
@@ -73,7 +77,7 @@ void vfs_kill_proc_handles(pid_t proc_pid)
         {
             if (entry->mount->layer->ops->close)
                 entry->mount->layer->ops->close(entry->mount, entry->id);
-            list_del(&entry->list);
+            list_del(pos);
             kfree(entry);
         }
     }
@@ -89,7 +93,6 @@ void *vfs_handle_data(vfs_handle_t handle)
         if (entry->id == handle)
             return entry->data;
     }
-
     return NULL;
 }
 
@@ -100,6 +103,8 @@ int vfs_mount(dev_t dev, const char* path)
     struct device *bdev = block_get(dev);
 
     struct vfs_mount_point *mount = (struct vfs_mount_point*)kmalloc(sizeof(struct vfs_mount_point));
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
     if (!mount) return -ENOMEM;
     mount->bdev = dev;
     mount->mount_point = path;
@@ -119,16 +124,22 @@ int vfs_mount(dev_t dev, const char* path)
             else
                 printk("vfs: mounted %s; fs %s",
                     mount->mount_point, mount->fs_name);
+            
+            spin_unlock_irqrestore(&vfs_lock, flags);
             return 0;
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     kfree(mount);
     return -EINVFS;
 }
 
 int vfs_unmount(const char* path)
 {
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_mount_point *entry;
     struct device *bdev;
@@ -142,36 +153,52 @@ int vfs_unmount(const char* path)
             entry->layer->unmount(entry);
             if (bdev) printk("vfs: unmounted %s on dev:blk_%s%d",entry->fs_name, bdev->group->name, DEVID(bdev->dev));
             else printk("vfs: unmounted %s on dev:blk_invalid", entry->fs_name);
+            list_del(pos);
             kfree(entry);
-            list_del(&entry->list);
+            
+            spin_unlock_irqrestore(&vfs_lock, flags);
             return 0;
         }
     }
-
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EINVAL;
 }
 
 int vfs_add_layer(struct vfs_layer *layer)
 {
     if (!layer) return -EINVAL;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     INIT_LIST_HEAD(&layer->list);
     list_add(&layer->list, &vfs_layers);
     printk("vfs: added new layer %s", layer->name);
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return 0;
 }
 
 int vfs_remove_layer(struct vfs_layer *layer)
 {
     if (!layer) return -EINVAL;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     list_del(&layer->list);
     /* TODO: Unmount nodes that use this layer */
     printk("vfs: removed layer %s (TODO)", layer->name);
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return 0;
 }
 
 int vfs_open(vfs_handle_t *file, const char *path, int flags)
 {
     if (!file) return -EINVAL;
+    int res;
+    uint32_t lock_flags;
+    spin_lock_irqsave(&vfs_lock, lock_flags);
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
@@ -186,17 +213,25 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
          *
          *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
          *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg` */
-        if (entry->layer->ops->open && strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
+        if (strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
         {
-            return entry->layer->ops->open(entry, file, path, flags);
+            res = -ENOSYS;
+            if (entry->layer->ops->open)
+                res = entry->layer->ops->open(entry, file, path, flags);
+            spin_unlock_irqrestore(&vfs_lock, lock_flags);
+            return res;
         }
     }
-
+    
+    spin_unlock_irqrestore(&vfs_lock, lock_flags);
     return -ENOENT;
 }
 
 int vfs_close(vfs_handle_t handle)
 {
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
     int res = 0;
@@ -207,18 +242,25 @@ int vfs_close(vfs_handle_t handle)
         {
             if (entry->mount->layer->ops->close)
                 res = entry->mount->layer->ops->close(entry->mount, handle);
-            list_del(&entry->list);
+            list_del(pos);
             kfree(entry);
+            
+            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
-
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
 {
     if (!buf) return -EINVAL;
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -226,18 +268,25 @@ int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->read)
-                return entry->mount->layer->ops->read(entry->mount, handle, buf, len, rlen);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->read(entry->mount, handle, buf, len, rlen);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
-
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_write(vfs_handle_t handle, const void *buf, size_t sz)
 {
     if (!buf) return -EINVAL;
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -245,17 +294,24 @@ int vfs_write(vfs_handle_t handle, const void *buf, size_t sz)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->write)
-                return entry->mount->layer->ops->write(entry->mount, handle, buf, sz);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->write(entry->mount, handle, buf, sz);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
-
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg)
 {
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -263,17 +319,24 @@ int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->ioctl)
-                return entry->mount->layer->ops->ioctl(entry->mount, handle, req, arg);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->ioctl(entry->mount, handle, req, arg);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_seek(vfs_handle_t handle, size_t offset)
 {
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -281,18 +344,25 @@ int vfs_seek(vfs_handle_t handle, size_t offset)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->seek)
-                return entry->mount->layer->ops->seek(entry->mount, handle, offset);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->seek(entry->mount, handle, offset);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_tell(vfs_handle_t handle, size_t *offset)
 {
     if (!offset) return -EINVAL;
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -300,18 +370,25 @@ int vfs_tell(vfs_handle_t handle, size_t *offset)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->tell)
-                return entry->mount->layer->ops->tell(entry->mount, handle, offset);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->tell(entry->mount, handle, offset);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_size(vfs_handle_t handle, size_t *size)
 {
     if (!size) return -EINVAL;
+    int res;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
     struct list_head *pos;
     struct vfs_handle *entry;
 
@@ -319,18 +396,23 @@ int vfs_size(vfs_handle_t handle, size_t *size)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            res = -ENOSYS;
             if (entry->mount->layer->ops->size)
-                return entry->mount->layer->ops->size(entry->mount, handle, size);
-            return -ENOSYS;
+                res = entry->mount->layer->ops->size(entry->mount, handle, size);
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     return -EBADHNDL;
 }
 
 int vfs_readdir(const char *path, struct vfs_node *node)
 {
     if (!node || !path) return -EINVAL;
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
@@ -356,6 +438,7 @@ int vfs_readdir(const char *path, struct vfs_node *node)
         }
     }
 
+    spin_unlock_irqrestore(&vfs_lock, flags);
     if (!found_dir) return -ENOENT;
 
     node->off++;

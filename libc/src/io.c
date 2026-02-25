@@ -18,8 +18,13 @@ handle_t stdin = -1;
 
 int libc_io_init()
 {
+    int res = 0;
     /* For now, default to TTY0 (kernel console) */
-    return open(&stdout, "/dev/terminals/char_tty0", WRITE);
+    if ((res = open(&stdout, "/dev/terminals/char_tty0", WRITE)) != 0)
+        return res;
+    if ((res = open(&stdin, "/dev/terminals/char_tty0", READ)) != 0)
+        return res;
+    return 0;
 }
 
 struct str_ctx {

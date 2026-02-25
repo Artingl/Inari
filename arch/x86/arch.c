@@ -16,9 +16,34 @@ void _arch_disable_int(void)
     __asm__ volatile("cli");
 }
 
+int _arch_int_is_enabled(void)
+{
+    unsigned long flags;
+    __asm__ volatile("pushf\n\t"
+                 "pop %0"
+                 : "=g"(flags));
+    return flags & (1 << 9);
+}
+
 void _arch_enable_int(void)
 {
     __asm__ volatile("sti");
+}
+
+uint32_t x86_inl(uint16_t port)
+{
+    uint32_t data;
+    __asm__ volatile("inl %1, %0"
+                     : "=a"(data)
+                     : "Nd"(port));
+    return data;
+}
+
+void x86_outl(uint16_t port, uint32_t val)
+{
+    __asm__ volatile("outl %0, %1"
+                 :
+                 : "a"(val), "Nd"(port));
 }
 
 void x86_outb(uint16_t port, uint8_t val)

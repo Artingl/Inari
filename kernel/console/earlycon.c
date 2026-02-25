@@ -30,6 +30,7 @@ int earlycon_init()
         if (dev->probe && dev->probe() == 0)
         {
             device_in_use = dev;
+
             printk("earlycon: using device %s as earlycon", dev->name);
             return 0;
         }

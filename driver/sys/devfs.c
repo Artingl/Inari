@@ -284,11 +284,9 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
     return -ENOENT;
 }
 
-void devfs_cleanup();
-
 static int devfs_unmount(struct vfs_mount_point *mount)
 {
-    devfs_cleanup();
+    // devfs_cleanup();
     return 0;
 }
 
@@ -358,13 +356,13 @@ static struct vfs_layer devfs_layer = {
     .ops = &devfs_ops
 };
 
-int devfs_probe()
+static int devfs_probe()
 {
     is_mounted = 0;
     return vfs_add_layer(&devfs_layer);
 }
 
-int devfs_event_handler(event_t event)
+static int devfs_event_handler(event_t event)
 {
     uint8_t is_blk = 1;
     if (!is_mounted) return EVENT_HANDLED;
@@ -384,7 +382,7 @@ int devfs_event_handler(event_t event)
     return EVENT_HANDLED;
 }
 
-void devfs_cleanup()
+static void devfs_cleanup()
 {
     size_t i;
     struct list_head *group;
@@ -406,7 +404,7 @@ void devfs_cleanup()
             if (bdev)
                 printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
 #endif
-            list_del(&entry->list);
+            list_del(pos);
             kfree(entry);
         }
     }

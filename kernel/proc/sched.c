@@ -16,9 +16,9 @@
 #include <misc/list.h>
 #include <arch/sys.h>
 
-LIST_HEAD(sched_task_list);
+static LIST_HEAD(sched_task_list);
 
-static tid_t sched_last_id = 0xff;
+static tid_t sched_last_id = 0x01;
 static struct sched_core sched_cores[CONFIG_MAX_CORES];
 static struct thread *sched_idle_task;
 static int sched_initialized = 0;
@@ -108,11 +108,11 @@ static int sched_load(struct thread *task)
     return arch_sched_load(task);
 }
 
-static void sched_reschedule(struct sched_core *core)
+static void sched_update_tasks(struct sched_core *core)
 {
     tid_t current_tid = core->task ? core->task->tid : 0;
     struct list_head *pos, *n;
-    struct thread *entry, *new_task = (struct thread*)NULL;
+    struct thread *entry;
 
     /* Update tasks */
     size_t sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
@@ -122,17 +122,26 @@ static void sched_reschedule(struct sched_core *core)
 
         if (entry->state == SCHED_TASK_SLEEPING && entry->sleep_timeout <= sleep_timeout)
             entry->state = SCHED_TASK_ACTIVE;
-        else if (entry->state == SCHED_TASK_DEAD)
+        /* Note: When we'll have SMP, the deallocation below will break.
+                    Such thing can happen: core0 uses kern stack of below process,
+                    unlocks lock, core1 immediately gains lock and deallocates the stack
+                    while it is still in use */
+        else if (entry->state == SCHED_TASK_DEAD && core->task != entry)
         {
-            list_del(&entry->list);
-            if (core->task == entry)
-                core->task = (struct thread *)NULL;
+            list_del(pos);
             if (entry->kernel_stack_pointer && entry->vmem) vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
             if (entry->thread_stack_pointer && entry->vmem) vmm_free_pages(entry->vmem, entry->thread_stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
             sched_handle_death(entry);
             kfree((void*)entry);
         }
     }
+}
+
+static void sched_reschedule(struct sched_core *core)
+{
+    tid_t current_tid = core->task ? core->task->tid : 0;
+    struct list_head *pos;
+    struct thread *entry, *new_task = (struct thread*)NULL;
 
     if (core->task)
         sched_save(core->task);
@@ -184,8 +193,8 @@ int sched_init()
 
     sched_idle_task = kmalloc(sizeof(*sched_idle_task));
     if (!sched_idle_task) return -ENOMEM;
-    memset((void*)sched_idle_task, 0, sizeof(*sched_idle_task));
 
+    /* TODO: if ever SMP will be implemented, each core must have its own idle task */
     sched_idle_task->vmem = arch_get_kernel_pagedir();
     sched_idle_task->tid = sched_last_id++;
     sched_idle_task->entrypoint = &__sched_idle;
@@ -239,15 +248,13 @@ int sched_usleep(tid_t tid, size_t us)
 void sched_call()
 {
     uint32_t flags;
-    spin_lock_irqsave(&sched_lock, flags);
     uint32_t core_id = core_id();
     if (!sched_cores[core_id].active || !sched_initialized)
-    {
-        spin_unlock_irqrestore(&sched_lock, flags);
         return;
-    }
 
+    spin_lock_irqsave(&sched_lock, flags);
     int load_result = -1, tries = 0;
+    sched_update_tasks(&sched_cores[core_id]);
     do {
         sched_reschedule(&sched_cores[core_id]);
         if (sched_cores[core_id].task)
@@ -262,11 +269,9 @@ void sched_call()
 int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data)
 {
     uint32_t flags;
-    spin_lock_irqsave(&sched_lock, flags);
     struct thread *node = kmalloc(sizeof(*node));
-    if (!node) goto err;
+    if (!node) return -ENOMEM;
     if (!vmem) vmem = arch_get_kernel_pagedir();
-    memset((void*)node, 0, sizeof(*node));
     node->vmem = vmem;
     node->tid = sched_last_id++;
     node->entrypoint = entrypoint;
@@ -277,14 +282,12 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *v
     node->flags = 0;
     node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
     node->state = SCHED_TASK_SLEEPING;
+    spin_lock_irqsave(&sched_lock, flags);
     list_add_tail(&node->list, &sched_task_list);
+    spin_unlock_irqrestore(&sched_lock, flags);
     if (tid)
         *tid = node->tid;
-    spin_unlock_irqrestore(&sched_lock, flags);
     return 0;
-err:
-    spin_unlock_irqrestore(&sched_lock, flags);
-    return -ENOMEM;
 }
 
 int sched_get_thread(tid_t tid, struct thread **task)

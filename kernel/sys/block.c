@@ -16,7 +16,7 @@ static struct device_group group_entries[DRIVER_TOTAL];
 int blkdev_init()
 {
     memset(&group_entries[0], 0, sizeof(group_entries));
-    for (size_t i; i < DRIVER_TOTAL; i++)
+    for (size_t i = 0; i < DRIVER_TOTAL; i++)
         group_entries[i].type = DEV_GRP_BLOCK;
     return 0;
 }

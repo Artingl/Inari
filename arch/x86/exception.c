@@ -103,19 +103,38 @@ static const char *retrieve_symbol(uintptr_t base)
     return sym;
 }
 
-void _print_stacktrace(void *print_handler)
+void _print_stacktrace(void *r, void *print_handler)
 {
     uintptr_t i;
+    struct x86_regs32 *regs = (struct x86_regs32*)r;
     struct stackframe *stk;
     char *ksym_name;
 
     __asm__ volatile("movl %%ebp,%0" : "=r"(stk) ::);
     ((void(*)(const char*, ...))print_handler)("Stack trace:\n");
-    for (i = 0; stk && (uint32_t)stk >= 0xC0000000 && i < 32; i++)
+    for (i = 0; stk && (uint32_t)stk->ebp >= 0xC0000000 && i < 32; i++)
     {
-        ksym_name = retrieve_symbol(stk->eip);
-        ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
+        if (stk->eip >= 0xC0000000)
+        {
+            ksym_name = retrieve_symbol(stk->eip);
+            ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
+        }
         stk = stk->ebp;
+    }
+    ((void(*)(const char*, ...))print_handler)("---------------\n");
+    if (regs && regs->ebp >= 0xC0000000)
+    {
+        stk = (struct stackframe*)regs->ebp;
+        for (i = 0; stk && (uint32_t)stk->ebp >= 0xC0000000 && i < 32; i++)
+        {
+            if (stk->eip >= 0xC0000000)
+            {
+                ksym_name = retrieve_symbol(stk->eip);
+                ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
+            }
+            stk = stk->ebp;
+        }
+        ((void(*)(const char*, ...))print_handler)("---------------\n");
     }
 }
 
@@ -159,8 +178,20 @@ void x86_exception_handler(struct x86_regs32 *regs)
     struct thread *th;
     uint8_t is_critical = non_critical_exceptions[regs->int_no] != 1;
 
+#ifdef CONFIG_DEBUG
+    if (regs->int_no == 0xe)
+    {
+        uint32_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        printk("arch: Page Fault caused by accessing address: 0x%x", cr2);
+    }
+    printk("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
+    _print_stacktrace(regs, &helper_printf);
+#endif
+
     if (sched_current_thread(&tid) == 0 && sched_get_thread(tid, &th) == 0)
     {
+
         /* If not critical exception, try to call handler */
         if (!is_critical) {
             if (th->proc_data)
@@ -171,16 +202,6 @@ void x86_exception_handler(struct x86_regs32 *regs)
         /* If critical OR the handler above failed OR standalone thread (not process), kill process/thread */
         if (is_critical)
         {
-#ifdef CONFIG_DEBUG
-            if (regs->int_no == 0xe)
-            {
-                uint32_t cr2;
-                __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-                printk("arch: Page Fault caused by accessing address: 0x%x", cr2);
-            }
-            printk("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
-            _print_stacktrace(&helper_printf);
-#endif
             
             if (th->proc_data)
                 kill_process(th->proc_data->pid, -1);
@@ -189,8 +210,8 @@ void x86_exception_handler(struct x86_regs32 *regs)
         }
     }
     else {
-        /* Exception in kernel code */
-        panic("kernel exception %s", exceptionstr[regs->int_no]);
+        /* Early exception when scheduler wasn't running yet */
+        panic("kernel: early exception %s", exceptionstr[regs->int_no]);
     }
 
     /* Use interrupt dispatcher to reschedule */

@@ -11,15 +11,15 @@ static void splash_show()
 
 }
 
-int splash_probe()
+static int splash_probe()
 {
     return 0;
 }
 
-void splash_cleanup()
+static void splash_cleanup()
 {}
 
-int splash_event_handler(event_t event)
+static int splash_event_handler(event_t event)
 {
     if (video_subsystem_ready) return EVENT_HANDLED;
 

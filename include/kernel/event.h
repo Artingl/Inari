@@ -3,7 +3,7 @@
 
 #include <misc/types.h>
 
-#include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
 
 #define EVENT_HANDLED   0
 #define EVENT_ABORTED   1

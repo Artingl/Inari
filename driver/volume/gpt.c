@@ -95,7 +95,7 @@ static void handle_block_dev_load(dev_t dev)
     uint8_t *lba = (uint8_t*)kmalloc(bdev->group->block_size);
     size_t offset = 0, lba_offset = 0, i, partitions = 0;
 
-    if (!bdev) goto end;
+    if (!bdev || !((struct block_ops*)bdev->ops)->read_blocks) goto end;
 
     if (((struct block_ops*)bdev->ops)->read_blocks(bdev, 1, (void*)&lba[0], 1) != 0)
     {
@@ -167,7 +167,7 @@ end:
     kfree((void*)lba);
 }
 
-int gpt_probe()
+static int gpt_probe()
 {
     register_blkdev_group(GPT_DRIVER, 512, "gpt");
 
@@ -186,7 +186,7 @@ int gpt_probe()
     return 0;
 }
 
-int gpt_event_handler(event_t event)
+static int gpt_event_handler(event_t event)
 {
     switch (event.type)
     {

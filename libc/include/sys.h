@@ -68,7 +68,7 @@ void reboot(void);
 void poweroff(void);
 int rmmod(const char *name);
 int insmod(const char *name);
-int lsmod(int idx, char *name, uintptr_t *ptr);
+int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t state);
 int lsproc(int idx, char *name, pid_t *pid, double *usg);
 // int shmem_alloc(pid_t pid, uintptr_t *base, size_t size);  // allocate shared mem between current process and pid process
 // int shmem_free(uintptr_t *base, size_t size);

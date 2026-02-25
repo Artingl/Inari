@@ -8,4 +8,5 @@ unset GIO_MODULE_DIR
 #     -smp 4 \
 #     -drive file=build/boot.img,if=ide \
 #     -machine pc \
+#     -cpu 486 \
 #     -s -S

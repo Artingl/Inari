@@ -22,6 +22,14 @@
 #include <misc/string.h>
 #include <misc/format.h>
 
+#ifdef CONFIG_SUBSYS_PCI
+#include <kernel/sys/pci.h>
+#endif
+
+#ifdef CONFIG_SUBSYS_NET
+#include <kernel/sys/net.h>
+#endif
+
 bootinfo_t bootinfo;
 int init_task();
 int mount_root();
@@ -56,6 +64,15 @@ void kmain(void)
     register_chardev_group(KBD_DRIVER, "kbd");
     register_chardev_group(MOUSE_DRIVER, "mouse");
     register_chardev_group(VIDEO_DRIVER, "video");
+    register_chardev_group(NET_DRIVER, "net");
+
+#ifdef CONFIG_SUBSYS_PCI
+    assert(pci_init() == 0, "pci init failed.");
+#endif
+
+#ifdef CONFIG_SUBSYS_NET
+    assert(net_init() == 0, "net init failed.");
+#endif
 
     assert(console_init() == 0, "console init failed.");
     assert(init_task() == 0, "unable to launch init.");
@@ -71,7 +88,7 @@ int mount_root()
     
     char name_buff[ARG_MAX_LEN];
     char device[ARG_MAX_LEN];
-    parse_cmdline_argument("root", &device[0]);
+    int found_root = parse_cmdline_argument("root", &device[0]) == 0;
 
     /* Iterate through all block devices to find the required one */
     struct device *bdev;
@@ -85,17 +102,24 @@ int mount_root()
             if (bdev)
             {
                 sprintf(&name_buff[0], "%s%d", bdev->group->name, DEVID(bdev->dev));
-                if (strcmp(name_buff, device) == 0)
-                    goto found_dev;
+                
+                /* If specified root blkdev, use it */
+                if (found_root && strcmp(name_buff, device) == 0)
+                {
+                    printk("init: mounting %s as /", name_buff);
+                    return vfs_mount(bdev->dev, "/");
+                }
+                /* Otherwise use any firstly found and successfully mounted */
+                else if (!found_root && vfs_mount(bdev->dev, "/") == 0) {
+                    printk("init: mounted on %s as /", name_buff);
+                    return 0;
+                }
             }
         }
         offset += 128;
     }
 
     return -ENODEV;
-found_dev:
-    printk("init: mounting %s as /", name_buff);
-    return vfs_mount(bdev->dev, "/");
 }
 
 static void init_stub_thread()
@@ -110,7 +134,7 @@ static void init_stub_thread()
     char init_file[ARG_MAX_LEN];
     strcpy(&init_file[0], "/prog/init.exe");
     parse_cmdline_argument("init", &init_file[0]);
-    
+
     pid_t pid;
     int res;
     printk("init: running init at %s", init_file);
@@ -134,7 +158,7 @@ void kpower_off(uint8_t do_reboot)
     /* TODO: graceful shutdown */
 
     console_switch_early();
-    printk("kern: shutting down (do_reboot = %d)", do_reboot);
+    printk("kernel: shutting down (do_reboot = %d)", do_reboot);
     sched_stop();
     modules_cleanup();
 

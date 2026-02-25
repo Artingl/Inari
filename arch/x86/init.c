@@ -67,6 +67,7 @@ static void x86_entrypoint2(uint32_t magic, multiboot_info_t *multiboot)
 
     x86_gdt_init();
     earlycon_init();
+
     if (magic != MULTIBOOT_LKERNOADER_MAGIC)
         panic("init: invalid multiboot magic; 0x%x != 0x%x.", magic, MULTIBOOT_HEADER_MAGIC);
 

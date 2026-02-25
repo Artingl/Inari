@@ -14,10 +14,6 @@
 #define MKGROUP(driver, group) ((((uint16_t)driver) << 4) | ((uint8_t)group))
 #define ISGROUP(driver, group) (((driver) & 0xF) == group)
 
-#define DRVID(dev)         (((dev) >> 16) & 0xFFFF)
-#define DEVID(dev)         ((dev) & 0xFFFF)
-#define MKDEV(driver, dev) (((driver) << 16) | (dev))
-
 #define UNNAMED_DRIVER		MKGROUP(0, DRIVER_SYS_GROUP)
 #define RAMDISK_DRIVER		MKGROUP(1, DRIVER_DISKS_GROUP)
 #define ATA_DRIVER          MKGROUP(2, DRIVER_DISKS_GROUP)
@@ -28,10 +24,9 @@
 #define KBD_DRIVER	        MKGROUP(7, DRIVER_INPUT_GROUP)
 #define MOUSE_DRIVER	    MKGROUP(8, DRIVER_INPUT_GROUP)
 #define VIDEO_DRIVER	    MKGROUP(9, DRIVER_VIDEO_GROUP)
-#define VESA_DRIVER 	    MKGROUP(10, DRIVER_VIDEO_GROUP)
+#define NET_DRIVER  	    MKGROUP(10, DRIVER_NETWORK_GROUP)
+#define PCI_DRIVER  	    MKGROUP(11, DRIVER_SYS_GROUP)
 
 #define DRIVER_TOTAL         256
-
-typedef unsigned int dev_t;
 
 #endif
