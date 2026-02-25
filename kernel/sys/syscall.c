@@ -8,6 +8,7 @@
 #include <kernel/sys/syscall.h>
 #include <kernel/console/console.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/module.h>
 #include <kernel/mm/pmm.h>
 
 #include <arch/paging.h>
@@ -181,9 +182,21 @@ int syscall_handle(
     case SYSCALL_POWEROFF:
         kpower_off(0);
         break;
+    
+    case SYSCALL_RMMOD:
+        res = modules_rmmod((const char*)param0);
+        break;
 
-    case 100: // debug
-        printk("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
+    case SYSCALL_INSMOD:
+        res = modules_insmod((const char*)param0);
+        break;
+
+    case SYSCALL_LSMOD:
+        res = modules_ls((int)param0, (char*)param1, (uintptr_t*)param2);
+        break;
+    
+    case SYSCALL_LSPROC:
+        res = proc_ls((int)param0, (char*)param1, (pid_t*)param2, (double*)param3);
         break;
 
     default:

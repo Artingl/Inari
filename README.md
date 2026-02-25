@@ -1,4 +1,6 @@
 # Inari
+I guess this is my 5th or so attempt on trying to create a kernel/OS. Seems like a successful one so far.
+
 Simple OS with custom-made kernel and ring 3 userspace
 
 ## Building
@@ -12,11 +14,11 @@ To build rootfs you can use `./mkimg.sh`, this will bundle all binutils, kernel 
 You you can run the kernel via `qemu-system-i386 -serial stdio -hda build/boot.img` if constructing rootfs with `./mkimg.sh`.
 
 You can also specify bootargs, which kernel will parse (e.g. by specifying in `grub.cfg`). Here are supported params:
- - earlycon: The earlycon device to print the early logs. Supported values: pc_vga_text, pc8250.
+ - earlycon: The earlycon device to print the early logs. Supported values: vga_text, pc8250.
  - root: The block dev to mount as root. Can be any block device in format %s%d, where %s is name and %d is index.
  - init: Path to the init script which will run as PID 1.
 
-Example for bootargs: `earlycon=pc_vga_text root=mbr0 init=/prog/shell.exe`
+Example for bootargs: `earlycon=ga_text root=mbr0 init=/prog/shell.exe`
 
 ## Features
  * Multitasking and Scheduling.

@@ -28,6 +28,93 @@ static int event_handler(event_t event)
     return res;
 }
 
+void modules_cleanup()
+{
+    for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
+         dev < (module_metadata_t *)&__stop_modules;
+         dev++)
+    {
+        if (dev->module->is_loaded)
+        {
+            event_bus_broadcast((event_t){
+                .type = EVENT_MODULE_UNLOAD,
+                .as = { .custom = dev->name }
+            });
+            if (dev->module->cleanup)
+                dev->module->cleanup();
+            dev->module->is_loaded = 0;
+        }
+    }
+}
+
+int modules_insmod(const char *name)
+{
+    int ret = -1;
+    for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
+         dev < (module_metadata_t *)&__stop_modules;
+         dev++)
+    {
+        if (!dev->module->is_loaded && strcmp(dev->name, name) == 0)
+        {
+            if (dev->module->probe && (ret = dev->module->probe()) != 0)
+            {
+    #ifdef CONFIG_DEBUG
+                printk("%s: error %d", dev->name, ret);
+    #endif
+            }
+
+            event_bus_broadcast((event_t){
+                .type = EVENT_MODULE_LOAD,
+                .as = { .custom = dev->name }
+            });
+            dev->module->is_loaded = 1;
+            return ret;
+        }
+    }
+
+    return -1;
+}
+
+int modules_ls(int idx, char *name, uintptr_t *ptr)
+{
+    size_t i = 0;
+    for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
+         dev < (module_metadata_t *)&__stop_modules;
+         dev++)
+    {
+        if (dev->module->is_loaded && i++ >= idx)
+        {
+            if (ptr) *ptr = (uintptr_t)dev->module->probe;
+            if (name) memcpy((void*)name, (void*)dev->name, strlen(dev->name) + 1);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int modules_rmmod(const char *name)
+{
+    for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
+         dev < (module_metadata_t *)&__stop_modules;
+         dev++)
+    {
+        if (dev->module->is_loaded && strcmp(dev->name, name) == 0)
+        {
+            event_bus_broadcast((event_t){
+                .type = EVENT_MODULE_UNLOAD,
+                .as = { .custom = dev->name }
+            });
+            if (dev->module->cleanup)
+                dev->module->cleanup();
+            dev->module->is_loaded = 0;
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
 int modules_init()
 {
     int ret;

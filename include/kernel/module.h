@@ -24,6 +24,10 @@ typedef struct {
     }
 
 
+void modules_cleanup();
+int modules_ls(int idx, char *name, uintptr_t *ptr);
+int modules_insmod(const char *name);
+int modules_rmmod(const char *name);
 int modules_init();
 
 #endif

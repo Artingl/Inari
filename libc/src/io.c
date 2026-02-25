@@ -143,7 +143,7 @@ static inline int do_printf(const char *fmt, va_list args,
             }
 
             double rounding = 0.5;
-            double precision = 6;
+            double precision = width == 0 ? 6 : (double)width;
             for (unsigned i = 0; i < precision; i++) {
                 rounding /= 10.0;
             }

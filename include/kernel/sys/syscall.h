@@ -33,6 +33,10 @@
 #define SYSCALL_SIGRETURN       28
 #define SYSCALL_REBOOT          29
 #define SYSCALL_POWEROFF        30
+#define SYSCALL_RMMOD           31
+#define SYSCALL_INSMOD          32
+#define SYSCALL_LSMOD           33
+#define SYSCALL_LSPROC          34
 
 int syscall_handle(
     uint32_t id,

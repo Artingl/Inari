@@ -136,10 +136,7 @@ void kpower_off(uint8_t do_reboot)
     console_switch_early();
     printk("kern: shutting down (do_reboot = %d)", do_reboot);
     sched_stop();
-    event_bus_broadcast((event_t){
-        .type = EVENT_POWEROFF,
-        .as = { .custom = "kernel" }
-    });
+    modules_cleanup();
 
     if (do_reboot)
         reboot();

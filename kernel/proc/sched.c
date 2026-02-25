@@ -192,6 +192,7 @@ int sched_init()
     sched_idle_task->state = SCHED_TASK_ACTIVE;
     sched_idle_task->sig_saved_stack = NULL;
     sched_idle_task->flags = 0;
+    sched_idle_task->reschedules_count = 1;
     list_add_tail(&sched_idle_task->list, &sched_task_list);
 
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
@@ -272,6 +273,7 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *v
     node->cleanup_handler = cleanup_handler;
     node->proc_data = proc_data;
     node->sig_saved_stack = NULL;
+    node->reschedules_count = 0xff;    // start with larger value for correct cpu usage calculation for short-lived tasks
     node->flags = 0;
     node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
     node->state = SCHED_TASK_SLEEPING;

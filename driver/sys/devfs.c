@@ -389,25 +389,29 @@ void devfs_cleanup()
     size_t i;
     struct list_head *group;
     struct device *bdev;
-    struct list_head *pos;
+    struct list_head *pos, *n;
     struct devfs_group_item *entry;
 
     /* Deallocate all devs */
     for (i = 0; i < devfs_groups_count; i++)
     {
         group = devfs_groups_list[i];
-        list_for_each(pos, group)
+        list_for_each_safe(pos, n, group)
         {
             entry = list_entry(pos, struct devfs_group_item, list);
+            if (!entry) continue;
+
             bdev = block_get(entry->dev);
 #ifdef CONFIG_DEBUG
-            printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
+            if (bdev)
+                printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
 #endif
             list_del(&entry->list);
             kfree(entry);
         }
     }
 
+    vfs_remove_layer(&devfs_layer);
     is_mounted = 0;
 }
 
@@ -418,7 +422,7 @@ module_t devfs_module = {
 };
 
 module_register(
-    "devfs_module",
+    "devfs",
     devfs_module
 );
 

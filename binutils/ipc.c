@@ -29,6 +29,15 @@ int main(int argc, char *argv[])
     get_pid(&pid);
     printf("ipc: working! my pid is %llu\n", pid);
 
+    while (1)
+    {
+        // printf("testing!\n");
+        // addr[0] = 'a';
+        // printf("works!\n");
+        /* Avoid busy looping */
+        // usleep(1000000);
+    }
+
     /* Lets try to switch video mode */
     if (argc < 3)
     {
@@ -89,13 +98,4 @@ int main(int argc, char *argv[])
 
     free(buf);
     close(hndl);
-
-    // while (1)
-    // {
-    //     printf("testing!\n");
-    //     addr[0] = 'a';
-    //     printf("works!\n");
-    //     /* Avoid busy looping */
-    //     usleep(1000000);
-    // }
 }

@@ -130,7 +130,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
 void *memalloc(size_t npages, uint32_t flags)
 {
-    return (void*)syscall(23, (uint32_t)npages, (uint32_t)flags, 0, 0, 0);
+    return (int)syscall(23, (uint32_t)npages, (uint32_t)flags, 0, 0, 0);
 }
 
 void memfree(void *vbase, size_t npages)
@@ -140,7 +140,7 @@ void memfree(void *vbase, size_t npages)
 
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags)
 {
-    return (void*)syscall(21, (uint32_t)vbase, (uint32_t)pbase, (uint32_t)len, (uint32_t)flags, 0);
+    return (int)syscall(21, (uint32_t)vbase, (uint32_t)pbase, (uint32_t)len, (uint32_t)flags, 0);
 }
 
 void memunmap(void *vbase, size_t len)
@@ -150,17 +150,17 @@ void memunmap(void *vbase, size_t len)
 
 int ioctl(handle_t hndl, unsigned long req, void *arg)
 {
-    return (void*)syscall(25, (uint32_t)hndl, (uint32_t)req, (uint32_t)arg, 0, 0);
+    return (int)syscall(25, (uint32_t)hndl, (uint32_t)req, (uint32_t)arg, 0, 0);
 }
 
 int signal(pid_t pid, uint32_t signo)
 {
-    return (void*)syscall(26, (uint32_t)pid, (uint32_t)signo, 0, 0, 0);
+    return (int)syscall(26, (uint32_t)pid, (uint32_t)signo, 0, 0, 0);
 }
 
 int signal_handler(proc_signal_t handler, uint32_t signo)
 {
-    return (void*)syscall(27, (uint32_t)handler, (uint32_t)signo, 0, 0, 0);
+    return (int)syscall(27, (uint32_t)handler, (uint32_t)signo, 0, 0, 0);
 }
 
 void sigreturn()
@@ -176,4 +176,24 @@ void reboot(void)
 void poweroff(void)
 {
     syscall(30, 0, 0, 0, 0, 0);
+}
+
+int rmmod(const char *name)
+{
+    return (int)syscall(31, (uint32_t)name, 0, 0, 0, 0);
+}
+
+int insmod(const char *name)
+{
+    return (int)syscall(32, (uint32_t)name, 0, 0, 0, 0);
+}
+
+int lsmod(int idx, char *name, uintptr_t *ptr)
+{
+    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, 0, 0);
+}
+
+int lsproc(int idx, char *name, pid_t *pid, double *usg)
+{
+    return (int)syscall(34, (uint32_t)idx, (uint32_t)name, (uint32_t)pid, (uint32_t)usg, 0);
 }

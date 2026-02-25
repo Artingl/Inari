@@ -165,7 +165,7 @@ int vfs_remove_layer(struct vfs_layer *layer)
     if (!layer) return -EINVAL;
     list_del(&layer->list);
     /* TODO: Unmount nodes that use this layer */
-    printk("vfs: removed layer %s", layer->name);
+    printk("vfs: removed layer %s (TODO)", layer->name);
     return 0;
 }
 

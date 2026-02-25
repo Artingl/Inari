@@ -23,6 +23,26 @@ struct
     uint16_t key;
 } kbd_event;
 
+char shift_keys[] = {
+    [ '1' ] = '!',
+    [ '2' ] = '@',
+    [ '3' ] = '#',
+    [ '4' ] = '$',
+    [ '5' ] = '%',
+    [ '6' ] = '^',
+    [ '7' ] = '&',
+    [ '8' ] = '*',
+    [ '9' ] = '(',
+    [ '0' ] = ')',
+    [ '-' ] = '_',
+    [ '=' ] = '+',
+    [ ';' ] = ':',
+    [ '\\' ] = '|',
+    [ ',' ] = '<',
+    [ '.' ] = '>',
+    [ '/' ] = '?',
+};
+
 char** split_into_buffer(void *buffer, const char *input, int *argc, char **first_arg_out) {
     if (!buffer || !input || !argc) return NULL;
 
@@ -127,7 +147,7 @@ void exec_cmd()
     int res, i;
     char buff[256] = {0};
     char *exec_path = NULL;
-    int is_background = command[command_offset-1] == ';';
+    int is_background = command[command_offset-1] == '&';
     if (is_background) command[command_offset-1] = '\0';
     int argc = 0;
     char **argv = split_into_buffer((void*)&buff[0], command, &argc, &exec_path);
@@ -168,14 +188,6 @@ void exec_cmd()
         strcpy(current_dir, argv[0]);
         return;
     }
-    else if (strcmp(exec_path, "stats") == 0) {
-        syscall(100, 0, 0, 0, 0, 0);
-        return;
-    }
-    else if (strcmp(exec_path, "malloc") == 0) {
-        memalloc(100, 0);
-        return;
-    }
     else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
         return;
@@ -195,6 +207,7 @@ void exec_cmd()
 int main(int argc, char const *argv[])
 {
     pid_t pid;
+    int is_shift_pressed = 0;
     char *cat_argv[] = { "/sys/motd.txt", NULL };
     if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
@@ -216,7 +229,12 @@ int main(int argc, char const *argv[])
     {
         if (read(kb_hndl, (void*)&kbd_event, sizeof(kbd_event), NULL) >= 0)
         {
-            if (last_kb_event != kbd_event.event_id && kbd_event.released)
+            if (last_kb_event == kbd_event.event_id) continue;;
+
+            if (kbd_event.key == 0x106) // KEY_LSHIFT
+                is_shift_pressed = !kbd_event.released;
+
+            if (kbd_event.released)
             {
                 last_kb_event = kbd_event.event_id;
                 if (kbd_event.key == 0x101) // enter
@@ -253,7 +271,11 @@ int main(int argc, char const *argv[])
                     }
                 }
                 else if (kbd_event.key >= 0x20 && kbd_event.key <= 0x7E) { // is ascii
-                    command[command_offset++] = kbd_event.key;
+                    char key = kbd_event.key;
+                    if (is_shift_pressed && shift_keys[key] != 0)
+                        key = shift_keys[key];
+
+                    command[command_offset++] = key;
                     command[command_offset] = '\0';
 
                     printf("%c", command[command_offset-1]);

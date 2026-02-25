@@ -176,7 +176,7 @@ void x86_exception_handler(struct x86_regs32 *regs)
             {
                 uint32_t cr2;
                 __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-                printk("arch: Page Fault caused by accessing address: 0x%x\n", cr2);
+                printk("arch: Page Fault caused by accessing address: 0x%x", cr2);
             }
             printk("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
             _print_stacktrace(&helper_printf);

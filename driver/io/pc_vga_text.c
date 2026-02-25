@@ -164,10 +164,14 @@ int pc_vga_text_probe()
 
 void pc_vga_text_cleanup()
 {
+    uint8_t *base = (uint8_t*)VGA_BASE;
+    while ((uintptr_t)base < VGA_BASE+VGA_SIZE*2)
+        *base++ = 0;
+    pc_vga_text_is_initialized = 0;
 }
 
 earlycon_device(
-    "pc_vga_text",
+    "vga_text",
     pc_vga_text_probe,
     pc_vga_text_cleanup
 );
@@ -181,7 +185,7 @@ module_t pc_vga_text_module = {
 /* This would allow to register this device as normal console after early stage.
  * If it was already initialized, nothing should happen. */
 module_register(
-    "pc_vga_text",
+    "vga_text",
     pc_vga_text_module
 );
 

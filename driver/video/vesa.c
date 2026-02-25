@@ -336,6 +336,7 @@ static int vesa_ioctl(struct device *chardev, unsigned long req, void *arg)
     return -ENOSYS;
 }
 
+static dev_t vesa_chardev;
 struct char_ops ops = {
     .ioctl = &vesa_ioctl
 };
@@ -370,7 +371,7 @@ int vesa_probe()
     }
 
     register_chardev_group(VESA_DRIVER, "vesa");
-    register_chardev(VESA_DRIVER, &ops, NULL, NULL);
+    register_chardev(VESA_DRIVER, &ops, NULL, &vesa_chardev);
 
     vesa_switch_mode(x, y, bpp, 1);
     printk("vesa: initialized");
@@ -378,7 +379,58 @@ int vesa_probe()
 }
 
 void vesa_cleanup()
-{}
+{
+    printk("vesa: cleaning up");
+
+    struct x86_regs16 r;
+    struct vesa_mode_info *info = &lo_mode_info;
+    uint16_t *modes;
+    size_t i;
+
+    uint32_t flags;
+    spin_lock_irqsave(&vesa_lock, flags);
+    vesa_initialized = 0;
+    unregister_chardev(vesa_chardev);
+
+    /* Cleanup current mode */
+    if (current_mode_base)
+    {
+        arch_unmap_page(
+            arch_get_kernel_pagedir(),
+            (void*)current_mode_base,
+            vesa_block.total_memory * 0x10000
+        );
+
+        vmm_free_pages(
+            arch_get_kernel_pagedir(),
+            (void*)current_mode_base,
+            (vesa_block.total_memory * 0x10000) >> 12
+        );
+        current_mode_base = NULL;
+    }
+
+    /* Switch back to 80x25 mode */
+    modes = (uint16_t*)REAL_PTR(vesa_block.video_mode_ptr);
+    for (i = 0 ; modes[i] != 0xFFFF ; i++)
+    {
+        r.ax = VESA_GET_MODE_INFO;
+        r.cx = modes[i];
+        r.es = SEG(info);
+        r.di = OFF(info);
+        v86_bios(0x10, &r);
+        
+        if (r.ax != 0x4f) continue;
+
+        if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
+            r.ax = VESA_SET_MODE;
+            r.bx = modes[i];
+            v86_bios(0x10, &r);
+            break;
+        }
+    }
+
+    spin_unlock_irqrestore(&vesa_lock, flags);
+}
 
 module_t vesa_module = {
     .probe = vesa_probe,

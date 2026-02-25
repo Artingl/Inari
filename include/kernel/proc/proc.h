@@ -23,6 +23,8 @@ struct process
 {
     pid_t pid;
     int exit_code;
+
+    char path[CONFIG_VFS_NAME_MAX];
     
     uint32_t pending_signal;
     proc_signal_t signal_handler[32];
@@ -52,8 +54,9 @@ int execp(pid_t *pid, const char *path);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
 int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo);
 int proc_signal(pid_t pid, uint32_t signo);
+int proc_ls(int idx, char *name, pid_t *pid, double *usg);
 int kill_process(pid_t pid, int exit_code);
-int spawn_process(pid_t *pid, task_descriptor_t descriptor);
+int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor);
 int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint);
 int waitpid(pid_t pid, tid_t observer_tid);
 

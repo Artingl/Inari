@@ -208,7 +208,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     
     spin_unlock_irqrestore(&lock, flags);
 
-    spawn_process(pid, (task_descriptor_t){ 
+    spawn_process(pid, path, (task_descriptor_t){ 
         .entrypoint = entrypoint, 
         .vmem = vmem
     });
@@ -226,7 +226,7 @@ end:
     return res;
 }
 
-int spawn_process(pid_t *pid, task_descriptor_t descriptor)
+int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor)
 {
     uint32_t flags;
     struct process *proc;
@@ -240,6 +240,8 @@ int spawn_process(pid_t *pid, task_descriptor_t descriptor)
     proc->exit_code = 0;
     proc->descriptor = descriptor;
     proc->pending_signal = 0;
+    memcpy((void*)proc->path, (void*)path, strlen(path) + 1 >= CONFIG_VFS_NAME_MAX ? CONFIG_VFS_NAME_MAX : strlen(path) + 1);
+    proc->path[CONFIG_VFS_NAME_MAX-1] = 0;
     memset((void*)&proc->signal_handler[0], 0, sizeof(proc->signal_handler));
     memset((void*)&proc->threads[0], 0, sizeof(proc->threads));
     list_add(&proc->list, &processes);
@@ -282,6 +284,37 @@ int proc_signal(pid_t pid, uint32_t signo)
 end:
     // spin_unlock_irqrestore(&lock, flags);
     return res;
+}
+
+int proc_ls(int idx, char *name, pid_t *pid, double *usg)
+{
+    struct list_head *pos;
+    struct process *entry;
+    size_t i = 0;
+    struct thread *th;
+
+    list_for_each(pos, &processes) {
+        entry = list_entry(pos, struct process, list);
+        if (i++ >= idx)
+        {
+            if (name) memcpy((void*)name, (void*)entry->path, strlen(entry->path) + 1);
+            if (pid)  *pid = entry->pid;
+            if (usg)
+            {
+                *usg = 0;
+                /* Sum up all thread's usage */
+                for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
+                    if (entry->threads[i] != 0)
+                    {
+                        if ((th = __sched_get_thread(entry->threads[i])) != NULL)
+                            *usg += ((double)th->cpu_time / (double)th->reschedules_count);
+                    }
+            }
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 int kill_process(pid_t pid, int exit_code)
