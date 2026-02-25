@@ -8,6 +8,7 @@
 #define VMM_PAGE_AVAILABLE     (1 << 0)
 #define VMM_PAGE_RESERVED      (1 << 1)
 #define VMM_PAGE_USED          (1 << 2)
+#define VMM_PAGE_NO_PHYS       (1 << 3)
 
 struct vmm_pool_entry
 {
@@ -37,6 +38,7 @@ extern char kern_phys_end;
 #define VMM_IS_USERSPACE(start, end)    (&kern_phys_end + PAGE_SIZE < (start) && (end) < VIRTUAL_ADDR - PAGE_SIZE)
 
 int vmm_init(void);
+void *vmm_alloc_vmem_kern(size_t npages);
 void *vmm_alloc_user(pagedir_t *target_dir, size_t npages);
 void *vmm_alloc_kernel(size_t npages);
 void vmm_init_directory(pagedir_t *pagedir);

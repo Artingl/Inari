@@ -173,6 +173,14 @@ int syscall_handle(
     case SYSCALL_SIGRETURN:
         arch_sched_sigreturn(th);
         break;
+    
+    case SYSCALL_REBOOT:
+        kpower_off(1);
+        break;
+    
+    case SYSCALL_POWEROFF:
+        kpower_off(0);
+        break;
 
     case 100: // debug
         printk("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());

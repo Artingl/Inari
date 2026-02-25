@@ -15,6 +15,7 @@
 #include <kernel/sys/vfs.h>
 #include <kernel/event.h>
 #include <kernel/errno.h>
+#include <kernel/subsys/video.h>
 
 #include <arch/sys.h>
 #include <arch/paging.h>
@@ -54,6 +55,7 @@ void kmain(void)
     register_chardev_group(SERIAL_DRIVER, "serial");
     register_chardev_group(KBD_DRIVER, "kbd");
     register_chardev_group(MOUSE_DRIVER, "mouse");
+    register_chardev_group(VIDEO_DRIVER, "video");
 
     assert(console_init() == 0, "console init failed.");
     assert(init_task() == 0, "unable to launch init.");
@@ -99,6 +101,7 @@ found_dev:
 static void init_stub_thread()
 {
     /* Initialize the rest of the kernel and mount root */
+    assert(video_init() == 0, "unable to initialize video subsystem.");
     modules_init();
     assert(mount_root() == 0, "no root found.");
 
@@ -124,4 +127,22 @@ int init_task()
 bootinfo_t get_boot_info()
 {
     return bootinfo;
+}
+
+void kpower_off(uint8_t do_reboot)
+{
+    /* TODO: graceful shutdown */
+
+    console_switch_early();
+    printk("kern: shutting down (do_reboot = %d)", do_reboot);
+    sched_stop();
+    event_bus_broadcast((event_t){
+        .type = EVENT_POWEROFF,
+        .as = { .custom = "kernel" }
+    });
+
+    if (do_reboot)
+        reboot();
+    else
+        poweroff();
 }

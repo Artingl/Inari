@@ -144,3 +144,27 @@ void _arch_local_irq_restore(uint32_t flags)
         : "rm"(flags)
         : "memory", "cc");
 }
+
+void _arch_reboot()
+{
+    uint8_t good = 0x02;
+    while (good & 0x02)
+        good = x86_inb(0x64);
+    x86_outb(0x64, 0xFE);
+    halt();
+}
+
+void _arch_poweroff()
+{
+    /* If on VM, try to reboot using vm tools */
+    if ((x86_cpu_features_ecx() & CPU_FEATURE_ECX_VMX) == CPU_FEATURE_ECX_VMX)
+    {
+        x86_outw(0xB004, 0x2000);
+        x86_outw(0x4004, 0x3400);
+        x86_outw(0x600, 0x34);
+        x86_outw(0x604, 0x2000);
+    }
+
+    /* TODO: well, reboot for now */
+    _arch_reboot();
+}

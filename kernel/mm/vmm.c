@@ -67,6 +67,51 @@ int vmm_disable_region(pagedir_t *target_dir, struct reserved_memory region)
     return mark_region(get_pool_entry(target_dir), region.start, region.end, VMM_PAGE_USED);
 }
 
+void *vmm_alloc_vmem_kern(size_t npages)
+{
+    struct vmm_pool_entry *entry = get_pool_entry(arch_get_kernel_pagedir());
+    if (!entry)
+        return NULL;
+
+    struct vmm_page *page;
+    size_t block_vbase = 0, block_size = 0, i;
+    uintptr_t mem = VIRTUAL_ADDR;
+
+    if (npages == 0)
+        return NULL;
+
+    /* Find free page in the pool */
+    for (; mem < 0xFFFFFFFF; mem += PAGE_SIZE)
+    {
+        page = &entry->pages_pool[(mem - entry->pool_offset) >> 12];
+        if (!(page->flags & VMM_PAGE_AVAILABLE)) {
+            block_size = 0;
+            continue;
+        }
+
+        if (block_size == 0)
+            block_vbase = mem;
+
+        block_size++;
+        if (block_size >= npages)
+            break;
+    }
+
+    if (block_size < npages) {
+        panic("vmm: no available contiguous blocks were found (npages = %d).", npages);
+        return NULL;
+    }
+
+    /* Flag all blocks as used */
+    for (i = 0; i < block_size; i++) {
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_USED;
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_NO_PHYS;    // tell the deallocator later that this page is not physically allocated
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_AVAILABLE);
+    }
+
+    return (void*)block_vbase;
+}
+
 static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t from_mem, uintptr_t to_mem, uint32_t flags)
 {
     if (!entry || from_mem < entry->pool_offset) return (void*)NULL;
@@ -144,18 +189,24 @@ void *vmm_alloc_kernel(size_t npages)
 static int free_pagedir(struct vmm_pool_entry *entry, void *base, size_t npages)
 {
     size_t i;
+    uintptr_t addr;
     if (!base || !entry)
         return -1;
 
     for (i = 0; i < npages; i++)
     {
-        if (entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags & VMM_PAGE_USED)
+        addr = (((uintptr_t)base - entry->pool_offset) >> 12) + i;
+        if (entry->pages_pool[addr].flags & VMM_PAGE_USED)
         {
-            void *pbase = arch_virt_to_phys(entry->pagedir, base + i * PAGE_SIZE);
-            if (pbase != NULL)
-                pmm_free_pages(pbase, 1);
-            entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_USED);
-            entry->pages_pool[(((uintptr_t)base - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_AVAILABLE;
+            if (!(entry->pages_pool[addr].flags & VMM_PAGE_NO_PHYS))
+            {
+                void *pbase = arch_virt_to_phys(entry->pagedir, base + i * PAGE_SIZE);
+                if (pbase != NULL)
+                    pmm_free_pages(pbase, 1);
+            }
+            entry->pages_pool[addr].flags &= ~(VMM_PAGE_USED);
+            entry->pages_pool[addr].flags &= ~(VMM_PAGE_NO_PHYS);
+            entry->pages_pool[addr].flags |= VMM_PAGE_AVAILABLE;
         }
     }
 

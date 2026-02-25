@@ -24,6 +24,6 @@ typedef struct {
     }
 
 
-extern int modules_init();
+int modules_init();
 
 #endif

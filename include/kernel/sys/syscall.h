@@ -31,6 +31,8 @@
 #define SYSCALL_SIGNAL          26
 #define SYSCALL_INST_SIG        27  // install signal handler
 #define SYSCALL_SIGRETURN       28
+#define SYSCALL_REBOOT          29
+#define SYSCALL_POWEROFF        30
 
 int syscall_handle(
     uint32_t id,

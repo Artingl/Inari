@@ -19,6 +19,8 @@ typedef enum
     EVENT_MODULE_LOAD,
     EVENT_MODULE_UNLOAD,
 
+    EVENT_POWEROFF,
+
     EVENT_CUSTOM,
 } event_type_t;
 

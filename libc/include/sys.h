@@ -64,6 +64,8 @@ int ioctl(handle_t hndl, unsigned long req, void *arg);
 int signal(pid_t pid, uint32_t signo);
 int signal_handler(proc_signal_t handler, uint32_t signo);
 void sigreturn();
+void reboot(void);
+void poweroff(void);
 // int shmem_alloc(pid_t pid, uintptr_t *base, size_t size);  // allocate shared mem between current process and pid process
 // int shmem_free(uintptr_t *base, size_t size);
 

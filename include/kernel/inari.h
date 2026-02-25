@@ -38,6 +38,8 @@ void kearly_init();
 void kmain(void);
 bootinfo_t get_boot_info();
 
+void kpower_off(uint8_t do_reboot);
+
 #define ARG_MAX_LEN 64
 
 int parse_cmdline_argument(const char *key, char *result);

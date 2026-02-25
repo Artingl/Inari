@@ -19,3 +19,6 @@ $LD --entry=__start -no-pie -nostdlib -o ipc.exe -m i386pe ipc.o -L../libc -lc -
 
 $CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c signal.c -o signal.o -fleading-underscore
 $LD --entry=__start -no-pie -nostdlib -o signal.exe -m i386pe signal.o -L../libc -lc --image-base 0x020000000
+
+$CC $(cat $(pwd)/../cflags.txt) -I ../libc/include/ -c power.c -o power.o -fleading-underscore
+$LD --entry=__start -no-pie -nostdlib -o power.exe -m i386pe power.o -L../libc -lc --image-base 0x020000000

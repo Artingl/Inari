@@ -167,3 +167,13 @@ void sigreturn()
 {
     syscall(28, 0, 0, 0, 0, 0);
 }
+
+void reboot(void)
+{
+    syscall(29, 0, 0, 0, 0, 0);
+}
+
+void poweroff(void)
+{
+    syscall(30, 0, 0, 0, 0, 0);
+}

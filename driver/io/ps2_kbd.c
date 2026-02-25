@@ -4,7 +4,7 @@
 #include <kernel/inari.h>
 #include <kernel/timer.h>
 #include <kernel/console/console.h>
-#include <kernel/input/kbd.h>
+#include <kernel/subsys/kbd.h>
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
