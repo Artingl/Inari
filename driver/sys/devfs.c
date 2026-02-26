@@ -6,7 +6,7 @@
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 #include <kernel/mm/kmalloc.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 
 #include <misc/list.h>
 #include <misc/string.h>
@@ -81,7 +81,7 @@ static void handle_dev_load(uint8_t is_blk, dev_t dev)
     struct devfs_group_item *entry;
 
 #ifdef CONFIG_DEBUG
-    printk("devfs: new entry dev:%s_%s%d in group %s", (is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
+    kprintf("devfs: new entry dev:%s_%s%d in group %s", (is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
 #endif
 }
 
@@ -107,7 +107,7 @@ static void handle_dev_unload(dev_t dev)
                 group_name = chardev->group->name;
 
 #ifdef CONFIG_DEBUG
-            printk("devfs: removed entry dev:%s_%s%d in group %s", (entry->is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
+            kprintf("devfs: removed entry dev:%s_%s%d in group %s", (entry->is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
 #endif
             list_del(&entry->list);
             kfree(entry);
@@ -215,11 +215,15 @@ static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
         *rlen = len;
     if (bdev)
     {
+        if (!((struct block_ops*)bdev->ops)->read_blocks) return -ENOSYS;
         size_t block = len / bdev->group->block_size;
         return ((struct block_ops*)bdev->ops)->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
     }
     else
+    {
+        if (!((struct char_ops*)chardev->ops)->read) return -ENOSYS;
         return ((struct char_ops*)chardev->ops)->read(chardev, (uint8_t*)buf, len);
+    }
 
     return -ENODEV;
 }
@@ -235,9 +239,15 @@ static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const
     else chardev = char_get(item->dev);
 
     if (bdev)
+    {
+        if (!((struct block_ops*)bdev->ops)->write_blocks) return -ENOSYS;
         return ((struct block_ops*)bdev->ops)->write_blocks(bdev, sz, buf, 0);
+    }
     else
+    {
+        if (!((struct char_ops*)chardev->ops)->write) return -ENOSYS;
         return ((struct char_ops*)chardev->ops)->write(chardev, (const uint8_t*)buf, sz);
+    }
 
     return -ENODEV;
 }
@@ -333,9 +343,33 @@ static int devfs_ioctl(struct vfs_mount_point *mount, vfs_handle_t handle, unsig
     else chardev = char_get(item->dev);
 
     if (bdev)
+    {
+        if (!((struct block_ops*)bdev->ops)->ioctl) return -ENOSYS;
         return ((struct block_ops*)bdev->ops)->ioctl(bdev, req, arg);
+    }
     else
+    {
+        if (!((struct char_ops*)chardev->ops)->ioctl) return -ENOSYS;
         return ((struct char_ops*)chardev->ops)->ioctl(chardev, req, arg);
+    }
+
+    return -ENODEV;
+}
+
+static int devfs_flush(struct vfs_mount_point *mount, vfs_handle_t handle)
+{
+    if (!mount) return -EINVAL;
+    struct device *chardev = NULL;
+    struct devfs_group_item *item = get_item_by_handle(handle);
+    if (!item) return -ENOENT;
+    if (item->is_blk) return -ENOSYS;
+    else chardev = char_get(item->dev);
+
+    if (chardev)
+    {
+        if (!((struct char_ops*)chardev->ops)->flush) return -ENOSYS;
+        return ((struct char_ops*)chardev->ops)->flush(chardev);
+    }
 
     return -ENODEV;
 }
@@ -347,6 +381,7 @@ static struct vfs_layer_ops devfs_ops = {
     .open = &devfs_open,
     .close = &devfs_close,
     .ioctl = &devfs_ioctl,
+    .flush = &devfs_flush,
 };
 
 static struct vfs_layer devfs_layer = {
@@ -402,7 +437,7 @@ static void devfs_cleanup()
             bdev = block_get(entry->dev);
 #ifdef CONFIG_DEBUG
             if (bdev)
-                printk("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
+                kprintf("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev), devfs_groups[i]);
 #endif
             list_del(pos);
             kfree(entry);

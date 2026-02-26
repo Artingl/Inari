@@ -1,5 +1,5 @@
 #include <kernel/inari.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
 #include <kernel/proc/pe.h>

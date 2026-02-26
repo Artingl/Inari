@@ -3,6 +3,9 @@
 
 #include <misc/types.h>
 
+#include <kernel/sys/device.h>
+#include <kernel/sys/driver.h>
+
 struct net_ops
 {
     int (*tx)(struct net_device *bdev, void *packet, uint32_t length);
@@ -11,7 +14,7 @@ struct net_ops
 
 struct net_device
 {
-    char name[16];
+    char name[DEV_NAME_SIZE + 1];
     
     uint8_t mac_addr[6];
     uint16_t mtu;

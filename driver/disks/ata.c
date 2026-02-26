@@ -116,7 +116,7 @@ static int ata_identify(uint8_t drive_id)
     drive->model[s_start+1] = '\0';
     drive->present = 1;
 
-    printk("ata: drive %s on %u[%u] %dKB; dma=%u, lba48=%u",
+    kprintf("ata: drive %s on %u[%u] %dKB; dma=%u, lba48=%u",
         drive->model, drive->drive, drive->controller, drive->size / 2,
         drive->supports_dma,
         drive->supports_lba48);

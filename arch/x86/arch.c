@@ -122,17 +122,15 @@ uint32_t _arch_core_id(void)
     return ebx >> 24;
 }
 
-void _arch_idle(void)
+void _arch_cpu_relax(void)
 {
     while (1)
-    {
-        __asm__ volatile("sti");
-        __asm__ volatile("hlt");
-    }
+        __asm__ volatile("pause" ::: "memory");
 }
 
 void _arch_trigger_interrupt(uint32_t interrupt)
 {
+    _arch_enable_int();
     switch (interrupt)
     {
         case SWI_RESCHEDULE:

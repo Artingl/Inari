@@ -10,19 +10,19 @@ struct swi_handler_node
 {
     swi_handler_t handler;
     uint32_t swi;
-    void *dev_id;
+    void *driver_data;
 
     struct list_head list;
 };
 
 LIST_HEAD(swi_handlers_list);
 
-int swi_request(uint32_t swi, swi_handler_t handler, void *dev_id)
+int swi_request(uint32_t swi, swi_handler_t handler, void *driver_data)
 {
     struct swi_handler_node *node = kmalloc(sizeof(*node));
     if (!node) return -ENOMEM;
     node->swi = swi;
-    node->dev_id = dev_id;
+    node->driver_data = driver_data;
     node->handler = handler;
     list_add_tail(&node->list, &swi_handlers_list);
     return 0;
@@ -53,6 +53,6 @@ void swi_dispatch(struct interrupt_frame frame)
     list_for_each(pos, &swi_handlers_list) {
         entry = list_entry(pos, struct swi_handler_node, list);
         if (entry && entry->handler && entry->swi == frame.int_no)
-            entry->handler(entry->swi, entry->dev_id);
+            entry->handler(entry->swi, entry->driver_data);
     }
 }

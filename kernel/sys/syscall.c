@@ -1,5 +1,5 @@
 #include <kernel/inari.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/errno.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/proc.h>
@@ -9,6 +9,7 @@
 #include <kernel/console/console.h>
 #include <kernel/mm/vmm.h>
 #include <kernel/module.h>
+#include <kernel/uname.h>
 #include <kernel/mm/pmm.h>
 
 #include <arch/paging.h>
@@ -48,7 +49,7 @@ int syscall_handle(
         break;
     
     case SYSCALL_DEBUG:
-        printk("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
+        kprintf("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(), (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
         break;
 
     case SYSCALL_OPEN:
@@ -187,8 +188,7 @@ int syscall_handle(
         break;
     
     case SYSCALL_IOCTL:
-        if (!VMM_IS_PTR_USERSPACE(param2))
-            { res = -EINVAL; break; }
+        /* TODO: each ioctl handler must check the param2 */
         res = vfs_ioctl((vfs_handle_t)param0, (unsigned long)param1, (void*)param2);
         break;
     
@@ -243,6 +243,16 @@ int syscall_handle(
         if (!VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3))
             { res = -EINVAL; break; }
         res = proc_ls((int)param0, (char*)param1, (pid_t*)param2, (double*)param3);
+        break;
+    
+    case SYSCALL_FLUSH:
+        res = vfs_flush((vfs_handle_t)param0);
+        break;
+    
+    case SYSCALL_UNAME:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
+        res = uname((struct utsname*)param0);
         break;
     
     default:

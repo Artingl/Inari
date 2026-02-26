@@ -1,14 +1,14 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_PS2
+#ifdef CONFIG_SUBSYS_HID
 
 #include <kernel/inari.h>
 #include <kernel/timer.h>
 #include <kernel/console/console.h>
-#include <kernel/subsys/kbd.h>
-#include <kernel/sys/char.h>
+#include <kernel/subsys/hid.h>
 #include <kernel/sys/device.h>
-#include <kernel/sys/driver.h>
 #include <kernel/errno.h>
+#include <kernel/proc/sched.h>
 #include <kernel/module.h>
 #include <kernel/interrupts/irq.h>
 
@@ -16,8 +16,15 @@
 #include <arch/sys.h>
 #include <arch/x86/arch.h>
 
-#define PS2_KBD_IRQ   0x1
-#define PS2_MOUSE_IRQ 0x12
+#define PS2_KBD_IRQ   1
+#define PS2_MOUSE_IRQ 12
+
+#define PS2_TYPE_UNKNOWN      -1
+#define PS2_TYPE_MOUSE_STD     0
+#define PS2_TYPE_MOUSE_WHEEL   1
+#define PS2_TYPE_MOUSE_5BTN    2
+#define PS2_TYPE_KBD_STD       3
+#define PS2_TYPE_KBD_ANCIENT   4
 
 static int ps2_is_dual = 0;
 
@@ -25,8 +32,15 @@ static int ps2_devices_off = 0;
 static struct {
     uint8_t port;   // 0 - disabled; 1 - first; 2 - second
     uint8_t type;   // 1 - keyboard; 2 - mouse
+    uint8_t dev_type;
     dev_t dev;
-} ps2_devices[4] = {0};
+
+    uint8_t mouse_state_idx;
+    uint8_t mouse_state[3];
+
+    struct kbd_event kbd;
+    struct mouse_event mouse;
+} ps2_devices[2] = {0};
 
 uint16_t scancode_set1_map[128] = {
     [0x00] = KEY_NONE,
@@ -120,108 +134,333 @@ uint16_t scancode_set1_map[128] = {
     [0x58] = KEY_F12,
 };
 
-static struct kbd_event last_kbd_event = {0};
-
-static int ps2_kbd_irq(uint32_t irq, void *dev_id)
+static void ps2_wait_write()
 {
-    uint8_t in = x86_inb(0x60);
-    int released = in & 0x80;
-    uint8_t code = in & 0x7F;
-    uint16_t key = scancode_set1_map[code];
-    last_kbd_event.event_id++;
-    last_kbd_event.released = released;
-    last_kbd_event.code = code;
-    last_kbd_event.key = key;
-    // x86_outb(0x64, 0);
+    int timeout = 1000;
+    while ((x86_inb(0x64) & 2) && timeout-- > 0)
+    {
+        usleep(1000);
+    }
+}
+
+static int ps2_send_command(uint8_t port, uint8_t cmd)
+{
+    int retries = 3;
+    int timeout;
+    uint8_t response;
+
+    while (retries-- > 0)
+    {
+        if (port == 2)
+        {
+            ps2_wait_write();
+            x86_outb(0x64, 0xD4);
+        }
+        
+        ps2_wait_write();
+        x86_outb(0x60, cmd);
+
+        timeout = 100;
+        while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        {
+            usleep(1000);
+        }
+
+        if (timeout <= 0)
+        {
+            kprintf("ps2: cmd 0x%x: timeout!", cmd);
+            return -1;
+        }
+
+        response = x86_inb(0x60);
+        
+        if (response == 0xFA)
+        {
+            return 0;
+        }
+        else if (response == 0xFE)
+        {
+            continue; 
+        }
+        else
+        {
+            kprintf("ps2: cmd 0x%x: failed with unexpected byte 0x%x", cmd, response);
+            return -1;
+        }
+    }
+    return -1;
+}
+
+static int ps2_identify(uint8_t port)
+{
+    uint8_t b0 = 0xFF, b1 = 0xFF;
+    int timeout;
+
+    /* Disable Scanning */
+    if (ps2_send_command(port, 0xF5) != 0) {
+        return PS2_TYPE_UNKNOWN;
+    }
+
+    /* Identify Command */
+    if (ps2_send_command(port, 0xF2) != 0) {
+        return PS2_TYPE_UNKNOWN; 
+    }
+
+    /* Read first ID byte with timeout */
+    timeout = 100;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0) usleep(1000);
+    
+    if (timeout > 0) {
+        b0 = x86_inb(0x60);
+
+        /* Try to read a second ID byte with timeout */
+        timeout = 100;
+        while (!(x86_inb(0x64) & 1) && timeout-- > 0) usleep(1000);
+        
+        if (timeout > 0) {
+            b1 = x86_inb(0x60);
+        }
+    }
+
+    /* Enable Data Reporting */
+    ps2_send_command(port, 0xF4);
+
+    /* Determine Device Type */
+    if (b0 == 0x00) return PS2_TYPE_MOUSE_STD;
+    if (b0 == 0x03) return PS2_TYPE_MOUSE_WHEEL;
+    if (b0 == 0x04) return PS2_TYPE_MOUSE_5BTN;
+    if (b0 == 0xAB && (b1 == 0x83 || b1 == 0x41 || b1 == 0xC1))
+        return PS2_TYPE_KBD_STD;
+    
+    if (b0 == 0xFF) return PS2_TYPE_KBD_ANCIENT;
+
+    kprintf("ps2: unknown device id 0x%x 0x%x", b0, b1);
+    return PS2_TYPE_UNKNOWN;
+}
+
+static void ps2_handle_input()
+{
+    size_t i;
+    uint8_t in, status;
+    int8_t rel;
+
+    while ((status = x86_inb(0x64)) & 1)
+    {
+        in = x86_inb(0x60);
+
+        for (i = 0; i < ps2_devices_off; i++)
+        {
+            if (ps2_devices[i].port == 0) continue;
+
+            /* Check if mouse */
+            if (status & 0x20)
+            {
+                /* Type 2 == mouse */
+                if (ps2_devices[i].type != 2) continue;
+
+                switch (ps2_devices[i].mouse_state_idx++)
+                {
+                    case 0:
+                        ps2_devices[i].mouse_state[0] = in;
+
+                        /* Sync packets */
+                        if (!(ps2_devices[i].mouse_state[0] & 0x08))
+                        {
+                            ps2_devices[i].mouse_state_idx = 0;
+                            break;
+                        }
+
+                        ps2_devices[i].mouse.buttons[HID_MOUSE_BTN1] = in & 1;
+                        ps2_devices[i].mouse.buttons[HID_MOUSE_BTN2] = in & 2;
+                        ps2_devices[i].mouse.buttons[HID_MOUSE_BTN3] = in & 4;
+                        break;
+
+                    case 1: // X movement
+                        if (ps2_devices[i].mouse_state[0] & 0x80 || ps2_devices[i].mouse_state[0] & 0x40)   break;
+                        rel = in;
+                        if (ps2_devices[i].mouse_state[0] >> 4)
+                            rel -= 256;
+                        ps2_devices[i].mouse.rel_x = rel;
+                        break;
+
+                    case 2: // Y movement
+                        if (ps2_devices[i].mouse_state[0] & 0x80 || ps2_devices[i].mouse_state[0] & 0x40)   break;
+                        rel = in;
+                        if (ps2_devices[i].mouse_state[0] >> 5)
+                            rel -= 256;
+                        ps2_devices[i].mouse.rel_y = rel * -1;
+
+                        if (ps2_devices[i].dev_type == PS2_TYPE_MOUSE_STD)
+                        {
+                            ps2_devices[i].mouse_state_idx = 0; /* Otherwise, the mouse sends 4 packet bytes */
+                            ps2_devices[i].mouse.event_id++;
+                        }
+                        break;
+                    
+                    case 3:
+                        ps2_devices[i].mouse_state_idx = 0;
+                        ps2_devices[i].mouse.event_id++;
+                        break;
+                    
+                }
+                break;
+            }
+            /* Otherwise keyboard */
+            else
+            {
+                /* Type 1 == keyboard */
+                if (ps2_devices[i].type != 1) continue;
+
+                ps2_devices[i].kbd.event_id++;
+                ps2_devices[i].kbd.released = in & 0x80;
+                ps2_devices[i].kbd.code = in & 0x7F;
+                ps2_devices[i].kbd.key = scancode_set1_map[ps2_devices[i].kbd.code];
+                break;
+            }
+        }
+    }
+}
+
+static int ps2_irq1(uint32_t irq, void *driver_data)
+{
+    ps2_handle_input();
     return IRQ_HANDLED;
 }
 
-static int ps2_mouse_irq(uint32_t irq, void *dev_id)
+static int ps2_irq12(uint32_t irq, void *driver_data)
 {
-    uint8_t in = x86_inb(0x60);
-    // printk("0x%x", in);
+    ps2_handle_input();
     return IRQ_HANDLED;
 }
 
-static int kbd_read(struct device *chardev, uint8_t *buf, size_t sz)
+static int ps2_read_event(struct hid_device *device, void *event)
 {
-    if (sz > sizeof(struct kbd_event))
-        sz = sizeof(struct kbd_event);
+    int found_dev = 1, dev_id = 0;
+    struct kbd_event *kbd = event;
+    struct mouse_event *mouse = event;
+    if (!device || !event) return -EINVAL;
+    
+    /* Ensure we're not sending outdate information */
+    while (found_dev) {
+        found_dev = 0;
+        for (dev_id = 0; dev_id < ps2_devices_off; dev_id++)
+        {
+            if (ps2_devices[dev_id].port == 0) continue;
 
-    memcpy((void*)buf, (void*)&last_kbd_event, sz);
-    return sz;
+            /* Type 1 == keyboard; Type 2 == mouse */
+            if (device->type == HID_TYPE_KEYBOARD && ps2_devices[dev_id].type == 1)
+            {
+                found_dev = 1;
+                /* Check if we skip this event */
+                if (kbd->event_id == ps2_devices[dev_id].kbd.event_id)
+                {
+                    sched_yield();
+                    continue;
+                }
+
+                memcpy(event, (void*)&ps2_devices[dev_id].kbd, sizeof(struct kbd_event));
+                return 0;
+            }
+            if (device->type == HID_TYPE_MOUSE && ps2_devices[dev_id].type == 2)
+            {
+                found_dev = 1;
+                /* Check if we skip this event */
+                if (mouse->event_id == ps2_devices[dev_id].mouse.event_id)
+                {
+                    sched_yield();
+                    continue;
+                }
+
+                memcpy(event, (void*)&ps2_devices[dev_id].mouse, sizeof(struct mouse_event));
+                return 0;
+            }
+        }
+    }
+
+    return -ENODEV;
 }
 
-static struct char_ops ps2_kbd_ops = {
-    .read = &kbd_read,
+struct hid_ops ps2_hid_ops =
+{
+    .read_event = &ps2_read_event
 };
 
 static int ps2_kbd_init(uint8_t port)
 {
     int res;
-    uint8_t in, b0, b1;
+    int type, timeout;
+    dev_t dev;
+    if (ps2_devices_off >= 2) return -ENODEV;
+
+    /* Identify keyboard */
+    type = ps2_identify(port);
+    if (type != PS2_TYPE_KBD_STD && type != PS2_TYPE_KBD_ANCIENT)
+        return -ENODEV;
 
     /* Check that we have PS/2 keyboard */
     if (port == 2) x86_outb(0x64, 0xD4);
     x86_outb(0x60, 0xEE);
-    while ((in = x86_inb(0x60)) == 0xFE)
-        usleep(0x1000);
-    if (in != 0xEE) return -ENODEV;
+    timeout = 100;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        usleep(1000);
+    if (timeout <= 0 || x86_inb(0x60) != 0xEE) return -ENODEV;
 
-    /* Identify keyboard */
-    if (port == 2) x86_outb(0x64, 0xD4);
-    x86_outb(0x60, 0xF5);
-    while ((in = x86_inb(0x60)) == 0xFE) {
-        usleep(0x1000);
-        x86_outb(0x60, 0xF5);
-    }
-    if (port == 2) x86_outb(0x64, 0xD4);
-    x86_outb(0x60, 0xF2);
-    while ((in = x86_inb(0x60)) == 0xFE) {
-        usleep(0x1000);
-    if (port == 2) x86_outb(0x64, 0xD4);
-        x86_outb(0x60, 0xF2);
-    }
-    b0 = x86_inb(0x60);
-    usleep(0x1000);
-    b1 = x86_inb(0x60);
-    usleep(0x1000);
-    if (port == 2) x86_outb(0x64, 0xD4);
-    x86_outb(0x60, 0xF4);
-    while ((in = x86_inb(0x60)) == 0xFE) {
-        usleep(0x1000);
-        if (port == 2) x86_outb(0x64, 0xD4);
-        x86_outb(0x60, 0xF4);
-    }
+    if (hid_add_device(&dev, HID_TYPE_KEYBOARD, "PS/2 Keyboard", &ps2_hid_ops) != 0)
+        return -ENOSYS;
 
-    if ((res = register_chardev(KBD_DRIVER, &ps2_kbd_ops, NULL, &last_kbd_event.dev)) != 0)
-        return res;
-
-    printk("ps2: initalized keyboard on port %d", port);
-    last_kbd_event.event_id = 0;
+    ps2_devices[ps2_devices_off].dev = dev;
     ps2_devices[ps2_devices_off].port = port;
-    ps2_devices[ps2_devices_off].type = 1;
-    ps2_devices[ps2_devices_off++].dev = last_kbd_event.dev;
-
+    ps2_devices[ps2_devices_off].dev_type = type;
+    ps2_devices[ps2_devices_off++].type = 1;
+    kprintf("ps2: initalized keyboard on port %d; type %d", port, type);
     return 0;
 }
 
 static int ps2_mouse_init(uint8_t port)
 {
-    uint8_t in;
+    int type, timeout;
+    dev_t dev;
+    if (ps2_devices_off >= 2) return -ENODEV;
 
-    /* Check that we have PS/2 keyboard */
+    /* Check that we have PS/2 mouse */
     if (port == 2) x86_outb(0x64, 0xD4);
     x86_outb(0x60, 0xFF);
-    while ((in = x86_inb(0x60)) == 0xFE)
-        usleep(0x1000);
-    if (in != 0xFA) return -ENODEV;
+    timeout = 100;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        usleep(1000);
+    if (timeout <= 0 || x86_inb(0x60) != 0xFA) return -ENODEV;
+    timeout = 1000;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        usleep(1000);
+    if (timeout <= 0 || x86_inb(0x60) != 0xAA) return -ENODEV;
+    timeout = 100;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        usleep(1000);
+    if (timeout <= 0) return -ENODEV;
+    x86_inb(0x60);
 
+    /* Identify mouse */
+    type = ps2_identify(port);
+    if (type != PS2_TYPE_MOUSE_STD && type != PS2_TYPE_MOUSE_WHEEL && type != PS2_TYPE_MOUSE_5BTN)
+        return -ENODEV;
+
+    /* Set sample rate */
+    ps2_send_command(200, 0xf3);
+
+    if (port == 2) x86_outb(0x64, 0xD4);
+    x86_outb(0x60, 0xF4);
+    timeout = 100;
+    while (!(x86_inb(0x64) & 1) && timeout-- > 0)
+        usleep(1000);
+    if (timeout <= 0 || x86_inb(0x60) != 0xFA) return -ENODEV;
+    if (hid_add_device(&dev, HID_TYPE_MOUSE, "PS/2 Mouse", &ps2_hid_ops) != 0)
+        return -ENOSYS;
+
+    ps2_devices[ps2_devices_off].dev = dev;
     ps2_devices[ps2_devices_off].port = port;
+    ps2_devices[ps2_devices_off].dev_type = type;
     ps2_devices[ps2_devices_off++].type = 2;
-    // ps2_devices[ps2_devices_off].dev = ;
-
-    printk("ps2: initalized mouse on port %d", port);
+    kprintf("ps2: initalized mouse on port %d; type %d", port, type);
     return 0;
 }
 
@@ -240,28 +479,28 @@ static int ps2_init()
 
     /* Set the controller configuration byte */  
     x86_outb(0x64, 0x20);
-    while (!(x86_inb(0x64) & (1 << 0)))
+    while (!(x86_inb(0x64) & 1))
         usleep(0x1000);
     in = x86_inb(0x60);
     x86_outb(0x64, 0x60);
     /* Disabling IRQs for port 1; Enabling clock signal */
-    x86_outb(0x60, in & ~((1 << 0) | (1 << 4)));
+    x86_outb(0x60, in & ~(1 | (1 << 4)));
 
     /* Perform Controller Self Test */
     x86_outb(0x64, 0xAA);
-    while (!(x86_inb(0x64) & (1 << 0)))
+    while (!(x86_inb(0x64) & 1))
         usleep(0x1000);
     in = x86_inb(0x60);
     if (in != 0x55)
     {
-        printk("ps2: self-test failed.");
+        kprintf("ps2: self-test failed.");
         return -ENODEV;
     }
     
     /* Determine if there are 2 channels */
     x86_outb(0x64, 0xA8);
         x86_outb(0x64, 0x20);
-    while (!(x86_inb(0x64) & (1 << 0)))
+    while (!(x86_inb(0x64) & 1))
         usleep(0x1000);
     in = x86_inb(0x60);
     if (ps2_is_dual = !(in & (1 << 5)))
@@ -270,7 +509,7 @@ static int ps2_init()
         x86_outb(0x64, 0xA7);
 
         x86_outb(0x64, 0x20);
-        while (!(x86_inb(0x64) & (1 << 0)))
+        while (!(x86_inb(0x64) & 1))
             usleep(0x1000);
         in = x86_inb(0x60);
         x86_outb(0x64, 0x60);
@@ -280,7 +519,7 @@ static int ps2_init()
     
     /* Perform interface tests */
     x86_outb(0x64, 0xAB);
-    while (!(x86_inb(0x64) & (1 << 0)))
+    while (!(x86_inb(0x64) & 1))
         usleep(0x1000);
     in = x86_inb(0x60);
     if (in != 0)    return -ENODEV;
@@ -288,7 +527,7 @@ static int ps2_init()
     if (ps2_is_dual)
     {
         x86_outb(0x64, 0xA9);
-        while (!(x86_inb(0x64) & (1 << 0)))
+        while (!(x86_inb(0x64) & 1))
             usleep(0x1000);
         in = x86_inb(0x60);
         if (in != 0)    return -ENODEV;
@@ -296,64 +535,33 @@ static int ps2_init()
 
     /* Finally, enable ports */
     x86_outb(0x64, 0xAE);
-    if (ps2_is_dual)    x86_outb(0x64, 0xA8);
+    if (ps2_is_dual) x86_outb(0x64, 0xA8);
 
-    /* Enable IRQs back */
-    x86_outb(0x64, 0x20);
-    while (!(x86_inb(0x64) & (1 << 0)))
-        usleep(0x1000);
-    in = x86_inb(0x60);
-    x86_outb(0x64, 0x60);
-    x86_outb(0x60, in | (1 << 0) | (ps2_is_dual ? (1 << 1) : 0));
+    /* Initialize devices */
+    if (ps2_kbd_init(1) != 0)
+        ps2_mouse_init(1);
 
-    /* Reset devices */
-
-    /* First PS/2 port */
-    timeout = 128;
-    x86_outb(0x64, 0xD2);
-    while (x86_inb(0x64) & (1 << 1) && timeout-- > 0)
-        usleep(0x1000);
-    if (timeout > 0)
-    {
-        x86_outb(0x60, 0xFF);
-        while (!(x86_inb(0x64) & (1 << 0)))
-            usleep(0x1000);
-        in = x86_inb(0x60);
-        if (in != 0xFC)
-        {
-            /* Initialized PS/2 first port; probe devices */
-            ps2_kbd_init(1);
-            ps2_mouse_init(1);
-        }
-    }
-
-    /* Second PS/2 port */
     if (ps2_is_dual)
     {
-        timeout = 128;
-        x86_outb(0x64, 0xD4);
-        while (x86_inb(0x64) & (1 << 1) && timeout-- > 0)
-            usleep(0x1000);
-        if (timeout > 0)
-        {
-            x86_outb(0x64, 0xD4);
-            x86_outb(0x60, 0xFF);
-            while (!(x86_inb(0x64) & (1 << 0)))
-                usleep(0x1000);
-            in = x86_inb(0x60);
-            if (in != 0xFC)
-            {
-                /* Initialized PS/2 second port; probe devices */
-                ps2_kbd_init(2);
-                ps2_mouse_init(2);
-            }
-        }
+        if (ps2_kbd_init(2) != 0)
+            ps2_mouse_init(2);
     }
 
     /* Flush */
-    while (x86_inb(0x64) & (1 << 0)) {
+    while (x86_inb(0x64) & 1) {
         x86_inb(0x60);
     }
+
+    /* Enable IRQs back */
+    x86_outb(0x64, 0x20);
+    while (!(x86_inb(0x64) & 1))
+        usleep(0x1000);
+    in = x86_inb(0x60);
+    
+    ps2_wait_write();
+    x86_outb(0x64, 0x60);
+    ps2_wait_write();
+    x86_outb(0x60, in | 1 | (ps2_is_dual ? (1 << 1) : 0));
 
     return 0;
 }
@@ -364,23 +572,24 @@ static int ps2_probe()
     if ((res = ps2_init()) != 0)
         return res;
 
-    printk("ps2: %d devices; is_dual = %d", ps2_devices_off, ps2_is_dual);
-    irq_request(PS2_KBD_IRQ, &ps2_kbd_irq, NULL);
-    irq_request(PS2_MOUSE_IRQ, &ps2_mouse_irq, NULL);
+    kprintf("ps2: %d devices; is_dual = %d", ps2_devices_off, ps2_is_dual);
+    irq_request(PS2_KBD_IRQ, &ps2_irq1, NULL);
+    irq_request(PS2_MOUSE_IRQ, &ps2_irq12, NULL);
     return 0;
 }
 
 static void ps2_cleanup()
 {
-    while (ps2_devices_off--)
+    size_t i;
+    for (i = 0; i < ps2_devices_off; i++)
     {
-        if (!ps2_devices[ps2_devices_off].port) continue;
-        unregister_chardev(ps2_devices[ps2_devices_off].dev);
-        ps2_devices[ps2_devices_off].port = 0;
+        if (ps2_devices[i].port == 0) continue;
+        hid_remove_device(ps2_devices[i].dev);
+        ps2_devices[i].port = 0;
     }
 
-    irq_free(PS2_KBD_IRQ, &ps2_kbd_irq);
-    irq_free(PS2_MOUSE_IRQ, &ps2_mouse_irq);
+    irq_free(PS2_KBD_IRQ, &ps2_irq1);
+    irq_free(PS2_MOUSE_IRQ, &ps2_irq12);
     ps2_devices_off = 0;
 }
 
@@ -394,5 +603,6 @@ module_register(
     ps2_module
 );
 
+#endif
 #endif
 #endif

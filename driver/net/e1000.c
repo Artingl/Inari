@@ -36,7 +36,7 @@ static int e1000_probe()
     fetch_devid(E1000_82577LM);
 
     if (total_devices > 0)
-        printk("e1000: initialized %d card(s).", total_devices);
+        kprintf("e1000: initialized %d card(s).", total_devices);
     return total_devices == 0 ? -ENODEV : 0;
 }
 

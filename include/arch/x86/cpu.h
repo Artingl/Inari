@@ -169,7 +169,7 @@ static inline void x86_cpu_install_idt(uint32_t core_id, uintptr_t base, uint8_t
     extern struct x86_cpu x86_cpus_pool[];
     if (core_id >= CONFIG_MAX_CORES || !x86_cpus_pool[core_id].is_available)
     {
-        printk("arch: invalid IDT core_id");
+        kprintf("arch: invalid IDT core_id");
         return;
     }
 

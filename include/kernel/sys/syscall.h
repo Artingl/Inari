@@ -37,6 +37,8 @@
 #define SYSCALL_INSMOD          32
 #define SYSCALL_LSMOD           33
 #define SYSCALL_LSPROC          34
+#define SYSCALL_FLUSH           35
+#define SYSCALL_UNAME           36
 
 int syscall_handle(
     uint32_t id,

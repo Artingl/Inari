@@ -119,10 +119,10 @@ int vfs_mount(dev_t dev, const char* path)
             mount->layer = entry;
             list_add(&mount->list, &vfs_mount_points);
             if (bdev)
-                printk("vfs: mounted %s; fs %s on dev:blk_%s%d",
+                kprintf("vfs: mounted %s; fs %s on dev:blk_%s%d",
                     mount->mount_point, mount->fs_name, bdev->group->name, DEVID(dev));
             else
-                printk("vfs: mounted %s; fs %s",
+                kprintf("vfs: mounted %s; fs %s",
                     mount->mount_point, mount->fs_name);
             
             spin_unlock_irqrestore(&vfs_lock, flags);
@@ -151,8 +151,8 @@ int vfs_unmount(const char* path)
             bdev = block_get(entry->bdev);
 
             entry->layer->unmount(entry);
-            if (bdev) printk("vfs: unmounted %s on dev:blk_%s%d",entry->fs_name, bdev->group->name, DEVID(bdev->dev));
-            else printk("vfs: unmounted %s on dev:blk_invalid", entry->fs_name);
+            if (bdev) kprintf("vfs: unmounted %s on dev:blk_%s%d",entry->fs_name, bdev->group->name, DEVID(bdev->dev));
+            else kprintf("vfs: unmounted %s on dev:blk_invalid", entry->fs_name);
             list_del(pos);
             kfree(entry);
             
@@ -173,7 +173,7 @@ int vfs_add_layer(struct vfs_layer *layer)
     
     INIT_LIST_HEAD(&layer->list);
     list_add(&layer->list, &vfs_layers);
-    printk("vfs: added new layer %s", layer->name);
+    kprintf("vfs: added new layer %s", layer->name);
     
     spin_unlock_irqrestore(&vfs_lock, flags);
     return 0;
@@ -187,7 +187,7 @@ int vfs_remove_layer(struct vfs_layer *layer)
     
     list_del(&layer->list);
     /* TODO: Unmount nodes that use this layer */
-    printk("vfs: removed layer %s (TODO)", layer->name);
+    kprintf("vfs: removed layer %s (TODO)", layer->name);
     
     spin_unlock_irqrestore(&vfs_lock, flags);
     return 0;
@@ -245,6 +245,30 @@ int vfs_close(vfs_handle_t handle)
             list_del(pos);
             kfree(entry);
             
+            spin_unlock_irqrestore(&vfs_lock, flags);
+            return res;
+        }
+    }
+    
+    spin_unlock_irqrestore(&vfs_lock, flags);
+    return -EBADHNDL;
+}
+
+int vfs_flush(vfs_handle_t handle)
+{
+    uint32_t flags;
+    spin_lock_irqsave(&vfs_lock, flags);
+    
+    struct list_head *pos;
+    struct vfs_handle *entry;
+    int res = 0;
+   
+    list_for_each(pos, &vfs_handles) {
+        entry = list_entry(pos, struct vfs_handle, list);
+        if (entry->id == handle)
+        {
+            if (entry->mount->layer->ops->flush)
+                res = entry->mount->layer->ops->flush(entry->mount, handle);
             spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }

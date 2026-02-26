@@ -15,7 +15,6 @@
 #include <kernel/sys/vfs.h>
 #include <kernel/event.h>
 #include <kernel/errno.h>
-#include <kernel/subsys/video.h>
 
 #include <arch/sys.h>
 #include <arch/paging.h>
@@ -23,11 +22,19 @@
 #include <misc/format.h>
 
 #ifdef CONFIG_SUBSYS_PCI
-#include <kernel/sys/pci.h>
+  #include <kernel/sys/pci.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_NET
-#include <kernel/sys/net.h>
+  #include <kernel/sys/net.h>
+#endif
+
+#ifdef CONFIG_SUBSYS_HID
+  #include <kernel/subsys/hid.h>
+#endif
+
+#ifdef CONFIG_SUBSYS_VIDEO
+  #include <kernel/subsys/video.h>
 #endif
 
 bootinfo_t bootinfo;
@@ -39,14 +46,14 @@ int mount_root();
 void kearly_init()
 {
     /* Initialize the early console for atleast some output */
-    printk("Inari kernel cmdline: %s", bootinfo.cmdline);
+    kprintf("Inari kernel cmdline: %s", bootinfo.cmdline);
 
     assert(pmm_init() == 0, "pmm init failed.");
     assert(vmm_init() == 0, "vmm init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
 
 
-    printk("kearly_init: done");
+    kprintf("kearly_init: done");
 }
 
 void kmain(void)
@@ -61,10 +68,6 @@ void kmain(void)
     /* Initialize standard driver groups */
     register_chardev_group(TTY_DRIVER, "tty");
     register_chardev_group(SERIAL_DRIVER, "serial");
-    register_chardev_group(KBD_DRIVER, "kbd");
-    register_chardev_group(MOUSE_DRIVER, "mouse");
-    register_chardev_group(VIDEO_DRIVER, "video");
-    register_chardev_group(NET_DRIVER, "net");
 
 #ifdef CONFIG_SUBSYS_PCI
     assert(pci_init() == 0, "pci init failed.");
@@ -72,6 +75,14 @@ void kmain(void)
 
 #ifdef CONFIG_SUBSYS_NET
     assert(net_init() == 0, "net init failed.");
+#endif
+
+#ifdef CONFIG_SUBSYS_HID
+    assert(hid_init() == 0, "hid subsys init failed.");
+#endif
+
+#ifdef CONFIG_SUBSYS_VIDEO
+    assert(video_init() == 0, "video subsys init failed.");
 #endif
 
     assert(console_init() == 0, "console init failed.");
@@ -106,12 +117,12 @@ int mount_root()
                 /* If specified root blkdev, use it */
                 if (found_root && strcmp(name_buff, device) == 0)
                 {
-                    printk("init: mounting %s as /", name_buff);
+                    kprintf("init: mounting %s as /", name_buff);
                     return vfs_mount(bdev->dev, "/");
                 }
                 /* Otherwise use any firstly found and successfully mounted */
                 else if (!found_root && vfs_mount(bdev->dev, "/") == 0) {
-                    printk("init: mounted on %s as /", name_buff);
+                    kprintf("init: mounted on %s as /", name_buff);
                     return 0;
                 }
             }
@@ -125,7 +136,6 @@ int mount_root()
 static void init_stub_thread()
 {
     /* Initialize the rest of the kernel and mount root */
-    assert(video_init() == 0, "unable to initialize video subsystem.");
     modules_init();
     assert(mount_root() == 0, "no root found.");
 
@@ -137,7 +147,7 @@ static void init_stub_thread()
 
     pid_t pid;
     int res;
-    printk("init: running init at %s", init_file);
+    kprintf("init: running init at %s", init_file);
     disable_int();
     if ((res = execp(&pid, init_file)) != 0)
         panic("init: unable to launch init process: %s.", errstr[-res]);
@@ -160,7 +170,7 @@ void kpower_off(uint8_t do_reboot)
     /* TODO: graceful shutdown */
 
     console_switch_early();
-    printk("kernel: shutting down (do_reboot = %d)", do_reboot);
+    kprintf("kernel: shutting down (do_reboot = %d)", do_reboot);
     sched_stop();
     modules_cleanup();
 

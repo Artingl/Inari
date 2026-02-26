@@ -42,7 +42,7 @@ static inline int printnum(void (*fn)(char, void *), void *ud,
     return emit_string(fn, ud, p);
 }
 
-static inline int do_printkn(const char *fmt, va_list args,
+static inline int do_kprintfn(const char *fmt, va_list args,
                              void (*fn)(char, void *), void *ud) {
     int count = 0;
 

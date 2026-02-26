@@ -37,6 +37,16 @@ struct fs_node {
     uint32_t off;         // Node offset in the directory
 } __attribute__((packed));
 
+struct utsname {
+    char sysname[16];    /* Operating system name */
+    char nodename[16];   /* Name within communications network
+                            to which the node is attached, if any */
+    char release[16];    /* Operating system release
+                            (e.g., "2.6.28") */
+    char version[16];    /* Operating system version */
+    char machine[16];    /* Hardware type identifier */
+}__attribute__((packed));
+
 int exit(int code);
 int usleep(size_t t);
 int open(handle_t *hndl, const char *path, int flags);
@@ -68,8 +78,10 @@ void reboot(void);
 void poweroff(void);
 int rmmod(const char *name);
 int insmod(const char *name);
-int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t state);
+int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t *flags);
 int lsproc(int idx, char *name, pid_t *pid, double *usg);
+int flush_hndl(handle_t hndl);
+int uname(struct utsname *buf);
 // int shmem_alloc(pid_t pid, uintptr_t *base, size_t size);  // allocate shared mem between current process and pid process
 // int shmem_free(uintptr_t *base, size_t size);
 

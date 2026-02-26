@@ -9,31 +9,32 @@
 
 static inline void do_printf_handler(char c, void*)
 {
-    console_printc(CONSOLE_PRINTK, &c, 1);
+    console_puts(CONSOLE_PRINT, &c, 1);
 }
 
 static inline int print(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int c = do_printkn(fmt, args, &do_printf_handler, NULL);
+    int c = do_kprintfn(fmt, args, &do_printf_handler, NULL);
     va_end(args);
     return c;
 }
 
-int printk(const char *fmt, ...)
+int kprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     int c = 0;
 
-    // if (is_cpu_initialized() && int_is_enabled())
-    //     c += print("[  %f ] ", (double)timer_get_ticks() / (double)timer_get_resolution());
-    // else
+    if (is_cpu_initialized())   /* TODO: Doing division crashes the kernel on bare metal i686 */
+        c += print("[  %f ] ", (double)timer_get_ticks() / (double)timer_get_resolution());
+    else
         c += print("[  0.000000 ] ");
-    c += do_printkn(fmt, args, &do_printf_handler, NULL);
+    c += do_kprintfn(fmt, args, &do_printf_handler, NULL);
     c += print("\n");
 
+    console_flush();
     va_end(args);
     return c;
 }

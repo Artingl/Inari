@@ -39,7 +39,7 @@ int pci_init()
             if (header_type != 0) continue;
             func = 0; // header_type == 0 implies the device has only single func
 
-            printk("pci: found device %x:%x at %d:%d:%d", vendor_id, device_id, bus, slot, func);
+            kprintf("pci: found device %x:%x at %d:%d:%d", vendor_id, device_id, bus, slot, func);
 
             dev = (struct pci_device*)kmalloc(sizeof(struct pci_device));
             dev->device_id = device_id;

@@ -8,9 +8,9 @@
 
 #define IRQ_HANDLED 1
 
-typedef int (*irq_handler_t)(uint32_t irq, void *dev_id);
+typedef int (*irq_handler_t)(uint32_t irq, void *driver_data);
 
-int irq_request(uint32_t irq, irq_handler_t handler, void *dev_id);
+int irq_request(uint32_t irq, irq_handler_t handler, void *driver_data);
 int irq_free(uint32_t irq, irq_handler_t handler);
 void irq_dispatch(struct interrupt_frame frame);
 struct interrupt_frame *irq_frame();

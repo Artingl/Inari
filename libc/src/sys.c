@@ -188,12 +188,22 @@ int insmod(const char *name)
     return (int)syscall(32, (uint32_t)name, 0, 0, 0, 0);
 }
 
-int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t state)
+int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t *flags)
 {
-    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, state, 0);
+    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, (uint32_t*)flags, 0);
 }
 
 int lsproc(int idx, char *name, pid_t *pid, double *usg)
 {
     return (int)syscall(34, (uint32_t)idx, (uint32_t)name, (uint32_t)pid, (uint32_t)usg, 0);
+}
+
+int flush_hndl(handle_t hndl)
+{
+    return (int)syscall(35, (uint32_t)hndl, 0, 0, 0, 0);
+}
+
+int uname(struct utsname *buf)
+{
+    return (int)syscall(36, (uint32_t)buf, 0, 0, 0, 0);
 }

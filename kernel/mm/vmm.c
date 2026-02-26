@@ -58,7 +58,7 @@ int vmm_init(void)
     mark_region(&kernel_pool_entry, VMM_KERN_VBASE, VMM_KERN_VBASE + VMM_KERN_SIZE_BYTES, VMM_PAGE_RESERVED);
     mark_region(&kernel_pool_entry, VIRTUAL_ADDR, (uintptr_t)&kern_virt_end + PAGE_SIZE, VMM_PAGE_RESERVED);
 
-    printk("vmm: initialized");
+    kprintf("vmm: initialized");
     return 0;
 }
 

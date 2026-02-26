@@ -31,7 +31,7 @@ int earlycon_init()
         {
             device_in_use = dev;
 
-            printk("earlycon: using device %s as earlycon", dev->name);
+            kprintf("earlycon: using device %s as earlycon", dev->name);
             return 0;
         }
     }
@@ -40,7 +40,7 @@ int earlycon_init()
     if (fallback && fallback->probe && fallback->probe() == 0)
     {
         device_in_use = fallback;
-        printk("earlycon: using fallback device %s as earlycon", fallback->name);
+        kprintf("earlycon: using fallback device %s as earlycon", fallback->name);
         return 0;
     }
     

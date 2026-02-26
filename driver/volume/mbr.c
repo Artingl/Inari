@@ -5,7 +5,7 @@
 #include <kernel/sys/block.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/errno.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/sys/device.h>
 
 #include <misc/string.h>
@@ -89,7 +89,7 @@ static void register_partition_table(struct device *bdev, struct mbr_header head
         (void*)partition, NULL);
 
 #ifdef CONFIG_DEBUG
-        printk("mbr: found partition on dev:blk_%s%d; size %uKiB",
+        kprintf("mbr: found partition on dev:blk_%s%d; size %uKiB",
             bdev->group->name,
             DEVID(partition->disk_bdev),
             (partition->end_lba - partition->start_lba) * bdev->group->block_size / 1024);
@@ -124,7 +124,7 @@ static void handle_block_dev_load(dev_t dev)
 
     goto end;
 read_err:
-    printk("mbr: failed to read lba%d for dev:blk_%s%d", lba_offset, bdev->group->name, DEVID(dev));
+    kprintf("mbr: failed to read lba%d for dev:blk_%s%d", lba_offset, bdev->group->name, DEVID(dev));
 end:
     kfree((void*)lba);
 }

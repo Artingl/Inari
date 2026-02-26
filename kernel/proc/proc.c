@@ -1,4 +1,4 @@
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/proc/proc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/pe.h>

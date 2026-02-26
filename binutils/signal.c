@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
 
     if (argc < 3)
     {
-        printf("usage: %s [signal] [pid]\n", argv[0]);
+        printf("usage: %s signal pid\n", argv[0]);
         res = -1;
         goto end;
     }

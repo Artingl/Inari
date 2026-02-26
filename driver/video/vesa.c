@@ -1,13 +1,13 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_VESA
+#ifdef CONFIG_SUBSYS_VIDEO
 
 #include <kernel/inari.h>
 #include <kernel/errno.h>
 #include <kernel/module.h>
-#include <kernel/sync/spinlock.h>
-#include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
-#include <kernel/sys/driver.h>
+#include <kernel/sync/spinlock.h>
+#include <kernel/subsys/video.h>
 #include <kernel/mm/vmm.h>
 
 #include <misc/string.h>
@@ -124,41 +124,14 @@ static _lo_data struct vesa_block_info vesa_block;
 static _lo_data struct vesa_mode_info lo_mode_info;
 
 static uint32_t *current_mode_base = 0;
+static uint32_t mode_id = 0;
 static struct vesa_mode_info current_mode_info;
 
 static spinlock_t vesa_lock = {0};
 static int vesa_initialized = 0;
+static dev_t vesa_dev = 0;
 
-
-#define IOCTL_MODE_SWITCH   0
-#define IOCTL_MODE_GET      1
-#define IOCTL_BLIT          2
-
-struct drv_blit
-{
-#define VESA_BLIT_R8G8B8_FORMAT   0
-    uint8_t format;
-    uint8_t *buffer;
-    uint32_t x, y;
-    uint32_t width, height;
-};
-
-struct drv_mode_info
-{
-    uint32_t width, height;
-    uint8_t bpp, allow_similar;
-};
-
-struct drv_fetch_mode_info
-{
-    uint16_t idx;
-
-    struct {
-        uint32_t width;
-        uint32_t height;
-        uint8_t bpp;
-    } mode_info;
-};
+struct video_ops ops;
 
 static int vesa_switch_mode(uint32_t x, uint32_t y, uint8_t bpp, uint8_t allow_similar)
 {
@@ -211,13 +184,13 @@ static int vesa_switch_mode(uint32_t x, uint32_t y, uint8_t bpp, uint8_t allow_s
     /* If found similar and allow to set it, use it */
     if (similar != 0xffff && allow_similar)
     {
-        printk("vesa: no mode %dx%d_%d, using similar", x, y, bpp);
+        kprintf("vesa: no mode %dx%d_%d, using similar", x, y, bpp);
         i = similar;
         goto found_mode;
     }
 
     spin_unlock_irqrestore(&vesa_lock, flags);
-    return -1;
+    return -EINVAL;
 found_mode:
     r.ax = VESA_GET_MODE_INFO;
     r.cx = modes[i];
@@ -230,7 +203,7 @@ found_mode:
         return -1;
     }
 
-    printk("vesa: swithing mode to %dx%d_%d", info->h_res, info->v_res, info->bpp);
+    kprintf("vesa: swithing mode to %dx%d_%d", info->h_res, info->v_res, info->bpp);
 
     r.ax = VESA_SET_MODE;
     r.bx = modes[i] | 0x4000;
@@ -274,21 +247,143 @@ found_mode:
         return -1;
     }
 
+    if (vesa_dev)
+        video_remove_device(vesa_dev);
+    video_add_device(&vesa_dev, "vesa0", (uintptr_t)current_mode_base, &ops);
+    mode_id = modes[i];
+
     spin_unlock_irqrestore(&vesa_lock, flags);
     return 0;
 }
 
-#pragma GCC push_options
-#pragma GCC optimize("O3")
-
-static int vesa_blit(struct drv_blit *blit_info)
+static int video_mode_find_next(struct video_device *device, struct video_mode_info *mode)
 {
+    struct x86_regs16 r;
+    struct vesa_mode_info *info = &lo_mode_info;
+    uint16_t *modes;
+    uint32_t default_w = 0, default_h = 0;
+    size_t i;
+
+    int found = 0,
+        // If mode values are 0, return any first found mode
+        found_mode = mode->width == 0 || mode->height == 0 || mode->bpp == 0 || mode->mode_id == 0;
+
+    if (!vesa_initialized)  return -ENOSYS;
+    if (!mode)    return -EINVAL;
+
+    /* Try tp fetch display info with edid */
+    r.ax = EDID_GET_DATA;
+    r.bx = 0x0001;
+    r.cx = 0;
+    r.dx = 0;
+    r.es = SEG(&edid_record);
+    r.di = OFF(&edid_record);
+    v86_bios(0x10, &r);
+
+    if (r.ax == 0x4f)
+    {
+        default_w = edid_record.desc1.hz_active_tm | ((int) (edid_record.desc1.hz_active_blanking_tm & 0xF0) << 4);
+        default_h = edid_record.desc1.vt_active_tm | ((int) (edid_record.desc1.vt_active_blanking_tm & 0xF0) << 4);
+    }
+
+    uint32_t flags;
+    spin_lock_irqsave(&vesa_lock, flags);
+
+    modes = (uint16_t*)REAL_PTR(vesa_block.video_mode_ptr);
+    for (i = 0 ; modes[i] != 0xFFFF ; i++)
+    {
+        r.ax = VESA_GET_MODE_INFO;
+        r.cx = modes[i];
+        r.es = SEG(info);
+        r.di = OFF(info);
+        v86_bios(0x10, &r);
+        
+        if (r.ax != 0x4f) continue;
+        if (mode->mode_id == modes[i] && !found_mode)
+        {
+            found_mode = 1;
+            continue;
+        }
+
+        /* Check that this mode is linear buffer mode and packed/direct color mode */
+        if ((info->mode_attr & 0x99) == 0x99 &&
+			   (info->memory_layout == 4 ||
+			    info->memory_layout == 6) &&
+			   info->memory_planes == 1)
+        {
+            if (found_mode)
+            {
+                mode->is_default = 0;
+                if (default_w == info->h_res && default_h == info->v_res)
+                    mode->is_default = 1;
+
+                mode->width = info->h_res;
+                mode->height = info->v_res;
+                mode->bpp = info->bpp;
+                mode->mode_id = modes[i];
+                found = 1;
+                break;
+            }
+        }
+    }
+    
+    spin_unlock_irqrestore(&vesa_lock, flags);
+    return found;
+}
+
+static int video_mode_info(struct video_device *device, struct video_mode_info *result)
+{
+    if (!vesa_initialized)  return -ENOSYS;
+    if (!result)        return -EINVAL;
+    if (mode_id == 0)   return -ENOSYS;
+
+    uint32_t flags;
+    spin_lock_irqsave(&vesa_lock, flags);
+    result->width = current_mode_info.h_res;
+    result->height = current_mode_info.v_res;
+    result->bpp = current_mode_info.bpp;
+    result->mode_id = mode_id;
+    spin_unlock_irqrestore(&vesa_lock, flags);
+
+    return 0;
+}
+
+static int video_mode_switch(struct video_device *device, struct video_mode_info *new_mode)
+{
+    if (!vesa_initialized)  return -ENOSYS;
+
+    uint32_t flags;
+    int res = vesa_switch_mode(new_mode->width, new_mode->height, new_mode->bpp, 0);
+    /* Note: pointer to device after successful switch is invalid */
+    if (res != 0)   return res;
+
+    /* Fetch info for the new mode */
+    if (new_mode)
+    {
+        spin_lock_irqsave(&vesa_lock, flags);
+        new_mode->width = current_mode_info.h_res;
+        new_mode->height = current_mode_info.v_res;
+        new_mode->bpp = current_mode_info.bpp;
+        new_mode->mode_id = mode_id;
+        spin_unlock_irqrestore(&vesa_lock, flags);
+    }
+
+    return 0;
+}
+
+// #pragma GCC push_options
+// #pragma GCC optimize("O3")
+static int vesa_blit(struct video_device *device, struct video_blit *blit_info)
+{
+    if (!vesa_initialized)  return -ENOSYS;
+    if (!blit_info || !device) return -EINVAL;
+
     int res = -EINVAL;
     uint32_t flags;
     spin_lock_irqsave(&vesa_lock, flags);
 
     if (!blit_info->buffer || !current_mode_base) goto end;
-    if (blit_info->format != VESA_BLIT_R8G8B8_FORMAT) goto end;
+    if (blit_info->format != VIDEO_R8G8B8_FORMAT) goto end;
     size_t x, y;
     uintptr_t size = vesa_block.total_memory * 0x10000, off,
         buf_off = 0,
@@ -310,35 +405,13 @@ end:
     spin_unlock_irqrestore(&vesa_lock, flags);
     return res;
 }
+// #pragma GCC pop_options
 
-#pragma GCC pop_options
-
-static int vesa_ioctl(struct device *chardev, unsigned long req, void *arg)
-{
-    struct drv_mode_info *mode_info = (struct drv_mode_info *)arg;
-    struct drv_fetch_mode_info *fetch_info = (struct drv_fetch_mode_info *)arg;
-    struct drv_blit *blit_info = (struct drv_blit *)arg;
-    if (!vesa_initialized) return -ENOSYS;
-    if (!arg) return -EINVAL;
-
-    switch (req)
-    {
-    case IOCTL_MODE_SWITCH:
-        return vesa_switch_mode(mode_info->width, mode_info->height, mode_info->bpp, mode_info->allow_similar);
-
-    case IOCTL_BLIT:
-        return vesa_blit(blit_info);
-
-    // case IOCTL_MODE_GET:
-
-    }
-
-    return -ENOSYS;
-}
-
-static dev_t vesa_chardev;
-struct char_ops ops = {
-    .ioctl = &vesa_ioctl
+struct video_ops ops = {
+    .mode_info = &video_mode_info,
+    .mode_find_next = &video_mode_find_next,
+    .mode_switch = &video_mode_switch,
+    .blit = &vesa_blit
 };
 
 static int vesa_probe()
@@ -369,17 +442,15 @@ static int vesa_probe()
         x = edid_record.desc1.hz_active_tm | ((int) (edid_record.desc1.hz_active_blanking_tm & 0xF0) << 4);
         y = edid_record.desc1.vt_active_tm | ((int) (edid_record.desc1.vt_active_blanking_tm & 0xF0) << 4);
     }
-
-    register_chardev(VIDEO_DRIVER, &ops, NULL, &vesa_chardev);
-
+    mode_id = 0;
     vesa_switch_mode(x, y, bpp, 1);
-    printk("vesa: initialized");
+    kprintf("vesa: initialized");
     return 0;
 }
 
 static void vesa_cleanup()
 {
-    printk("vesa: cleaning up");
+    kprintf("vesa: cleaning up");
 
     struct x86_regs16 r;
     struct vesa_mode_info *info = &lo_mode_info;
@@ -389,7 +460,11 @@ static void vesa_cleanup()
     uint32_t flags;
     spin_lock_irqsave(&vesa_lock, flags);
     vesa_initialized = 0;
-    unregister_chardev(vesa_chardev);
+
+    if (vesa_dev)
+        video_remove_device(vesa_dev);
+    vesa_dev = 0;
+    mode_id = 0;
 
     /* Cleanup current mode */
     if (current_mode_base)
@@ -434,7 +509,7 @@ static void vesa_cleanup()
 module_t vesa_module = {
     .probe = vesa_probe,
     .cleanup = vesa_cleanup,
-    .flags = MODULE_LAZY_LOAD,
+    // .flags = MODULE_FLAG_LAZY_LOAD,
 };
 
 
@@ -443,5 +518,6 @@ module_register(
     vesa_module
 );
 
+#endif
 #endif
 #endif

@@ -21,7 +21,7 @@
 
 #include <misc/string.h>
 #include <kernel/sys/driver.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 
 #include "ff.h"			/* Basic definitions and declarations of API */
 #include "diskio.h"		/* Declarations of MAI */

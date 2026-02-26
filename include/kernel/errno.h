@@ -23,6 +23,7 @@
 
 static const char *errstr[] = 
 {
+    [ 0 ]   = "OK",
     [ ENODEV ] = "No such device",
     [ EPERM ] = "Operation not permitted",
     [ EBUSY ] = "Device or resource busy",

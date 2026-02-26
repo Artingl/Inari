@@ -64,12 +64,15 @@ int x86_pic_init(void)
     x86_outb(PIC2_DATA, 0x00);
     x86_io_wait();
 
+    x86_pic_irq_unmask(4);
+    x86_pic_irq_unmask(2);
+    x86_pic_irq_unmask(12);
     x86_pic_irq_mask(14);
     x86_pic_irq_mask(15);
 
     pic_initialized = 1;
 
-    printk("pic: initialized");
+    kprintf("pic: initialized");
     return 0;
 }
 
@@ -80,16 +83,32 @@ void x86_pic_acknowledge(uint8_t irq_no)
         x86_outb(PIC2_COMMAND, 0x20);
     }
     
-    /* Always send EOI to the Master PIC because the Slave is cascaded through it */
-    if (irq_no >= PIC1_OFFSET && irq_no <= (PIC1_OFFSET + 7)) {
-        x86_outb(PIC1_COMMAND, 0x20);
-    }
+    x86_outb(PIC1_COMMAND, 0x20);
 }
+
+void x86_pic_irq_unmask(uint8_t irq_line)
+{
+    uint16_t port;
+    uint8_t value;
+    kprintf("pic: irq unmask %d", irq_line);
+
+    if (irq_line < 8) port = PIC1_DATA;
+    else
+    {
+        port = PIC2_DATA;
+        irq_line -= 8;
+    }
+
+    value = x86_inb(port) & ~(1 << irq_line);
+    x86_outb(port, value);
+}
+
 
 void x86_pic_irq_mask(uint8_t irq_line)
 {
     uint16_t port;
     uint8_t value;
+    kprintf("pic: irq mask %d", irq_line);
 
     if (irq_line < 8) port = PIC1_DATA;
     else

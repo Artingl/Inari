@@ -11,19 +11,19 @@ int main(int argc, char const *argv[])
 
     if (argc < 2)
     {
-        printf("usage: %s [file]\n", argv[0]);
+        printf("usage: %s file\n", argv[0]);
         res = -1;
         goto end;
     }
 
     if ((res = open(&hndl, argv[1], READ)) != 0)
     {
-        printf("%s: %s: No such file or directory.\n", argv[0], argv[1]);
+        printf("%s: %s: %s.\n", argv[0], argv[1], errstr[-res] ? errstr[-res] : "Invalid error");
         goto end;
     }
     if ((res = size(hndl, &sz)) != 0)
     {
-        printf("%s: %s: Unable to read the file.\n", argv[0], argv[1]);
+        printf("%s: %s: %s.\n", argv[0], argv[1], errstr[-res] ? errstr[-res] : "Invalid error");
         goto end;
     }
     
@@ -31,8 +31,16 @@ int main(int argc, char const *argv[])
     data[sz] = '\n';
     data[sz + 1] = '\0';
 
-    if (read(hndl, data, sz, NULL) == 0)
-        write(stdout, data, sz);
+    if ((res = read(hndl, data, sz, NULL)) != 0)
+    {
+        printf("%s: %s: %s.\n", argv[0], argv[1], errstr[-res] ? errstr[-res] : "Invalid error");
+        free(data);
+        close(hndl);
+        goto end;
+    }
+
+    write(stdout, data, sz);
+    flush(stdout);
     free(data);
 close:
     close(hndl);

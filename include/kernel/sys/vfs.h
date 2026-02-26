@@ -45,6 +45,7 @@ struct vfs_layer_ops {
     int (*size)(struct vfs_mount_point *mount, vfs_handle_t handle, size_t *size);
     int (*readdir)(struct vfs_mount_point *mount, const char *path, struct vfs_node *node, size_t offset);
     int (*ioctl)(struct vfs_mount_point *mount, vfs_handle_t handle, unsigned long req, void *arg);
+    int (*flush)(struct vfs_mount_point *mount, vfs_handle_t handle);
 };
 
 struct vfs_layer
@@ -88,6 +89,7 @@ int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen);
 int vfs_readdir(const char *path, struct vfs_node *node);
 int vfs_write(vfs_handle_t handle, const void *buf, size_t sz);
 int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg);
+int vfs_flush(vfs_handle_t handle);
 
 int vfs_alloc_handle(struct vfs_mount_point *mount, vfs_handle_t *handle, void *data);
 void *vfs_handle_data(vfs_handle_t handle);

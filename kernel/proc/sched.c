@@ -28,7 +28,7 @@ static void __sched_idle()
 {
     while (1)
     {
-        idle();
+        cpu_relax();
     }
 }
 
@@ -66,7 +66,7 @@ void sched_thread_preentry()
     task->state = SCHED_TASK_DEAD;
 end:
     sched_yield();
-    idle();
+    cpu_relax();
 }
 
 struct thread *__sched_get_thread(tid_t tid)
@@ -174,13 +174,13 @@ static void sched_reschedule(struct sched_core *core)
     core->task = sched_idle_task;
 }
 
-static int sched_irq(uint32_t irq, void *dev_id)
+static int sched_irq(uint32_t irq, void *driver_data)
 {
     sched_call();
     return IRQ_HANDLED;
 }
 
-static int sched_swi(uint32_t swi, void *dev_id)
+static int sched_swi(uint32_t swi, void *driver_data)
 {
     sched_call();
     return SWI_HANDLED;
@@ -212,7 +212,7 @@ int sched_init()
     if (ret == 0)
     {
         sched_initialized = 1;
-        printk("sched: idle task id: %lu", sched_idle_task->tid);
+        kprintf("sched: idle task id: %lu", sched_idle_task->tid);
     }
     
     return ret;
@@ -225,7 +225,8 @@ int sched_is_running()
 
 void sched_yield()
 {
-    interrupts_trigger(SWI_RESCHEDULE);
+    if (sched_initialized)
+        interrupts_trigger(SWI_RESCHEDULE);
 }
 
 int sched_usleep(tid_t tid, size_t us)
@@ -377,16 +378,16 @@ void sched_enter_core()
 
     if (core_id >= CONFIG_MAX_CORES)
     {
-        printk("sched: ignoring out-of-bounds core id %u", core_id);
+        kprintf("sched: ignoring out-of-bounds core id %u", core_id);
         /* Just halt it for now */
         halt();
     }
 
-    printk("sched: running on cpu%u", core_id);
+    kprintf("sched: running on cpu%u", core_id);
 
     sched_cores[core_id].core_id = core_id;
     sched_cores[core_id].active = 1;
     sched_cores[core_id].task = (struct thread*)NULL;
     enable_int();
-    idle();
+    cpu_relax();
 }

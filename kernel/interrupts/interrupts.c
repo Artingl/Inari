@@ -25,8 +25,8 @@ void interrupt_dispatch(struct interrupt_frame frame)
     extern struct interrupt_frame *interrupt_frames_core[CONFIG_MAX_CORES];
 
     uint32_t core_id = core_id();
-    if (interrupt_frames_core[core_id])
-        panic("irq: nested interrupt");
+    // if (interrupt_frames_core[core_id])
+    //     panic("irq: nested interrupt");
 
     interrupt_frames_core[core_id] = &frame;
 

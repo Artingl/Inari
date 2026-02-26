@@ -36,7 +36,7 @@ int x86_acpi_init(void)
 
     if (!(x86_cpu_features_edx() & CPU_FEATURE_EDX_ACPI))
     {
-        printk("acpi: not found.");
+        kprintf("acpi: not found.");
         return -ENODEV;
     }
 
@@ -53,7 +53,7 @@ int x86_acpi_init(void)
     /* TODO: also perform search in EBDA (https://wiki.osdev.org/RSDP) */
     if (!sdp)
     {
-        printk("acpi: unable to find RSDP in memory.");
+        kprintf("acpi: unable to find RSDP in memory.");
         return -ENODEV;
     }
 
@@ -61,28 +61,28 @@ int x86_acpi_init(void)
     {
         if (!(acpi_signature(sdp, sizeof(struct RSDP))))
         {
-            printk("acpi: RSDP invalid checksum.");
+            kprintf("acpi: RSDP invalid checksum.");
             return -EINVAL;
         }
 
-        printk("acpi: SDP version 1.0==");
+        kprintf("acpi: SDP version 1.0==");
         root_sdt = (struct XSDT *)sdp->rsdt_address;
     }
     else if (sdp->revision == 2)
     {
         if (!(acpi_signature(sdp, sizeof(struct XSDP))))
         {
-            printk("acpi: XSDP invalid checksum.");
+            kprintf("acpi: XSDP invalid checksum.");
             return -EINVAL;
         }
 
-        printk("acpi: SDP version 2.0>=");
+        kprintf("acpi: SDP version 2.0>=");
         root_sdt = (struct XSDT *)(uint32_t)sdp->xsdt_address;
         if (!root_sdt)
             root_sdt = (struct XSDT *)sdp->rsdt_address;
     }
     else {
-        printk("acpi: invalid SDP revision.");
+        kprintf("acpi: invalid SDP revision.");
         return -EINVAL;
     }
 
@@ -99,7 +99,7 @@ int x86_acpi_init(void)
 
     if (root_sdt->header.length == 0)
     {
-        printk("acpi: r/xSDT invalid header length.");
+        kprintf("acpi: r/xSDT invalid header length.");
         return -EINVAL;
     }
     else if (!(acpi_signature(root_sdt, root_sdt->header.length)))
@@ -184,7 +184,7 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
 
                     if (acpi_cpu_count + 1 >= CONFIG_MAX_CORES)
                     {
-                        printk("acpi: ignoring out-of-bounds core id %u", lapic_table->acpi_proc_id);
+                        kprintf("acpi: ignoring out-of-bounds core id %u", lapic_table->acpi_proc_id);
                         goto next;
                     }
 
@@ -194,7 +194,7 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                     cpus_pool[lapic_table->acpi_proc_id].lapic_ptr = madt->local_apic_address;
 
                     acpi_cpu_count++;
-                    printk("acpi: lapic found[%d]", lapic_table->acpi_proc_id);
+                    kprintf("acpi: lapic found[%d]", lapic_table->acpi_proc_id);
                 }
                 else if (entry->entry_type == APIC_IO)
                 {
@@ -203,12 +203,12 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                     /* TODO: only one IO/APIC can be used right now */
                     if (acpi_cpu_ioapic)
                     {
-                        printk("acpi: another io/apic was found, which is not supported");
+                        kprintf("acpi: another io/apic was found, which is not supported");
                         goto next;
                     }
 
 #ifdef CONFIG_DEBUG
-                    printk("acpi: io/apic found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
+                    kprintf("acpi: io/apic found[%d]: 0x%x", io_apic_table->io_apic_id, io_apic_table->io_apic_address);
 #endif
                     acpi_cpu_ioapic = io_apic_table->io_apic_address;
                 }
@@ -216,7 +216,7 @@ int x86_acpi_load_madt(struct x86_cpu *cpus_pool)
                 {
 #ifdef CONFIG_DEBUG
                     struct IOAPIC_INTSRCO_MADT *int_overrd = (struct IOAPIC_INTSRCO_MADT *)(entry);
-                    printk("acpi: io/apic ISO: bus = 0x%x, irq = 0x%x, gsi = 0x%x, flags = 0x%x",
+                    kprintf("acpi: io/apic ISO: bus = 0x%x, irq = 0x%x, gsi = 0x%x, flags = 0x%x",
                         int_overrd->bus, int_overrd->irq, int_overrd->gsi, int_overrd->flags);
 #endif
                 }

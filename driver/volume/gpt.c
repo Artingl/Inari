@@ -5,7 +5,7 @@
 #include <kernel/sys/block.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/errno.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/sys/device.h>
 
 #include <misc/string.h>
@@ -134,7 +134,7 @@ static void handle_block_dev_load(dev_t dev)
 
         partitions++;
 #ifdef CONFIG_DEBUG
-        printk("gpt: found partition '%s' on dev:blk_%s%d; size %uKiB",
+        kprintf("gpt: found partition '%s' on dev:blk_%s%d; size %uKiB",
             entry.name,
             bdev->group->name,
             DEVID(dev),
@@ -159,10 +159,10 @@ static void handle_block_dev_load(dev_t dev)
         memcpy((void*)&entry, &lba[offset], sizeof(entry));
     }
 
-    printk("gpt: found %u partitions on dev:blk_%s%d", partitions, bdev->group->name, DEVID(dev));
+    kprintf("gpt: found %u partitions on dev:blk_%s%d", partitions, bdev->group->name, DEVID(dev));
     goto end;
 read_err:
-    printk("gpt: failed to read lba%d for dev:blk_%s%d", lba_offset, bdev->group->name, DEVID(dev));
+    kprintf("gpt: failed to read lba%d for dev:blk_%s%d", lba_offset, bdev->group->name, DEVID(dev));
 end:
     kfree((void*)lba);
 }

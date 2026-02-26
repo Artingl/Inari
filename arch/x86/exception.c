@@ -38,14 +38,14 @@ static struct kernel_symbols ksyms = {0};
 
 static inline void do_printf_handler(char c, void*)
 {
-    console_printc(CONSOLE_PRINTK, &c, 1);
+    console_puts(CONSOLE_PANIC, &c, 1);
 }
 
 static inline void helper_printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    do_printkn(fmt, args, &do_printf_handler, NULL);
+    do_kprintfn(fmt, args, &do_printf_handler, NULL);
     va_end(args);
 }
 
@@ -183,9 +183,9 @@ void x86_exception_handler(struct x86_regs32 *regs)
     {
         uint32_t cr2;
         __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-        printk("arch: Page Fault caused by accessing address: 0x%x", cr2);
+        kprintf("arch: Page Fault caused by accessing address: 0x%x", cr2);
     }
-    printk("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
+    kprintf("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
     _print_stacktrace(regs, &helper_printf);
 #endif
 

@@ -4,7 +4,7 @@
 #include <misc/types.h>
 #include <misc/list.h>
 
-#define DEV_NAME_SIZE 16
+#define DEV_NAME_SIZE 32
 
 #define DEV_GRP_BLOCK     0
 #define DEV_GRP_CHAR      1
@@ -24,6 +24,7 @@ struct char_ops
     int (*read)(struct device *chardev, uint8_t *buf, size_t sz);
     int (*write)(struct device *chardev, const uint8_t *buf, size_t sz);
     int (*ioctl)(struct device *chardev, unsigned long req, void *arg);
+    int (*flush)(struct device *chardev);
 };
 
 struct block_ops

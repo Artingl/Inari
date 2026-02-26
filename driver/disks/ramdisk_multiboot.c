@@ -20,7 +20,7 @@ static int initrd_read(struct device *bdev, uint64_t lba, void *buf, size_t nblo
     if (!bdev || ! bdev->driver_data || !buf) return -EINVAL;
     multiboot_module_t *module = (multiboot_module_t*)bdev->driver_data;
     if ((lba * RAMDISK_BLOCK_SIZE + nblocks * RAMDISK_BLOCK_SIZE) >= bdev->size) return -EINVAL;
-    // printk("%llu %llu", lba, nblocks);
+    // kprintf("%llu %llu", lba, nblocks);
     memcpy(buf, (void*)(module->mod_start + lba * RAMDISK_BLOCK_SIZE), nblocks * RAMDISK_BLOCK_SIZE);
     return 0;
 }
@@ -53,7 +53,7 @@ static int ramdisk_probe()
             register_blkdev(RAMDISK_DRIVER, &ops, module->mod_end - module->mod_start, module, &devices[dev_off++]);
         }
     }
-    else printk("ramdisk: none found.");
+    else kprintf("ramdisk: none found.");
 
     return 0;
 }

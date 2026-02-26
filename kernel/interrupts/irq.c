@@ -10,19 +10,19 @@ struct irq_handler_node
 {
     irq_handler_t handler;
     uint32_t irq;
-    void *dev_id;
+    void *driver_data;
 
     struct list_head list;
 };
 
 LIST_HEAD(irq_handlers_list);
 
-int irq_request(uint32_t irq, irq_handler_t handler, void *dev_id)
+int irq_request(uint32_t irq, irq_handler_t handler, void *driver_data)
 {
     struct irq_handler_node *node = kmalloc(sizeof(*node));
     if (!node) return -ENOMEM;
     node->irq = irq;
-    node->dev_id = dev_id;
+    node->driver_data = driver_data;
     node->handler = handler;
     list_add_tail(&node->list, &irq_handlers_list);
     return 0;
@@ -37,7 +37,7 @@ int irq_free(uint32_t irq, irq_handler_t handler)
         entry = list_entry(pos, struct irq_handler_node, list);
         if (entry->irq == irq && entry->handler == handler) {
             list_del(pos);
-            kfree(entry); 
+            kfree(entry);
             return 0;
         }
     }
@@ -53,6 +53,6 @@ void irq_dispatch(struct interrupt_frame frame)
     list_for_each(pos, &irq_handlers_list) {
         entry = list_entry(pos, struct irq_handler_node, list);
         if (entry && entry->handler && entry->irq == frame.int_no)
-            entry->handler(entry->irq, entry->dev_id);
+            entry->handler(entry->irq, entry->driver_data);
     }
 }

@@ -68,17 +68,28 @@ static inline void str_emit(char c, void *userdata)
     ctx->buf[ctx->pos++] = c;
 }
 
+static int shadow_buffer_off = 0;
+static char shadow_buffer[128];
 static void do_printf_handler(char c, void*)
 {
-    if (stdout != -1)
-        write(stdout, (const void*)&c, 1);
+    if (shadow_buffer_off >= 128)
+    {
+        write(stdout, (const void*)shadow_buffer, shadow_buffer_off);
+        shadow_buffer_off = 0;
+    }
+
+    shadow_buffer[shadow_buffer_off++] = c;
 }
 
 static inline int do_printf(const char *fmt, va_list args,
                              void (*fn)(char, void *), void *ud) {
     int count = 0;
+    int do_flush = 0;
 
     for (; *fmt; fmt++) {
+        if (*fmt == '\n')
+            do_flush = 1;
+
         if (*fmt != '%') {
             count += emit_char(fn, ud, *fmt);
             continue;
@@ -176,7 +187,21 @@ static inline int do_printf(const char *fmt, va_list args,
             break;
         }
     }
+    if (do_flush)
+        flush(stdout);
     return count;
+}
+
+int flush(handle_t handle)
+{
+    if (handle == stdout)
+    {
+        if (shadow_buffer_off > 0)
+            write(stdout, (const void*)shadow_buffer, shadow_buffer_off);
+        shadow_buffer_off = 0;
+    }
+
+    return flush_hndl(handle);
 }
 
 int vsprintf(char *buf, const char *fmt, va_list args)

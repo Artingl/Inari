@@ -80,7 +80,7 @@ int x86_cpu_init(void)
         s_cpu_model[offset-3] = '\0';
     }
 
-    printk("cpu: vendor=%s; model=%s", s_cpu_vendor, s_cpu_model);
+    kprintf("cpu: vendor=%s; model=%s", s_cpu_vendor, s_cpu_model);
 
     if (x86_acpi_init() == 0)
     {
@@ -89,7 +89,7 @@ int x86_cpu_init(void)
     }
     else phys_cpus = 1;
 
-    printk("cpu: available %u core(s)", phys_cpus);
+    kprintf("cpu: available %u core(s)", phys_cpus);
 
     for (i = 0; i < phys_cpus; i++)
         cpu_core_init(&x86_cpus_pool[i]);

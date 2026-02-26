@@ -14,14 +14,14 @@ static int count = 0;
 
 static inline void do_printf_handler(char c, void*)
 {
-    console_printc(CONSOLE_PANIC, &c, 1);
+    console_puts(CONSOLE_PANIC, &c, 1);
 }
 
 static inline int print(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int c = do_printkn(fmt, args, &do_printf_handler, NULL);
+    int c = do_kprintfn(fmt, args, &do_printf_handler, NULL);
     va_end(args);
     return c;
 }
@@ -30,7 +30,7 @@ static inline void helper_printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    count += do_printkn(fmt, args, &do_printf_handler, NULL);
+    count += do_kprintfn(fmt, args, &do_printf_handler, NULL);
     va_end(args);
 }
 
@@ -53,7 +53,7 @@ void panic(const char *fmt, ...)
     count = 0;
     
     count += print("Panic:\n");
-    count += do_printkn(fmt, args, &do_printf_handler, NULL);
+    count += do_kprintfn(fmt, args, &do_printf_handler, NULL);
     count += print("\n\n");
     print_stacktrace(&helper_printf);
     count += print("\n");
@@ -61,6 +61,7 @@ void panic(const char *fmt, ...)
 
     va_end(args);
 
+    console_flush();
     spin_unlock_irqrestore(&panic_lock, flags);
     halt();
 }

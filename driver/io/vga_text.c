@@ -17,9 +17,11 @@
 
 #define DEF_COLOR 0x07
 
+static uint8_t shadow_buffer[VGA_SIZE];
+
 static int pc_vga_text_is_initialized = 0;
 static int offset = 0, line = 0;
-static uint8_t *vga_base = (uint8_t*)VGA_BASE;
+static uint8_t *vga_shadow_base = (uint8_t*)&shadow_buffer[0];
 
 static void vga_enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
 {
@@ -40,11 +42,17 @@ static void vga_update_cursor(int x, int y)
 	x86_outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
+static void vga_flush_buffer()
+{
+    memcpy((void*)VGA_BASE, vga_shadow_base, VGA_SIZE);
+    vga_update_cursor(offset, line);
+}
+
 static void vga_clear()
 {
     /* Clear the screen */
-    uint8_t *base = (uint8_t*)VGA_BASE;
-    while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
+    uint8_t *base = (uint8_t*)vga_shadow_base;
+    while ((uintptr_t)base < vga_shadow_base+VGA_SIZE)
     {
         *base++ = ' ';
         *base++ = DEF_COLOR;
@@ -52,8 +60,7 @@ static void vga_clear()
 
     offset = 0;
     line = 0;
-    vga_update_cursor(offset, line);
-
+    vga_flush_buffer();
 }
 
 static void vga_rewind(uint32_t count, int clear)
@@ -66,14 +73,14 @@ static void vga_rewind(uint32_t count, int clear)
         offset--;
         if (clear)
         {
-            *(vga_base + (line * VGA_WIDTH + offset) * 2 + 0) = ' ';
-            *(vga_base + (line * VGA_WIDTH + offset) * 2 + 1) = DEF_COLOR;
+            *(vga_shadow_base + (line * VGA_WIDTH + offset) * 2 + 0) = ' ';
+            *(vga_shadow_base + (line * VGA_WIDTH + offset) * 2 + 1) = DEF_COLOR;
         }
 
         if (offset <= 0) { line--; offset = VGA_WIDTH - 1; }
         if (line <= 0)   { line = 0; }
     }
-    vga_update_cursor(offset, line);
+    vga_flush_buffer();
 }
 
 static void vga_putc(const char *s, uint32_t count)
@@ -97,8 +104,8 @@ static void vga_putc(const char *s, uint32_t count)
                 break;
             }
             default: {
-                *(vga_base + (line * VGA_WIDTH + offset) * 2 + 0) = c;
-                *(vga_base + (line * VGA_WIDTH + offset) * 2 + 1) = DEF_COLOR;
+                *(vga_shadow_base + (line * VGA_WIDTH + offset) * 2 + 0) = c;
+                *(vga_shadow_base + (line * VGA_WIDTH + offset) * 2 + 1) = DEF_COLOR;
                 offset++;
             }
         }
@@ -111,19 +118,18 @@ static void vga_putc(const char *s, uint32_t count)
 
         if (line >= VGA_HEIGHT)
         {
-            memcpy((void*)VGA_BASE, (void*)VGA_BASE + VGA_WIDTH * 2, VGA_SIZE - VGA_WIDTH * 2);
-            memset((void*)VGA_BASE + VGA_SIZE - VGA_WIDTH * 2, 0, VGA_WIDTH * 2);
-            uint8_t *last_line = (uint8_t*)((void*)VGA_BASE + VGA_SIZE - VGA_WIDTH * 2);
+            memcpy((void*)vga_shadow_base, (void*)vga_shadow_base + VGA_WIDTH * 2, VGA_SIZE - VGA_WIDTH * 2);
+            memset((void*)vga_shadow_base + VGA_SIZE - VGA_WIDTH * 2, 0, VGA_WIDTH * 2);
+            uint8_t *last_line = (uint8_t*)((void*)vga_shadow_base + VGA_SIZE - VGA_WIDTH * 2);
             for (int i = 0; i < VGA_WIDTH * 2; i+=2) {
                 last_line[i] = ' ';
                 last_line[i + 1] = DEF_COLOR;
             }
             offset = 0;
             line = VGA_HEIGHT - 1;
+            vga_flush_buffer();
         }
     }
-    
-    vga_update_cursor(offset, line);
 }
 
 static struct console_dev console_dev = {
@@ -131,8 +137,9 @@ static struct console_dev console_dev = {
     .write = vga_putc,
     .rewind = vga_rewind,
     .clear = vga_clear,
+    .flush = vga_flush_buffer,
     .read = NULL,
-    .flags = CONSOLE_EARLY | CONSOLE_PRINTK
+    .flags = CONSOLE_EARLY | CONSOLE_PRINT
 };
 
 static int pc_vga_text_init()
@@ -142,14 +149,7 @@ static int pc_vga_text_init()
 
     vga_enable_cursor(14, 15);
     vga_update_cursor(0, 0);
-
-    /* Clear the screen */
-    uint8_t *base = (uint8_t*)VGA_BASE;
-    while ((uintptr_t)base < VGA_BASE+VGA_SIZE)
-    {
-        *base++ = ' ';
-        *base++ = DEF_COLOR;
-    }
+    vga_clear();
 
     console_register(&console_dev);
     pc_vga_text_is_initialized = 1;
@@ -171,6 +171,7 @@ static void pc_vga_text_cleanup()
     uint8_t *base = (uint8_t*)VGA_BASE;
     while ((uintptr_t)base < VGA_BASE+VGA_SIZE*2)
         *base++ = 0;
+    vga_flush_buffer();
     pc_vga_text_is_initialized = 0;
 }
 

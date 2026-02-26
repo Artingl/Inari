@@ -6,22 +6,15 @@
 #include <errno.h>
 #include <lib.h>
 
+#include <kernel/console/console.h>
+#include <kernel/subsys/hid.h>
+
 char command[128] = {0};
 char history[8][128] = {0};
 char current_dir[128] = {'/', NULL};
 int history_offset = 0, history_scroll = 0;
 int command_offset = 0, last_exitcode = 0;
-uint32_t last_kb_event;
 handle_t kb_hndl;
-struct
-{
-    uint32_t event_id;
-    dev_t dev;
-
-    int released;
-    uint8_t code;
-    uint16_t key;
-} kbd_event;
 
 char shift_keys[] = {
     [ '1' ] = '!',
@@ -189,7 +182,7 @@ void exec_cmd()
         return;
     }
     else if (strcmp(exec_path, "clear") == 0) {
-        ioctl(stdout, 2, NULL); // CONSOLE_IOCTL_CLR
+        ioctl(stdout, CONSOLE_IOCTL_CLR, NULL);
         return;
     }
 
@@ -207,8 +200,12 @@ void exec_cmd()
 int main(int argc, char const *argv[])
 {
     pid_t pid;
+    int res;
     int is_shift_pressed = 0;
     char *cat_argv[] = { "/sys/motd.txt", NULL };
+    struct kbd_event kbd;
+    struct hid_device_info kbd_info;
+
     if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
 
@@ -218,70 +215,72 @@ int main(int argc, char const *argv[])
         exit(1);
     }
 
-    printf("0@%s> ", current_dir);
+    printf("0@%s # ", current_dir);
     command_offset = 0;
     history_offset = 0;
     history_scroll = 0;
     last_exitcode = 0;
     memset((void*)&command[0], 0, sizeof(command));
+    flush(stdout);
 
     do
     {
-        if (read(kb_hndl, (void*)&kbd_event, sizeof(kbd_event), NULL) >= 0)
+        if ((res = read(kb_hndl, (void*)&kbd, sizeof(kbd), NULL)) != 0)
         {
-            if (last_kb_event == kbd_event.event_id) continue;;
+            printf("%s: unable to read keyboard: %s.", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
+            return -1;
+        }
 
-            if (kbd_event.key == 0x106) // KEY_LSHIFT
-                is_shift_pressed = !kbd_event.released;
+        if (kbd.key == 0x106) // KEY_LSHIFT
+            is_shift_pressed = !kbd.released;
 
-            if (kbd_event.released)
+        if (kbd.released)
+        {
+            if (kbd.key == 0x101) // enter
             {
-                last_kb_event = kbd_event.event_id;
-                if (kbd_event.key == 0x101) // enter
+                printf("\n");
+                exec_cmd();
+                command_offset = 0;
+                memset((void*)&command[0], 0, sizeof(command));
+                printf("%d@%s # ", last_exitcode, current_dir);
+            }
+            else if (kbd.key == 0x102 && command_offset > 0) // backspace
+            {
+                command_offset--;
+                ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)1);
+            }
+            else if (kbd.key == 0x136) // arrow up
+            {
+                if (history_scroll >= 0)
                 {
-                    printf("\n");
-                    exec_cmd();
-                    command_offset = 0;
-                    memset((void*)&command[0], 0, sizeof(command));
-                    printf("%d@%s> ", last_exitcode, current_dir);
-                }
-                else if (kbd_event.key == 0x102 && command_offset > 0) // backspace
-                {
-                    command_offset--;
-                    ioctl(stdout, 1, (void*)1); // CONSOLE_IOCTL_REWIND_CLR
-                }
-                else if (kbd_event.key == 0x136) // arrow up
-                {
-                    if (history_scroll >= 0)
-                    {
-                        memcpy((void*)&command[0], (void*)&history[history_scroll--], 128);
-                        ioctl(stdout, 1, (void*)command_offset); // CONSOLE_IOCTL_REWIND_CLR
-                        printf(command);
-                        command_offset = strlen(command);
-                    }
-                }
-                else if (kbd_event.key == 0x13b) // arrow down
-                {
-                    if (history_scroll < 8 && history_scroll < history_offset)
-                    {
-                        memcpy((void*)&command[0], (void*)&history[history_scroll++], 128);
-                        ioctl(stdout, 1, (void*)command_offset); // CONSOLE_IOCTL_REWIND_CLR
-                        printf(command);
-                        command_offset = strlen(command);
-                    }
-                }
-                else if (kbd_event.key >= 0x20 && kbd_event.key <= 0x7E) { // is ascii
-                    char key = kbd_event.key;
-                    if (is_shift_pressed && shift_keys[key] != 0)
-                        key = shift_keys[key];
-
-                    command[command_offset++] = key;
-                    command[command_offset] = '\0';
-
-                    printf("%c", command[command_offset-1]);
+                    memcpy((void*)&command[0], (void*)&history[history_scroll--], 128);
+                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)command_offset);
+                    printf(command);
+                    command_offset = strlen(command);
                 }
             }
+            else if (kbd.key == 0x13b) // arrow down
+            {
+                if (history_scroll < 8 && history_scroll < history_offset)
+                {
+                    memcpy((void*)&command[0], (void*)&history[history_scroll++], 128);
+                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)command_offset);
+                    printf(command);
+                    command_offset = strlen(command);
+                }
+            }
+            else if (kbd.key >= 0x20 && kbd.key <= 0x7E) { // is ascii
+                char key = kbd.key;
+                if (is_shift_pressed && shift_keys[key] != 0)
+                    key = shift_keys[key];
+
+                command[command_offset++] = key;
+                command[command_offset] = '\0';
+
+                printf("%c", command[command_offset-1]);
+            }
         }
+        flush(stdout);
     } while(1);
 
     return 0;

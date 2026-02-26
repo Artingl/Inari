@@ -1,5 +1,5 @@
 #ifdef CONFIG_DRV_FATFS
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 #include <kernel/fault/panic.h>
 #include <kernel/mm/kmalloc.h>
 #include <kernel/module.h>

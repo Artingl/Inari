@@ -16,7 +16,7 @@
 #define enable_int() _arch_enable_int()
 #define int_is_enabled() _arch_int_is_enabled()
 #define core_id() _arch_core_id()
-#define idle() _arch_idle()
+#define cpu_relax() _arch_cpu_relax()
 #define trigger_interrupt(int) _arch_trigger_interrupt(int)
 #define print_stacktrace(print)  _print_stacktrace(NULL, print)
 #define poweroff() _arch_poweroff()
@@ -39,7 +39,7 @@ int _arch_int_is_enabled(void);
 void _arch_disable_int(void);
 void _arch_enable_int(void);
 void _arch_hlt(void);
-void _arch_idle(void);
+void _arch_cpu_relax(void);
 uint32_t _arch_core_id(void);
 void _arch_trigger_interrupt(uint32_t interrupt);
 uint32_t _arch_local_irq_save(void);

@@ -6,7 +6,7 @@ int main(int argc, char const *argv[])
 {
     if (argc < 2)
     {
-        printf("usage: %s [dir]\n", argv[0]);
+        printf("usage: %s directory\n", argv[0]);
         return -1;
     }
     

@@ -17,7 +17,7 @@
 
 static uint8_t ata_pio_ints_installed;
 
-static int ata_pio_irq(uint32_t irq, void *dev_id)
+static int ata_pio_irq(uint32_t irq, void *driver_data)
 {
     return IRQ_HANDLED;
 }
@@ -54,6 +54,7 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
             status = x86_inb(io_port + ATA_STATUS);
             if (status & ATA_SR_ERR || status & ATA_SR_DF)
                 break;
+            usleep(400);    /* If scheduler is active, it will yield to avoid busylooping */
         } while (status & ATA_SR_BSY && (status & ATA_SR_DRQ) != ATA_SR_DRQ);
 
         /* Receive 256 16-bit values */

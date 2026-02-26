@@ -18,7 +18,15 @@ You can also specify bootargs, which kernel will parse (e.g. by specifying in `g
  - root: The block dev to mount as root. Can be any block device in format %s%d, where %s is name and %d is index.
  - init: Path to the init script which will run as PID 1.
 
-Example for bootargs: `earlycon=ga_text root=mbr0 init=/prog/shell.exe`
+Example for bootargs: `earlycon=ga_text root=mbr0 init=/prog/cmd.exe`
+
+## Hardware support
+For now it only supports i686 systems, but support for other arches is planned in _some_ future. Nonetheless, here're currently supported devices.
+
+ * ATA in PIO mode
+ * PS/2 keyboard
+ * PC8250 serial and VGA text mode for console and earlycon
+ * VBE/Vesa implementation
 
 ## Features
  * Multitasking and Scheduling.
@@ -28,9 +36,5 @@ Example for bootargs: `earlycon=ga_text root=mbr0 init=/prog/shell.exe`
  * Partition parsing for both MBR and GPT.
  * A custom libc and basic userspace utilities.
 
-## Hardware support
-For now it only supports i686 systems, but support for other arches is planned in _some_ future. Nonetheless, here're currently supported devices.
-
- * ATA in PIO mode
- * PS/2 keyboard
- * PC8250 serial and VGA text mode for console and earlycon
+## Screenshot
+![Screenshot](screenshot.png)

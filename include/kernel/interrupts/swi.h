@@ -9,9 +9,9 @@
 
 #define SWI_HANDLED 1
 
-typedef int (*swi_handler_t)(uint32_t swi, void *dev_id);
+typedef int (*swi_handler_t)(uint32_t swi, void *driver_data);
 
-int swi_request(uint32_t swi, swi_handler_t handler, void *dev_id);
+int swi_request(uint32_t swi, swi_handler_t handler, void *driver_data);
 int swi_free(uint32_t swi, swi_handler_t handler);
 void swi_dispatch(struct interrupt_frame frame);
 

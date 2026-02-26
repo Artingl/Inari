@@ -4,7 +4,7 @@
 #include <misc/types.h>
 
 #include <kernel/fault/panic.h>
-#include <kernel/printk.h>
+#include <kernel/kprintf.h>
 
 #include <arch/paging.h>
 

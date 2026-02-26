@@ -33,13 +33,13 @@ int register_blkdev_group(uint32_t driver, uint32_t block_size, const char *name
     strcpy(&bdev_group->name[0], name);
     bdev_group->name[DEV_NAME_SIZE] = '\0';
 
-    printk("block: new bdev group %16s; driver %u", bdev_group->name, driver);
+    kprintf("block: new bdev group %16s; driver %u", bdev_group->name, driver);
     return 0;
 }
 
 int unregister_blkdev_group(uint32_t driver)
 {
-    printk("block: unimplemented unregister_blkdev_group");
+    kprintf("block: unimplemented unregister_blkdev_group");
     return -EINVAL;
 }
 
@@ -85,7 +85,7 @@ int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void 
     bdev->dev = MKDEV(driver, minor);
 
     list_add_tail(&bdev->list, &group->devices);
-    printk("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
+    kprintf("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_BLKDEV,
         .as = { .dev = bdev->dev }

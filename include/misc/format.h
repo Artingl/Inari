@@ -18,7 +18,7 @@ static void str_emit(char c, void *userdata) {
 static inline int vsprintf(char *buf, const char *fmt, va_list args)
 {
     struct str_ctx ctx = { .buf = buf, .pos = 0 };
-    int count = do_printkn(fmt, args, str_emit, &ctx);
+    int count = do_kprintfn(fmt, args, str_emit, &ctx);
     ctx.buf[ctx.pos] = '\0';
     return count;
 }

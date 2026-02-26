@@ -56,7 +56,7 @@ int pmm_init(void)
                 /* Check that we're not over the max pool size */
                 if (j >> 12 >= PMM_POOL_SIZE)
                 {
-                    printk("pmm: warning - over the pool size; %ld > %ld", j >> 12, PMM_POOL_SIZE);
+                    kprintf("pmm: warning - over the pool size; %ld > %ld", j >> 12, PMM_POOL_SIZE);
                     goto end;
                 }
 
@@ -120,7 +120,7 @@ end:
         .end = (uintptr_t)&kern_virt_end - VIRTUAL_ADDR + PAGE_SIZE
     });
 
-    printk("pmm: initialized, %lu pages available, %lukb.", available_pages, available_pages * (PAGE_SIZE / 1024));
+    kprintf("pmm: initialized, %lu pages available, %lukb.", available_pages, available_pages * (PAGE_SIZE / 1024));
     return 0;
 }
 
@@ -129,7 +129,7 @@ void pmm_reserve_memory(struct reserved_memory region)
     if (region.end < region.start)
         return;
 
-    printk("pmm: reserving region [0x%08x...0x%08x]", region.start, region.end);
+    kprintf("pmm: reserving region [0x%08x...0x%08x]", region.start, region.end);
 
     size_t i;
     for (i = region.start; i < region.end; i += PAGE_SIZE)

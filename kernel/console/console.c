@@ -32,8 +32,9 @@ static spinlock_t console_lock = {0};
 static struct console_lazy_buffer console_pool[CONFIG_CONSOLE_POOL_SZ];
 static LIST_HEAD(console_pool_free_list);
 
-static int console_is_early = 1;
+static int flush_device = 0;
 static tid_t console_task_id;
+int console_is_early = 1;
 
 static void console_pool_init(void)
 {
@@ -73,7 +74,7 @@ static void console_buffer_free(struct console_lazy_buffer *b)
     }
 }
 
-static void console_print_dev(int type, const char *s, uint32_t count)
+static void console_print_dev(int type, const char *s, uint32_t count, int do_flush)
 {
     /* TODO: respect type */
     struct console_dev *entry;
@@ -86,6 +87,9 @@ static void console_print_dev(int type, const char *s, uint32_t count)
             continue;
 
         entry->write(s, count);
+
+        if (entry->flush && do_flush && !console_is_early)
+            entry->flush();
     }
 }
 
@@ -119,7 +123,7 @@ static void console_clear_dev()
     }
 }
 
-static int console_flush(void)
+static int console_flush_buffer(void)
 {
     struct list_head local_list;
     struct list_head *pos, *n;
@@ -131,6 +135,7 @@ static int console_flush(void)
     /* Move any latest buffer into the lazy list, and then steal the whole lazy list */
     unsigned long flags;
     spin_lock_irqsave(&console_lock, flags);
+    int should_flush_dev = flush_device || console_is_early;
 
     if (console_latest_buffer) {
         /* move latest to lazy list */
@@ -157,7 +162,7 @@ static int console_flush(void)
         entry = list_entry(pos, struct console_lazy_buffer, list);
         list_del(pos);
         if (entry->buffer_offset > 0) {
-            console_print_dev(0, entry->buffer, entry->buffer_offset);
+            console_print_dev(0, entry->buffer, entry->buffer_offset, should_flush_dev);
         }
         /* return buffer to pool or free memory */
         console_buffer_free(entry);
@@ -168,25 +173,28 @@ static int console_flush(void)
 
 static void console_thread(void* arg)
 {
+    /* Before switching off early con, flush the buffer last time */
+    console_flush_buffer();
+
     console_is_early = 0;
-    printk("console: early console disabled");
+    kprintf("console: early console disabled");
 
     while (1)
     {
         /* If there's nothing to do, wait a bit to avoid busy spin. */
-        if (!console_flush())
-            usleep(100000);
+        if (!console_flush_buffer())
+            usleep(1000);
     }
 }
 
 static dev_t console_dev = 0;
 static int console_write_char(struct device *chardev, const uint8_t *buf, size_t sz)
 {
-    console_printc(CONSOLE_PRINTK, (const char *)buf, sz);
+    console_puts(CONSOLE_PRINT, (const char *)buf, sz);
     return 0;
 }
 
-static int console_read(struct device *chardev, uint8_t *buf, size_t sz)
+static int console_read_char(struct device *chardev, uint8_t *buf, size_t sz)
 {
     return -1;
 }
@@ -208,6 +216,10 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
     if (req == CONSOLE_IOCTL_CLR)
     {
         console_clear_dev();
+    }
+    else if (req == CONSOLE_IOCTL_FLUSH)
+    {
+        console_flush();
     }
     else if (req != CONSOLE_IOCTL_REWIND && req != CONSOLE_IOCTL_REWIND_CLR)
     {
@@ -262,10 +274,17 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
     return ret;
 }
 
+static int console_flush_char(struct device *chardev)
+{
+    console_flush();
+    return 0;
+}
+
 static struct char_ops console_ops = {
     .write = &console_write_char,
-    .read = &console_read,
-    .ioctl = &console_ioctl_char
+    .read = &console_read_char,
+    .ioctl = &console_ioctl_char,
+    .flush = &console_flush_char
 };
 
 int console_init(void)
@@ -295,7 +314,7 @@ int console_register(struct console_dev *dev)
         }
 
     list_add(&dev->list, &consoles_list);
-    printk("console: new device %s registered", dev->name);
+    kprintf("console: new device %s registered", dev->name);
     return 0;
 }
 
@@ -305,17 +324,17 @@ int console_unregister(struct console_dev *dev)
         return -EINVAL;
     
     list_del(&dev->list);
-    printk("console: device %s unregistered", dev->name);
+    kprintf("console: device %s unregistered", dev->name);
     return 0;
 }
 
-int console_printc(int type, const char *s, uint32_t count)
+int console_puts(int type, const char *s, uint32_t count)
 {
     unsigned long flags;
 
     if (console_is_early || type == CONSOLE_PANIC)
     {
-        console_print_dev(type, s, count);
+        console_print_dev(type, s, count, 1);
         return 0;
     }
 
@@ -359,14 +378,22 @@ int console_printc(int type, const char *s, uint32_t count)
     return 0;
 }
 
+void console_flush(void)
+{
+    unsigned long flags;
+    spin_lock_irqsave(&console_lock, flags);
+    flush_device = 1;
+    spin_unlock_irqrestore(&console_lock, flags);
+}
+
 void console_switch_early(void)
 {
-    console_flush();
+    console_flush_buffer();
     console_is_early = 1;
 }
 
 void console_switch_normal(void)
 {
-    console_flush();
+    console_flush_buffer();
     console_is_early = 0;
 }

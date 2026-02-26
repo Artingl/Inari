@@ -4,6 +4,9 @@
 #include <kernel/sys/device.h>
 #include <misc/types.h>
 
+#include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
+
 /* special keycodes start above ASCII range */
 #define KEY_NONE       0x000
 #define KEY_ESC        0x100
@@ -49,24 +52,68 @@
 #define KEY_KP_INS     0x13d
 #define KEY_KP_DEL     0x13e
 
-/* Each keyboard chardev must return this structure on read.
- * This structure shows the latest state of the keyboard device.
- *
- * event_id - increments on each new keyboard event.
- *            useful to check whether new events happened or not.
- *            if 0, means no events happened since driver startup.
- * dev - the keyboard device
+
+struct hid_device;
+
+/* dev - the keyboard device
  * released - was the keyboard key released
  * code - the keycode (driver specific)
  * key - a key scancode */
 struct kbd_event
 {
-    uint32_t event_id;
-    dev_t dev;
-
     int released;
     uint8_t code;
     uint16_t key;
-};
+
+    /* Internal stuff. Used by driver to check if we're not duplicating events */
+    uint32_t event_id;
+} __attribute__((packed));
+
+struct mouse_event
+{
+#define HID_MOUSE_BTN1  0   // Left button
+#define HID_MOUSE_BTN2  1   // Right button
+#define HID_MOUSE_BTN3  2   // Middle button
+    uint8_t buttons[8]; // Are any buttons pressed?
+
+    int16_t rel_x;
+    int16_t rel_y;
+
+    int16_t wheel_rel_x;
+    int16_t wheel_rel_y;
+
+    /* Internal stuff. Used by driver to check if we're not duplicating events */
+    uint32_t event_id;
+} __attribute__((packed));
+
+struct hid_ops
+{
+      /* Reads latest device event and puts the appropriate structure
+         (e.g. kbd_event or mouse_event based on device type) into event argument */
+    int (*read_event)(struct hid_device *device, void *event);
+} __attribute__((packed));
+
+struct hid_device_info
+{
+    char name[DEV_NAME_SIZE + 1];
+    uint8_t type;
+} __attribute__((packed));
+
+struct hid_device
+{
+    char name[DEV_NAME_SIZE + 1];
+    struct hid_ops *ops;
+    uint8_t type;
+    dev_t dev;
+} __attribute__((packed));
+
+#define HID_IOCTL_INFO      0  // Device info (provides as hid_device_info structure)
+
+#define HID_TYPE_MOUSE      0
+#define HID_TYPE_KEYBOARD   1
+
+int hid_init(void);
+int hid_add_device(dev_t *dev, uint8_t type, const char *name, struct hid_ops *ops);
+int hid_remove_device(dev_t dev);
 
 #endif

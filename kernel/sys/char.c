@@ -32,13 +32,13 @@ int register_chardev_group(uint32_t driver, const char *name)
     strcpy(&chardev_group->name[0], name);
     chardev_group->name[DEV_NAME_SIZE] = '\0';
 
-    printk("char: new chardev group %16s; driver %u", chardev_group->name, driver);
+    kprintf("char: new chardev group %16s; driver %u", chardev_group->name, driver);
     return 0;
 }
 
 int unregister_chardev_group(uint32_t driver)
 {
-    printk("char: unimplemented unregister_chardev_group");
+    kprintf("char: unimplemented unregister_chardev_group");
     return -EINVAL;
 }
 
@@ -83,7 +83,7 @@ int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data, d
     chardev->dev = MKDEV(driver, minor);
 
     list_add_tail(&chardev->list, &group->devices);
-    printk("char: new dev:char_%s%u; driver 0x%04x", group->name, minor, driver);
+    kprintf("char: new dev:char_%s%u; driver 0x%04x", group->name, minor, driver);
     event_bus_broadcast((event_t){
         .type = EVENT_LOAD_CHARDEV,
         .as = { .dev = chardev->dev }

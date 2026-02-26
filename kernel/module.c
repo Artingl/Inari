@@ -17,7 +17,7 @@ static int event_handler(event_t event)
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (dev->module->is_loaded && dev->module->event_bus)
+        if ((dev->module->flags & MODULE_FLAG_IS_LOADED) && dev->module->event_bus)
         {
             res = dev->module->event_bus(event);
             if (res != EVENT_HANDLED)
@@ -34,7 +34,7 @@ void modules_cleanup()
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (dev->module->is_loaded)
+        if (dev->module->flags & MODULE_FLAG_IS_LOADED)
         {
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_UNLOAD,
@@ -42,7 +42,7 @@ void modules_cleanup()
             });
             if (dev->module->cleanup)
                 dev->module->cleanup();
-            dev->module->is_loaded = 0;
+            dev->module->flags &= ~MODULE_FLAG_IS_LOADED;
         }
     }
 }
@@ -54,20 +54,19 @@ int modules_insmod(const char *name)
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (!dev->module->is_loaded && strcmp(dev->name, name) == 0)
+        if (!(dev->module->flags & MODULE_FLAG_IS_LOADED) && strcmp(dev->name, name) == 0)
         {
             if (dev->module->probe && (ret = dev->module->probe()) != 0)
             {
-    #ifdef CONFIG_DEBUG
-                printk("%s: error %d", dev->name, ret);
-    #endif
+                kprintf("%s: Module load error: %s.", dev->name, errstr[-ret] ? errstr[-ret] : "Invalid error");
+                return -1;
             }
 
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_LOAD,
                 .as = { .custom = dev->name }
             });
-            dev->module->is_loaded = 1;
+            dev->module->flags |= MODULE_FLAG_IS_LOADED;
             return ret;
         }
     }
@@ -75,7 +74,7 @@ int modules_insmod(const char *name)
     return -1;
 }
 
-int modules_ls(int idx, char *name, uintptr_t *ptr, uint32_t *state)
+int modules_ls(int idx, char *name, uintptr_t *ptr, uint32_t *flags)
 {
     size_t i = 0;
     for (module_metadata_t *dev = (module_metadata_t *)&__start_modules;
@@ -86,7 +85,7 @@ int modules_ls(int idx, char *name, uintptr_t *ptr, uint32_t *state)
         {
             if (ptr)    *ptr = (uintptr_t)dev->module->probe;
             if (name)    memcpy((void*)name, (void*)dev->name, strlen(dev->name) + 1);
-            if (state)  *state = dev->module->is_loaded;
+            if (flags)  *flags = dev->module->flags;
             return 1;
         }
     }
@@ -100,7 +99,7 @@ int modules_rmmod(const char *name)
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (dev->module->is_loaded && strcmp(dev->name, name) == 0)
+        if ((dev->module->flags & MODULE_FLAG_IS_LOADED) && strcmp(dev->name, name) == 0)
         {
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_UNLOAD,
@@ -108,7 +107,7 @@ int modules_rmmod(const char *name)
             });
             if (dev->module->cleanup)
                 dev->module->cleanup();
-            dev->module->is_loaded = 0;
+            dev->module->flags &= ~MODULE_FLAG_IS_LOADED;
             return 0;
         }
     }
@@ -127,21 +126,21 @@ int modules_init()
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (dev->module->flags & MODULE_LAZY_LOAD)
+        dev->module->flags |= MODULE_FLAG_BUILTIN;
+        if (dev->module->flags & MODULE_FLAG_LAZY_LOAD)
             continue;
 
         if (dev->module->probe && (ret = dev->module->probe()) != 0)
         {
-#ifdef CONFIG_DEBUG
-            printk("%s: %s.", dev->name, errstr[-ret] ? errstr[-ret] : "Invalid error");
-#endif
+            kprintf("%s: Module load error: %s.", dev->name, errstr[-ret] ? errstr[-ret] : "Invalid error");
+            continue;
         }
 
         event_bus_broadcast((event_t){
             .type = EVENT_MODULE_LOAD,
             .as = { .custom = dev->name }
         });
-        dev->module->is_loaded = 1;
+        dev->module->flags |= MODULE_FLAG_IS_LOADED;
     }
 
     return 0;

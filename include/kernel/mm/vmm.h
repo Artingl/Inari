@@ -35,7 +35,7 @@ extern char kern_phys_end;
 
 #define VMM_KERN_VBASE        ((uintptr_t)&vmm_pages_pool)
 
-#define VMM_IS_RANGE_USERSPACE(start, end)    (&kern_phys_end + PAGE_SIZE < ((uintptr_t)start) && ((uintptr_t)end) < VIRTUAL_ADDR - PAGE_SIZE)
+#define VMM_IS_RANGE_USERSPACE(start, end)    ((uintptr_t)&kern_phys_end + PAGE_SIZE < ((uintptr_t)start) && ((uintptr_t)end) < VIRTUAL_ADDR - PAGE_SIZE)
 #define VMM_IS_PTR_USERSPACE(ptr)    (VMM_IS_RANGE_USERSPACE(ptr, ptr) || ((uintptr_t)ptr) == 0)
 
 int vmm_init(void);
