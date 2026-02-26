@@ -19,13 +19,12 @@ void *kmalloc(size_t size)
 {
     uint32_t flags;
     spin_lock_irqsave(&heap_lock, flags);
-    size = ALIGN(size + sizeof(struct block), BLOCK_ALIGN);
+    size = ALIGN(size + sizeof(struct block) + PAGE_SIZE, BLOCK_ALIGN);
 
     /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD)
     {
-        size_t npages = (size + PAGE_SIZE - 1) >> 12;
-        void *page = vmm_alloc_kernel(npages);
+        void *page = vmm_alloc_kernel((size + PAGE_SIZE - 1) >> 12);
         if (!page)
         {
             spin_unlock_irqrestore(&heap_lock, flags);
@@ -33,7 +32,7 @@ void *kmalloc(size_t size)
         }
 
         struct block *b = (struct block*)page;
-        b->size = npages * PAGE_SIZE;
+        b->size = (size + PAGE_SIZE - 1);
         b->free = 0;
         b->next = heap_start;
         b->large = 1;
@@ -45,6 +44,9 @@ void *kmalloc(size_t size)
 
     /* Small allocation: try to reuse free blocks */
     struct block *curr = heap_start;
+    if (curr < VIRTUAL_ADDR)
+        panic("kmalloc: heap corrupted.");
+
     while (curr)
     {
         if (curr->free && !curr->large && curr->size >= size)

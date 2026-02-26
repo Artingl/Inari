@@ -3,6 +3,8 @@
 
 #include <misc/types.h>
 
+#define EFLAGS_VM (1 << 17)
+
 enum {
     CPU_FEATURE_ECX_SSE3         = 1 << 0, 
     CPU_FEATURE_ECX_PCLMUL       = 1 << 1,

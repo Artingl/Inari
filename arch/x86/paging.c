@@ -37,7 +37,7 @@ void *arch_map_page(pagedir_t *directory, void *vbase, void *pbase, size_t len, 
         table = get_table((struct x86_paging_directory*)directory, i >> 22);
         table->pages[i >> 12 & 0x03FF] = (unsigned long)offset | flags;
         offset += PAGE_SIZE;
-        if (directory == (pagedir_t*)x86_current_dir)
+        if (directory == (pagedir_t*)x86_current_dir || i >= VIRTUAL_ADDR || i <= 0x1000000)
             flush_tlb((uintptr_t)i);
     }
 

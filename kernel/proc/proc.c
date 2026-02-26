@@ -22,10 +22,12 @@ static LIST_HEAD(waitpid_threads);
 static inline void copy_to_fixed_buffer(int count, char **src_argv, void *buffer) {
     char **new_argv = (char **)buffer;
     char *data_ptr = (char *)buffer + ((count + 1) * sizeof(char *));
-    for (int i = 0; i < count; i++) {
+    int size = 0;
+    for (int i = 0; i < count && size < PAGE_SIZE * 2; i++) {
         new_argv[i] = data_ptr;
         strcpy(data_ptr, src_argv[i]);
         data_ptr += strlen(src_argv[i]) + 1;
+        size += strlen(src_argv[i]) + 1;
     }
     new_argv[count] = NULL;
 }
@@ -41,6 +43,7 @@ static inline void copy_to_fixed_buffer_witharg(int count, char **src_argv, cons
     /* data_ptr starts after the pointer array (including the NULL terminator) */
     char *data_ptr = (char *)buffer + ((total_count + 1) * sizeof(char *));
     int current_idx = 0;
+    int size = 0;
 
     /* Add Path as the first argument if it exists */
     if (has_path) {
@@ -52,10 +55,11 @@ static inline void copy_to_fixed_buffer_witharg(int count, char **src_argv, cons
 
     /* Append original argv elements if they exist */
     if (src_argv && count > 0) {
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count && size < PAGE_SIZE * 2; i++) {
             new_argv[current_idx] = data_ptr;
             strcpy(data_ptr, src_argv[i]);
             data_ptr += strlen(src_argv[i]) + 1;
+            size += strlen(src_argv[i]) + 1;
             current_idx++;
         }
     }
@@ -161,6 +165,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     void *entrypoint = NULL, *args_pbase = NULL, *tmp_args_base = NULL;
     uint8_t *buf = NULL;
     int res = 0;
+    uint32_t flags;
 
     if (!path) return -EINVAL;
 
@@ -177,9 +182,6 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     /* Fork kernel directory for the new process */
     vmem = arch_fork_pagedir();
 
-    uint32_t flags;
-    spin_lock_irqsave(&lock, flags);
-
     /* Copy the provided arguments to temporary address to later copy it to new process memory */
     /* TODO: what if argv is larger than tmp_args_base; env vars */
     if (argc < 0) argc = 0;
@@ -194,10 +196,7 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
         args_pbase,
         PAGE_SIZE * 2,
         PAGE_PRESENT | PAGE_RW | PAGE_USR) == NULL)
-    {
-        spin_unlock_irqrestore(&lock, flags);
         goto err;
-    }
     vmm_disable_region(vmem, (struct reserved_memory){
         .start = PROC_ARGS_BASE,
         .end = PROC_ARGS_BASE + PAGE_SIZE * 2 });
@@ -205,12 +204,8 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
 
     /* Load the PE into non-kernel memory */
     if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
-    {
-        spin_unlock_irqrestore(&lock, flags);
         goto err;
-    }
 
-    spin_unlock_irqrestore(&lock, flags);
     arch_switch_pagedir(prev_dir);
     
     spawn_process(pid, path, (task_descriptor_t){ 
@@ -246,8 +241,6 @@ int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor)
     proc->pending_signal = 0;
     memcpy((void*)proc->path, (void*)path, strlen(path) + 1 >= CONFIG_VFS_NAME_MAX ? CONFIG_VFS_NAME_MAX : strlen(path) + 1);
     proc->path[CONFIG_VFS_NAME_MAX-1] = 0;
-    memset((void*)&proc->signal_handler[0], 0, sizeof(proc->signal_handler));
-    memset((void*)&proc->threads[0], 0, sizeof(proc->threads));
     list_add(&proc->list, &processes);
     if (pid)
         *pid = proc->pid;

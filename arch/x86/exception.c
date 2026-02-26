@@ -122,20 +122,20 @@ void _print_stacktrace(void *r, void *print_handler)
         stk = stk->ebp;
     }
     ((void(*)(const char*, ...))print_handler)("---------------\n");
-    if (regs && regs->ebp >= 0xC0000000)
-    {
-        stk = (struct stackframe*)regs->ebp;
-        for (i = 0; stk && (uint32_t)stk->ebp >= 0xC0000000 && i < 32; i++)
-        {
-            if (stk->eip >= 0xC0000000)
-            {
-                ksym_name = retrieve_symbol(stk->eip);
-                ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
-            }
-            stk = stk->ebp;
-        }
-        ((void(*)(const char*, ...))print_handler)("---------------\n");
-    }
+    // if (regs && regs->ebp >= 0xC0000000)
+    // {
+    //     stk = (struct stackframe*)regs->ebp;
+    //     for (i = 0; stk && (uint32_t)stk->ebp >= 0xC0000000 && i < 32; i++)
+    //     {
+    //         if (stk->eip >= 0xC0000000)
+    //         {
+    //             ksym_name = retrieve_symbol(stk->eip);
+    //             ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
+    //         }
+    //         stk = stk->ebp;
+    //     }
+    //     ((void(*)(const char*, ...))print_handler)("---------------\n");
+    // }
 }
 
 void x86_exception_setup(struct x86_cpu *core)
@@ -189,24 +189,30 @@ void x86_exception_handler(struct x86_regs32 *regs)
     _print_stacktrace(regs, &helper_printf);
 #endif
 
+    
     if (sched_current_thread(&tid) == 0 && sched_get_thread(tid, &th) == 0)
     {
-
-        /* If not critical exception, try to call handler */
-        if (!is_critical) {
-            if (th->proc_data)
-                is_critical = proc_signal(th->proc_data->pid, signal_exception[regs->int_no]) != 0;
-            else is_critical = 1;
-        }
-
-        /* If critical OR the handler above failed OR standalone thread (not process), kill process/thread */
-        if (is_critical)
+        /* v86 mode caused this exception, kill process that caused it */
+        if (regs->eflags & EFLAGS_VM && th->proc_data)
         {
-            
-            if (th->proc_data)
-                kill_process(th->proc_data->pid, -1);
-            else
-                sched_kill_thread(tid);
+            kill_process(th->proc_data->pid, -1);
+        }
+        else {
+            /* If not critical exception, try to call handler */
+            if (!is_critical) {
+                if (th->proc_data)
+                    is_critical = proc_signal(th->proc_data->pid, signal_exception[regs->int_no]) != 0;
+                else is_critical = 1;
+            }
+
+            /* If critical OR the handler above failed OR standalone thread (not process), kill process/thread */
+            if (is_critical)
+            {
+                if (th->proc_data)
+                    kill_process(th->proc_data->pid, -1);
+                else
+                    sched_kill_thread(tid);
+            }
         }
     }
     else {

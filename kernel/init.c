@@ -138,8 +138,10 @@ static void init_stub_thread()
     pid_t pid;
     int res;
     printk("init: running init at %s", init_file);
+    disable_int();
     if ((res = execp(&pid, init_file)) != 0)
         panic("init: unable to launch init process: %s.", errstr[-res]);
+    enable_int();
 }
 
 int init_task()

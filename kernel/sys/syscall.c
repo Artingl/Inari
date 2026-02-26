@@ -52,6 +52,8 @@ int syscall_handle(
         break;
 
     case SYSCALL_OPEN:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_open((vfs_handle_t*)param0, (const char*)param1, (int)param2);
         break;
 
@@ -60,10 +62,14 @@ int syscall_handle(
         break;
 
     case SYSCALL_EXECP:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = execp((pid_t*)param0, (const char*)param1);
         break;
     
     case SYSCALL_READ:
+        if (!VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param3))
+            { res = -EINVAL; break; }
         res = vfs_read((vfs_handle_t)param0, (void*)param1, (size_t)param2, (size_t*)param3);
         break;
         
@@ -72,22 +78,32 @@ int syscall_handle(
         break;
         
     case SYSCALL_TELL:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_tell((vfs_handle_t)param0, (size_t*)param1);
         break;
         
     case SYSCALL_SIZE:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_size((vfs_handle_t)param0, (size_t*)param1);
         break;
     
     case SYSCALL_GET_PID:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         if (param0)
             *((pid_t*)param0) = proc->pid;
         break;
 
     case SYSCALL_SPAWN_THREAD:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         return spawn_thread((tid_t*)param0, (pid_t)param1, (thread_entrypoint_t)param2);
     
     case SYSCALL_GET_TID:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         if (param0)
             *((pid_t*)param0) = th->tid;
         break;
@@ -105,18 +121,26 @@ int syscall_handle(
         break;
 
     case SYSCALL_MOUNT:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_mount((dev_t)param0, (const char*)param1);
         break;
 
     case SYSCALL_UNMOUNT:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_unmount((const char*)param1);
         break;
     
     case SYSCALL_READDIR:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_readdir((const char*)param0, (struct vfs_node*)param1);
         break;
     
     case SYSCALL_WRITE:
+        if (!VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = vfs_write((vfs_handle_t)param0, (void*)param1, (size_t)param2);
         break;
     
@@ -135,14 +159,20 @@ int syscall_handle(
         break;
 
     case SYSCALL_EXECPV:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param3))
+            { res = -EINVAL; break; }
         res = execpv((pid_t*)param0, (const char*)param1, (int)param2, (char**)param3);
         break;
 
     case SYSCALL_MEMMAP:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1))
+            { res = -EINVAL; break; }
         res = (int)arch_map_page(proc->descriptor.vmem, (void*)param0, (void*)param1, (size_t)param2, (uint32_t)param3);
         break;
 
     case SYSCALL_MEMUNMAP:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         arch_unmap_page(proc->descriptor.vmem, (void*)param0, (size_t)param1);
         break;
 
@@ -151,10 +181,14 @@ int syscall_handle(
         break;
 
     case SYSCALL_MEMFREE:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         vmm_free_pages(proc->descriptor.vmem, (void*)param0, (size_t)param1);
         break;
     
     case SYSCALL_IOCTL:
+        if (!VMM_IS_PTR_USERSPACE(param2))
+            { res = -EINVAL; break; }
         res = vfs_ioctl((vfs_handle_t)param0, (unsigned long)param1, (void*)param2);
         break;
     
@@ -188,18 +222,26 @@ int syscall_handle(
         break;
     
     case SYSCALL_RMMOD:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         res = modules_rmmod((const char*)param0);
         break;
 
     case SYSCALL_INSMOD:
+        if (!VMM_IS_PTR_USERSPACE(param0))
+            { res = -EINVAL; break; }
         res = modules_insmod((const char*)param0);
         break;
 
     case SYSCALL_LSMOD:
+        if (!VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3))
+            { res = -EINVAL; break; }
         res = modules_ls((int)param0, (char*)param1, (uintptr_t*)param2, (uint32_t*)param3);
         break;
     
     case SYSCALL_LSPROC:
+        if (!VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3))
+            { res = -EINVAL; break; }
         res = proc_ls((int)param0, (char*)param1, (pid_t*)param2, (double*)param3);
         break;
     

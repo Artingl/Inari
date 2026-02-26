@@ -58,7 +58,7 @@ endstruc
 %define STACK16                                (INT32_BASE - regs16_t_size)
  
  
-section .text
+section ._lo_kern_text
     v86_bios: use32                               ; by Napalm
     _int32:
         cli                                    ; disable interrupts
@@ -91,7 +91,12 @@ section .text
         mov  gs, ax                            ; set gs to 16bit selector
         mov  ss, ax                            ; set ss to 16bit selector
         mov  eax, cr0                          ; get cr0 so we can modify it
-        and  al,  ~0x01                        ; mask off PE bit to turn off protected mode
+        
+        ;; Clear PG (bit 31) and PE (bit 0) simultaneously
+        and  eax, 0x7FFFFFFE                   
+        mov  cr0, eax
+        ;; and  al,  ~0x01                        ; mask off PE bit to turn off protected mode
+
         mov  cr0, eax                          ; set cr0 to result
         jmp  word 0x0000:REBASE(r_mode16)      ; finally set cs:ip to enter real-mode
     r_mode16: use16
@@ -122,7 +127,10 @@ section .text
         mov  bx, 0x2028                        ; master 32 and slave 40
         call resetpic                          ; restore the pic's to protected mode settings
         mov  eax, cr0                          ; get cr0 so we can modify it
-        inc  eax                               ; set PE bit to turn on protected mode
+        ;; inc  eax                               ; set PE bit to turn on protected mode
+        ;; Set PG (bit 31) and PE (bit 0) simultaneously
+        or   eax, 0x80000001
+
         mov  cr0, eax                          ; set cr0 to result
         jmp  dword CODE32:REBASE(p_mode32)     ; switch to 32bit selector (32bit protected mode)
     p_mode32: use32

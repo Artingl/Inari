@@ -78,13 +78,14 @@ int arch_sched_load(struct thread *task)
 
             esp -= 4; *(((uint32_t*)esp)) = 0x23; // ss
             esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->thread_stack_pointer + (uint32_t)CONFIG_STACK_SIZE;   // useresp
-            esp -= 4; *(((uint32_t*)esp)) = 0x200;
+            esp -= 4; *(((uint32_t*)esp)) = 0x202;
             esp -= 4; *(((uint32_t*)esp)) = 0x1b;
             esp -= 4; *(((uint32_t*)esp)) = (uint32_t)task->entrypoint;
         }
 
         esp -= 4*2;                           // int_no, err_code
         esp -= 4*8;                           // regs edi-eax
+        memset((void*)esp, 0, 40);
 
         uint32_t segments = is_kernel_pagedir ? 0x10 : 0x23;
         esp -= 4; *(((uint32_t*)esp)) = segments; // ds

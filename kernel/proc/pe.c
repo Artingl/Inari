@@ -38,7 +38,7 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
 
         section = (struct pe_image_section*)&buf[off];
 
-        if (!VMM_IS_USERSPACE(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz))
+        if (!VMM_IS_RANGE_USERSPACE(header32->image_base + section->vbase, header32->image_base + section->vbase + section->virt_sz))
         {
             res = -EFAULT;
             goto end;
