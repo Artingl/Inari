@@ -335,45 +335,23 @@ static int ps2_irq12(uint32_t irq, void *driver_data)
 
 static int ps2_read_event(struct hid_device *device, void *event)
 {
-    int found_dev = 1, dev_id = 0;
-    struct kbd_event *kbd = event;
-    struct mouse_event *mouse = event;
+    int dev_id = 0;
     if (!device || !event) return -EINVAL;
     
-    /* Ensure we're not sending outdate information */
-    while (found_dev) {
-        found_dev = 0;
-        for (dev_id = 0; dev_id < ps2_devices_off; dev_id++)
+    for (dev_id = 0; dev_id < ps2_devices_off; dev_id++)
+    {
+        if (ps2_devices[dev_id].port == 0) continue;
+
+        /* Type 1 == keyboard; Type 2 == mouse */
+        if (device->type == HID_TYPE_KEYBOARD && ps2_devices[dev_id].type == 1)
         {
-            if (ps2_devices[dev_id].port == 0) continue;
-
-            /* Type 1 == keyboard; Type 2 == mouse */
-            if (device->type == HID_TYPE_KEYBOARD && ps2_devices[dev_id].type == 1)
-            {
-                found_dev = 1;
-                /* Check if we skip this event */
-                if (kbd->event_id == ps2_devices[dev_id].kbd.event_id)
-                {
-                    sched_yield();
-                    continue;
-                }
-
-                memcpy(event, (void*)&ps2_devices[dev_id].kbd, sizeof(struct kbd_event));
-                return 0;
-            }
-            if (device->type == HID_TYPE_MOUSE && ps2_devices[dev_id].type == 2)
-            {
-                found_dev = 1;
-                /* Check if we skip this event */
-                if (mouse->event_id == ps2_devices[dev_id].mouse.event_id)
-                {
-                    sched_yield();
-                    continue;
-                }
-
-                memcpy(event, (void*)&ps2_devices[dev_id].mouse, sizeof(struct mouse_event));
-                return 0;
-            }
+            memcpy(event, (void*)&ps2_devices[dev_id].kbd, sizeof(struct kbd_event));
+            return 0;
+        }
+        if (device->type == HID_TYPE_MOUSE && ps2_devices[dev_id].type == 2)
+        {
+            memcpy(event, (void*)&ps2_devices[dev_id].mouse, sizeof(struct mouse_event));
+            return 0;
         }
     }
 

@@ -7,6 +7,7 @@
 #include <kernel/sys/driver.h>
 #include <kernel/sys/device.h>
 #include <kernel/errno.h>
+#include <kernel/proc/sched.h>
 
 #include <misc/types.h>
 #include <misc/string.h>
@@ -43,9 +44,30 @@ static int hid_read(struct device *chardev, uint8_t *buf, size_t sz)
     
     if (!chardev || !chardev->driver_data)  return -EINVAL;
     struct hid_device *device = (struct hid_device*)chardev->driver_data;
+    struct kbd_event *kbd = (struct kbd_event *)buf;
+    struct mouse_event *mouse = (struct mouse_event *)buf;
+    int res = 0;
     if (!device->ops->read_event)   return -ENOSYS;
 
-    return device->ops->read_event(device, buf);
+    uint32_t prev_event_id = device->type == HID_TYPE_KEYBOARD ? kbd->event_id : mouse->event_id;
+    uint32_t event_id;
+
+    /* Ensure we're not sending outdated info */
+    while ((res = device->ops->read_event(device, buf)) == 0)
+    {
+        event_id = device->type == HID_TYPE_KEYBOARD ? kbd->event_id : mouse->event_id;
+
+        /* If we got same event, skip */
+        if (event_id == prev_event_id)
+        {
+            sched_yield();
+            continue;
+        }
+
+        break;
+    }
+
+    return res;
 }
 
 static struct char_ops ops =

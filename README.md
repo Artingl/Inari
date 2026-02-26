@@ -24,7 +24,7 @@ Example for bootargs: `earlycon=ga_text root=mbr0 init=/prog/cmd.exe`
 For now it only supports i686 systems, but support for other arches is planned in _some_ future. Nonetheless, here're currently supported devices.
 
  * ATA in PIO mode
- * PS/2 keyboard
+ * PS/2 keyboard and Mouse
  * PC8250 serial and VGA text mode for console and earlycon
  * VBE/Vesa implementation
 

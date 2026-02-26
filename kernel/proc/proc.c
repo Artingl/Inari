@@ -308,7 +308,7 @@ int proc_ls(int idx, char *name, pid_t *pid, double *usg)
                     if (entry->threads[i] != 0)
                     {
                         if ((th = __sched_get_thread(entry->threads[i])) != NULL)
-                            *usg += th->cpu_time;
+                            *usg += (double)th->cpu_time / (double)th->reschedules_count;
                     }
             }
 

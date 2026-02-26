@@ -216,9 +216,9 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
         if (strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, lock_flags);
             if (entry->layer->ops->open)
                 res = entry->layer->ops->open(entry, file, path, flags);
-            spin_unlock_irqrestore(&vfs_lock, lock_flags);
             return res;
         }
     }
@@ -240,12 +240,12 @@ int vfs_close(vfs_handle_t handle)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->close)
                 res = entry->mount->layer->ops->close(entry->mount, handle);
             list_del(pos);
             kfree(entry);
             
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -267,9 +267,9 @@ int vfs_flush(vfs_handle_t handle)
         entry = list_entry(pos, struct vfs_handle, list);
         if (entry->id == handle)
         {
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->flush)
                 res = entry->mount->layer->ops->flush(entry->mount, handle);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -293,9 +293,9 @@ int vfs_read(vfs_handle_t handle, void *buf, size_t len, size_t *rlen)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->read)
                 res = entry->mount->layer->ops->read(entry->mount, handle, buf, len, rlen);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -319,9 +319,9 @@ int vfs_write(vfs_handle_t handle, const void *buf, size_t sz)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->write)
                 res = entry->mount->layer->ops->write(entry->mount, handle, buf, sz);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -344,9 +344,9 @@ int vfs_ioctl(vfs_handle_t handle, unsigned long req, void *arg)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->ioctl)
                 res = entry->mount->layer->ops->ioctl(entry->mount, handle, req, arg);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -369,9 +369,9 @@ int vfs_seek(vfs_handle_t handle, size_t offset)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->seek)
                 res = entry->mount->layer->ops->seek(entry->mount, handle, offset);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -395,9 +395,9 @@ int vfs_tell(vfs_handle_t handle, size_t *offset)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->tell)
                 res = entry->mount->layer->ops->tell(entry->mount, handle, offset);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }
@@ -421,9 +421,9 @@ int vfs_size(vfs_handle_t handle, size_t *size)
         if (entry->id == handle)
         {
             res = -ENOSYS;
+            spin_unlock_irqrestore(&vfs_lock, flags);
             if (entry->mount->layer->ops->size)
                 res = entry->mount->layer->ops->size(entry->mount, handle, size);
-            spin_unlock_irqrestore(&vfs_lock, flags);
             return res;
         }
     }

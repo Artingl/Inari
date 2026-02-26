@@ -130,7 +130,9 @@ void _arch_cpu_relax(void)
 
 void _arch_trigger_interrupt(uint32_t interrupt)
 {
+    uint32_t flags = _arch_local_irq_save();
     _arch_enable_int();
+    _arch_local_irq_restore(flags);
     switch (interrupt)
     {
         case SWI_RESCHEDULE:

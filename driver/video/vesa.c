@@ -371,8 +371,8 @@ static int video_mode_switch(struct video_device *device, struct video_mode_info
     return 0;
 }
 
-// #pragma GCC push_options
-// #pragma GCC optimize("O3")
+#pragma GCC push_options
+#pragma GCC optimize("O3")
 static int vesa_blit(struct video_device *device, struct video_blit *blit_info)
 {
     if (!vesa_initialized)  return -ENOSYS;
@@ -405,7 +405,7 @@ end:
     spin_unlock_irqrestore(&vesa_lock, flags);
     return res;
 }
-// #pragma GCC pop_options
+#pragma GCC pop_options
 
 struct video_ops ops = {
     .mode_info = &video_mode_info,
