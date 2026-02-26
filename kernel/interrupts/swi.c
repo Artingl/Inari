@@ -28,17 +28,16 @@ int swi_request(uint32_t swi, swi_handler_t handler, void *dev_id)
     return 0;
 }
 
-int swi_free(uint32_t swi, void *dev_id)
+int swi_free(uint32_t swi, swi_handler_t handler)
 {
     struct list_head *pos, *n;
     struct swi_handler_node *entry;
 
     list_for_each_safe(pos, n, &swi_handlers_list) {
         entry = list_entry(pos, struct swi_handler_node, list);
-        if (entry->swi == swi) {
-            list_del(pos);     // unlink
-            kfree(entry);      // and kfree
-
+        if (entry->swi == swi && entry->handler == handler) {
+            list_del(pos);
+            kfree(entry);
             return 0;
         }
     }

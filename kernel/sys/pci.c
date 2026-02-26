@@ -6,6 +6,7 @@
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 
+#include <arch/paging.h>
 #include <arch/sys.h>
 
 #include <misc/list.h>

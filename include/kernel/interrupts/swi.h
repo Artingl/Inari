@@ -11,8 +11,8 @@
 
 typedef int (*swi_handler_t)(uint32_t swi, void *dev_id);
 
-extern int swi_request(uint32_t irq, swi_handler_t handler, void *dev_id);
-extern int swi_free(uint32_t irq, void *dev_id);
-extern void swi_dispatch(struct interrupt_frame frame);
+int swi_request(uint32_t swi, swi_handler_t handler, void *dev_id);
+int swi_free(uint32_t swi, swi_handler_t handler);
+void swi_dispatch(struct interrupt_frame frame);
 
 #endif

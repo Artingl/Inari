@@ -193,9 +193,12 @@ void x86_exception_handler(struct x86_regs32 *regs)
     if (sched_current_thread(&tid) == 0 && sched_get_thread(tid, &th) == 0)
     {
         /* v86 mode caused this exception, kill process that caused it */
-        if (regs->eflags & EFLAGS_VM && th->proc_data)
+        if (regs->eflags & (1 << 17))   // EFLAGS_VM
         {
-            kill_process(th->proc_data->pid, -1);
+            if (th->proc_data)
+                kill_process(th->proc_data->pid, -1);
+            else
+                sched_kill_thread(tid);
         }
         else {
             /* If not critical exception, try to call handler */

@@ -28,17 +28,16 @@ int irq_request(uint32_t irq, irq_handler_t handler, void *dev_id)
     return 0;
 }
 
-int irq_free(uint32_t irq, void *dev_id)
+int irq_free(uint32_t irq, irq_handler_t handler)
 {
     struct list_head *pos, *n;
     struct irq_handler_node *entry;
 
     list_for_each_safe(pos, n, &irq_handlers_list) {
         entry = list_entry(pos, struct irq_handler_node, list);
-        if (entry->irq == irq) {
-            list_del(pos);     // unlink
-            kfree(entry);      // and kfree
-
+        if (entry->irq == irq && entry->handler == handler) {
+            list_del(pos);
+            kfree(entry); 
             return 0;
         }
     }
