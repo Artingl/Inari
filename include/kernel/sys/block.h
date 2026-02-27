@@ -1,11 +1,11 @@
 #ifndef _INARI_BLOCK_H
 #define _INARI_BLOCK_H
 
-#include <misc/types.h>
 #include <misc/list.h>
+#include <misc/types.h>
 
-#include <kernel/sys/driver.h>
 #include <kernel/sys/device.h>
+#include <kernel/sys/driver.h>
 
 int blkdev_init();
 
@@ -15,7 +15,6 @@ int unregister_blkdev_group(uint32_t driver);
 
 int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void *driver_data, dev_t *dev);
 int unregister_blkdev(dev_t dev);
-
 
 /* Fills the `devs` array with bdevs relative to set offset and limit.
  * Returns the amount of found bdevs or 0 if none */

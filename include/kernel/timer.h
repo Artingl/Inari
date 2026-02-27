@@ -4,10 +4,10 @@
 #include <misc/types.h>
 
 /* Sets the hardware timer resolution.
-  *A value of 1000 would mean the timer ticks 1000 times a second, or every 1 millisecond.
-  *
-  * Also resets the timer logic.
-  */
+ *A value of 1000 would mean the timer ticks 1000 times a second, or every 1 millisecond.
+ *
+ * Also resets the timer logic.
+ */
 extern int timer_init(size_t resolution);
 
 /* A single tick sent from the hardware timer */

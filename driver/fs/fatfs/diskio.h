@@ -5,14 +5,22 @@
 #ifndef _DISKIO_DEFINED
 #define _DISKIO_DEFINED
 
-#include <kernel/sys/driver.h>
+#include <kernel/sys/device.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Status of Disk Functions */
+typedef unsigned int	UINT;	/* int must be 16-bit or 32-bit */
+typedef unsigned char	BYTE;	/* char must be 8-bit */
+typedef uint16_t		WORD;	/* 16-bit unsigned */
+typedef uint32_t		DWORD;	/* 32-bit unsigned */
+typedef uint64_t		QWORD;	/* 64-bit unsigned */
+typedef WORD			WCHAR;	/* UTF-16 code unit */
 typedef BYTE	DSTATUS;
+typedef DWORD FSIZE_t;
+typedef DWORD LBA_t;
 
 /* Results of Disk Functions */
 typedef enum {

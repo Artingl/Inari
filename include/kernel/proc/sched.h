@@ -1,27 +1,26 @@
 #ifndef _INARI_SCHED_H
 #define _INARI_SCHED_H
 
-#include <misc/types.h>
 #include <misc/list.h>
+#include <misc/types.h>
 
-#include <kernel/proc/proc.h>
 #include <arch/paging.h>
+#include <kernel/proc/proc.h>
 
-#define SCHED_TASK_ACTIVE        0
-#define SCHED_TASK_SLEEPING      1
-#define SCHED_TASK_DEAD          2
-#define SCHED_TASK_PAUSED        3
+#define SCHED_TASK_ACTIVE 0
+#define SCHED_TASK_SLEEPING 1
+#define SCHED_TASK_DEAD 2
+#define SCHED_TASK_PAUSED 3
 
-#define SCHED_FLAG_SYSTEM        (1 << 0)   // This flag tells scheduler that a thread is system, if it dies system will crash
-#define SCHED_FLAG_SYSCALL_RSLT  (1 << 1)
-#define SCHED_FLAG_SIGRETURN     (1 << 2)
+#define SCHED_FLAG_SYSTEM (1 << 0) // This flag tells scheduler that a thread is system, if it dies system will crash
+#define SCHED_FLAG_SYSCALL_RSLT (1 << 1)
+#define SCHED_FLAG_SIGRETURN (1 << 2)
 
 struct thread;
 
-typedef void (*thread_cleanup_t)(struct thread *, void*);
+typedef void (*thread_cleanup_t)(struct thread *, void *);
 
-struct thread
-{
+struct thread {
     tid_t tid;
     thread_entrypoint_t entrypoint;
     pagedir_t *vmem;
@@ -45,8 +44,7 @@ struct thread
     struct list_head list;
 };
 
-struct sched_core
-{
+struct sched_core {
     uint8_t active;
     uint32_t core_id;
     size_t last_schedule_ticks;
@@ -57,7 +55,8 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler, struct process *proc_data);
+int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler,
+                        struct process *proc_data);
 int sched_kill_thread(tid_t tid);
 void sched_yield();
 void sched_enter_core();

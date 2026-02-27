@@ -14,6 +14,8 @@ driver_objects := $(patsubst driver/%.c, build/driver/%.o, $(driver_source))
 arch_sources := $(shell find arch/$(TARGET) -name '*.c' -o -name '*.S')
 arch_build_stamp := build/arch/$(TARGET)/.built
 
+headers := $(shell find include/ -name '*.h')
+
 $(kernel_objects): build/kernel/%.o: kernel/%.c
 	mkdir -p $(dir $@) && \
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -38,6 +40,9 @@ clean:
 	make -C libc clean && \
 	make -C arch/${TARGET} clean && \
 	make -C libc clean
+
+format: $(kernel_source) $(driver_source) $(headers)
+	clang-format -i $(kernel_source) $(driver_source) $(headers)
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \

@@ -1,13 +1,12 @@
-#include <kernel/inari.h>
 #include <kernel/errno.h>
-#include <kernel/mm/kmalloc.h>
+#include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>
+#include <kernel/mm/kmalloc.h>
 
 #include <arch/sys.h>
 #include <misc/list.h>
 
-struct irq_handler_node
-{
+struct irq_handler_node {
     irq_handler_t handler;
     uint32_t irq;
     void *driver_data;
@@ -17,10 +16,10 @@ struct irq_handler_node
 
 LIST_HEAD(irq_handlers_list);
 
-int irq_request(uint32_t irq, irq_handler_t handler, void *driver_data)
-{
+int irq_request(uint32_t irq, irq_handler_t handler, void *driver_data) {
     struct irq_handler_node *node = kmalloc(sizeof(*node));
-    if (!node) return -ENOMEM;
+    if (!node)
+        return -ENOMEM;
     node->irq = irq;
     node->driver_data = driver_data;
     node->handler = handler;
@@ -28,8 +27,7 @@ int irq_request(uint32_t irq, irq_handler_t handler, void *driver_data)
     return 0;
 }
 
-int irq_free(uint32_t irq, irq_handler_t handler)
-{
+int irq_free(uint32_t irq, irq_handler_t handler) {
     struct list_head *pos, *n;
     struct irq_handler_node *entry;
 
@@ -45,8 +43,7 @@ int irq_free(uint32_t irq, irq_handler_t handler)
     return -1;
 }
 
-void irq_dispatch(struct interrupt_frame frame)
-{
+void irq_dispatch(struct interrupt_frame frame) {
     struct list_head *pos;
     struct irq_handler_node *entry;
 

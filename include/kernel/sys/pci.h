@@ -1,12 +1,11 @@
 #ifndef _INARI_PIC_H
 #define _INARI_PIC_H
 
-#include <misc/list.h>
-#include <kernel/sys/driver.h>
 #include <kernel/sys/device.h>
+#include <kernel/sys/driver.h>
+#include <misc/list.h>
 
-struct pci_device
-{
+struct pci_device {
     uint16_t device_id, vendor_id;
     uint16_t status, command;
     uint8_t class_code, subclass;

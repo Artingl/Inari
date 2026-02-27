@@ -1,50 +1,54 @@
-#include <kernel/inari.h>
-#include <kernel/console/earlycon.h>
 #include <kernel/console/console.h>
-#include <kernel/timer.h>
+#include <kernel/console/earlycon.h>
+#include <kernel/errno.h>
+#include <kernel/event.h>
+#include <kernel/inari.h>
+#include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
-#include <kernel/mm/kmalloc.h>
+#include <kernel/module.h>
+#include <kernel/proc/proc.h>
+#include <kernel/proc/sched.h>
 #include <kernel/sys/block.h>
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
-#include <kernel/proc/sched.h>
-#include <kernel/proc/proc.h>
-#include <kernel/module.h>
 #include <kernel/sys/vfs.h>
-#include <kernel/event.h>
-#include <kernel/errno.h>
+#include <kernel/timer.h>
 
-#include <arch/sys.h>
 #include <arch/paging.h>
-#include <misc/string.h>
+#include <arch/sys.h>
 #include <misc/format.h>
+#include <misc/string.h>
 
 #ifdef CONFIG_SUBSYS_PCI
-  #include <kernel/sys/pci.h>
+#include <kernel/sys/pci.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_NET
-  #include <kernel/sys/net.h>
+#include <kernel/sys/net.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_HID
-  #include <kernel/subsys/hid.h>
+#include <kernel/subsys/hid.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_VIDEO
-  #include <kernel/subsys/video.h>
+#include <kernel/subsys/video.h>
 #endif
 
 bootinfo_t bootinfo;
 int init_task();
 int mount_root();
 
-#define assert(cond, fmt, ...) {if (!(cond)) {panic(fmt, ##__VA_ARGS__);}}
+#define assert(cond, fmt, ...)                                                                                         \
+    {                                                                                                                  \
+        if (!(cond)) {                                                                                                 \
+            panic(fmt, ##__VA_ARGS__);                                                                                 \
+        }                                                                                                              \
+    }
 
-void kearly_init()
-{
+void kearly_init() {
     /* Initialize the early console for atleast some output */
     kprintf("Inari kernel cmdline: %s", bootinfo.cmdline);
 
@@ -52,12 +56,10 @@ void kearly_init()
     assert(vmm_init() == 0, "vmm init failed.");
     assert(kmalloc_init() == 0, "kmalloc/kfree init failed.");
 
-
     kprintf("kearly_init: done");
 }
 
-void kmain(void)
-{
+void kmain(void) {
     assert(event_bus_init() == 0, "event bus init failed.");
     assert(blkdev_init() == 0, "block device init failed.");
     assert(chardev_init() == 0, "char device init failed.");
@@ -92,8 +94,7 @@ void kmain(void)
     panic("Reached end of kmain");
 }
 
-int mount_root()
-{
+int mount_root() {
     char name_buff[ARG_MAX_LEN];
     char device[ARG_MAX_LEN];
     int found_root = parse_cmdline_argument("root", &device[0]) == 0;
@@ -102,18 +103,14 @@ int mount_root()
     struct device *bdev;
     dev_t devs[128];
     int offset = 0, count = 0;
-    while ((count = block_get_refs(&devs[0], offset, 128)) > 0)
-    {
-        for (; count > 0; count--)
-        {
+    while ((count = block_get_refs(&devs[0], offset, 128)) > 0) {
+        for (; count > 0; count--) {
             bdev = block_get(devs[count - 1]);
-            if (bdev)
-            {
+            if (bdev) {
                 sprintf(&name_buff[0], "%s%d", bdev->group->name, DEVID(bdev->dev));
-                
+
                 /* If specified root blkdev, use it */
-                if (found_root && strcmp(name_buff, device) == 0)
-                {
+                if (found_root && strcmp(name_buff, device) == 0) {
                     kprintf("init: mounting %s as /", name_buff);
                     return vfs_mount(bdev->dev, "/");
                 }
@@ -130,8 +127,7 @@ int mount_root()
     return -ENODEV;
 }
 
-static void init_stub_thread()
-{
+static void init_stub_thread() {
     /* Initialize the rest of the kernel and mount root */
     modules_init();
     assert(mount_root() == 0, "no root found.");
@@ -150,19 +146,14 @@ static void init_stub_thread()
     enable_int();
 }
 
-int init_task()
-{
+int init_task() {
     tid_t tid;
     return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL);
 }
 
-bootinfo_t get_boot_info()
-{
-    return bootinfo;
-}
+bootinfo_t get_boot_info() { return bootinfo; }
 
-void kpower_off(uint8_t do_reboot)
-{
+void kpower_off(uint8_t do_reboot) {
     /* TODO: graceful shutdown */
 #ifdef CONFIG_SUBSYS_VIDEO
     video_disable();

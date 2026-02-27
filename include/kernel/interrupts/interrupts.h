@@ -3,14 +3,12 @@
 
 #include <misc/types.h>
 
-struct interrupt_registers
-{
+struct interrupt_registers {
     void *base;
     size_t size;
 };
 
-struct interrupt_frame
-{
+struct interrupt_frame {
     uint32_t int_no;
     struct interrupt_registers registers;
 };

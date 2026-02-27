@@ -1,8 +1,8 @@
 #ifndef _INARI_X86_ACPI
 #define _INARI_X86_ACPI
 
-#include <misc/types.h>
 #include <arch/x86/cpu.h>
+#include <misc/types.h>
 
 /* Iterate through all ACPI SDTs
  *
@@ -11,26 +11,23 @@
  *     array and the length of the array.
  *  2. Get the array element depending on the data size
  */
-#define ACPI_ITERATE(idx, ptr, statement)                                                       \
-    {                                                                                           \
-        struct XSDP *sdp = x86_acpi_sdp();                                                      \
-        struct XSDT *root_sdt = x86_acpi_root_sdt();                                            \
-        size_t idx, len = (root_sdt->header.length - sizeof(root_sdt->header)) /                \
-                          (sdp->revision == 2 ? 8 : 4);                                         \
-        struct SDT *ptr;                                                                        \
-        for (idx = 0; idx < len; idx++)                                                         \
-        {                                                                                       \
-            if (sdp->revision == 2)                                                             \
-                ptr = (struct SDT *)(uintptr_t)(root_sdt->sdt_pointers[idx]);                   \
-            else                                                                                \
-                ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]);             \
-            arch_map_page(arch_get_kernel_pagedir(), ptr, ptr, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);   \
-            statement                                                                           \
-        }                                                                                       \
+#define ACPI_ITERATE(idx, ptr, statement)                                                                              \
+    {                                                                                                                  \
+        struct XSDP *sdp = x86_acpi_sdp();                                                                             \
+        struct XSDT *root_sdt = x86_acpi_root_sdt();                                                                   \
+        size_t idx, len = (root_sdt->header.length - sizeof(root_sdt->header)) / (sdp->revision == 2 ? 8 : 4);         \
+        struct SDT *ptr;                                                                                               \
+        for (idx = 0; idx < len; idx++) {                                                                              \
+            if (sdp->revision == 2)                                                                                    \
+                ptr = (struct SDT *)(uintptr_t)(root_sdt->sdt_pointers[idx]);                                          \
+            else                                                                                                       \
+                ptr = (struct SDT *)(((struct RSDT *)root_sdt)->sdt_pointers[idx]);                                    \
+            arch_map_page(arch_get_kernel_pagedir(), ptr, ptr, PAGE_SIZE, PAGE_RW | PAGE_PRESENT);                     \
+            statement                                                                                                  \
+        }                                                                                                              \
     }
 
-struct RSDP
-{
+struct RSDP {
     char signature[8];
     uint8_t checksum;
     char oemid[6];
@@ -38,8 +35,7 @@ struct RSDP
     uint32_t rsdt_address;
 } __attribute__((packed));
 
-struct XSDP
-{
+struct XSDP {
     char signature[8];
     uint8_t checksum;
     char oemid[6];
@@ -52,8 +48,7 @@ struct XSDP
     uint8_t reserved[3];
 } __attribute__((packed));
 
-struct SDT
-{
+struct SDT {
     char signature[4];
     uint32_t length;
     uint8_t revision;
@@ -65,27 +60,23 @@ struct SDT
     uint32_t creator_revision;
 };
 
-struct MADT
-{
+struct MADT {
     struct SDT header;
     uint32_t local_apic_address;
     uint32_t flags;
 };
 
-struct RSDT
-{
+struct RSDT {
     struct SDT header;
     uint32_t sdt_pointers[];
 };
 
-struct XSDT
-{
+struct XSDT {
     struct SDT header;
     uint64_t sdt_pointers[];
 };
 
-struct FADT_genaddr
-{
+struct FADT_genaddr {
     uint8_t address_space;
     uint8_t bit_width;
     uint8_t bit_offset;
@@ -93,8 +84,7 @@ struct FADT_genaddr
     uint64_t address;
 };
 
-struct FADT
-{
+struct FADT {
     struct SDT header;
     uint32_t FirmwareCtrl;
     uint32_t Dsdt;
@@ -161,14 +151,12 @@ struct FADT
     struct FADT_genaddr x_gpe1_block;
 };
 
-struct MADT_Entry
-{
+struct MADT_Entry {
     uint8_t entry_type;
     uint8_t record_length;
 };
 
-struct IOAPIC_MADT
-{
+struct IOAPIC_MADT {
     struct MADT_Entry header;
 
     uint8_t io_apic_id;
@@ -178,8 +166,7 @@ struct IOAPIC_MADT
 };
 
 // IO/APIC Interrupt Source Override
-struct IOAPIC_INTSRCO_MADT
-{
+struct IOAPIC_INTSRCO_MADT {
     struct MADT_Entry header;
 
     uint8_t bus;
@@ -188,8 +175,7 @@ struct IOAPIC_INTSRCO_MADT
     uint16_t flags;
 };
 
-struct LAPIC_MADT
-{
+struct LAPIC_MADT {
     struct MADT_Entry header;
 
     uint8_t acpi_proc_id;
@@ -203,6 +189,5 @@ extern struct XSDT *x86_acpi_root_sdt(void);
 extern int x86_acpi_load_madt(struct x86_cpu *cpus_pool);
 extern uint32_t x86_acpi_cpu_count(void);
 extern uintptr_t x86_acpi_cpu_ioapic(void);
-
 
 #endif

@@ -5,11 +5,10 @@
 
 #include <kernel/sys/device.h>
 
-#define EVENT_HANDLED   0
-#define EVENT_ABORTED   1
+#define EVENT_HANDLED 0
+#define EVENT_ABORTED 1
 
-typedef enum
-{
+typedef enum {
     EVENT_LOAD_BLKDEV = 0,
     EVENT_UNLOAD_BLKDEV,
 
@@ -24,9 +23,7 @@ typedef enum
     EVENT_CUSTOM,
 } event_type_t;
 
-
-typedef struct
-{
+typedef struct {
     event_type_t type;
 
     union {
@@ -36,7 +33,7 @@ typedef struct
     } as;
 } event_t;
 
-typedef int(*event_handler_t)(event_t);
+typedef int (*event_handler_t)(event_t);
 
 typedef struct {
 

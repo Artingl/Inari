@@ -5,8 +5,7 @@
 
 #include <stdatomic.h>
 
-typedef struct mutex
-{
+typedef struct mutex {
     atomic_flag lock;
 } mutex_t;
 

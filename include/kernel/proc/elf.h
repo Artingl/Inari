@@ -20,8 +20,8 @@ struct elf32_sym {
     uint32_t st_name;
     uint32_t st_value;
     uint32_t st_size;
-    uint8_t  st_info;
-    uint8_t  st_other;
+    uint8_t st_info;
+    uint8_t st_other;
     uint16_t st_shndx;
 };
 

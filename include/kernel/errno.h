@@ -3,45 +3,44 @@
 #ifndef _LINUX_ERRNO_H
 #define _LINUX_ERRNO_H
 
-#define	ENODEV		1	/* No such device */
-#define	EPERM		2	/* Operation not permitted */
-#define	EBUSY		3	/* Device or resource busy */
-#define	EINVAL		4	/* Invalid argument */
-#define	ENOMEM		5	/* Out of memory */
-#define	EINVFS		6	/* Invalid file-system */
-#define	EIO		    7	/* I/O error */
-#define	ETIMEDOUT	8	/* Connection timed out */
-#define	ENOENT		9	/* No such file or directory */
-#define	EBADHNDL    10	/* Bad handle */
-#define	ENOSYS		11	/* Function not implemented */
-#define	ESRCH		12	/* No such process */
-#define	EACCES		13	/* Permission denied */
-#define	EFAULT		14	/* Bad address */
-#define	ENOEXEC		15	/* Exec format error */
-#define	EINTR		16	/* Interrupted */
-#define	EKILLED		17	/* Killed */
+#define ENODEV 1    /* No such device */
+#define EPERM 2     /* Operation not permitted */
+#define EBUSY 3     /* Device or resource busy */
+#define EINVAL 4    /* Invalid argument */
+#define ENOMEM 5    /* Out of memory */
+#define EINVFS 6    /* Invalid file-system */
+#define EIO 7       /* I/O error */
+#define ETIMEDOUT 8 /* Connection timed out */
+#define ENOENT 9    /* No such file or directory */
+#define EBADHNDL 10 /* Bad handle */
+#define ENOSYS 11   /* Function not implemented */
+#define ESRCH 12    /* No such process */
+#define EACCES 13   /* Permission denied */
+#define EFAULT 14   /* Bad address */
+#define ENOEXEC 15  /* Exec format error */
+#define EINTR 16    /* Interrupted */
+#define EKILLED 17  /* Killed */
 
-__attribute__((unused)) static const char *errstr[] = 
-{
-    [ 0 ]   = "OK",
-    [ ENODEV ] = "No such device",
-    [ EPERM ] = "Operation not permitted",
-    [ EBUSY ] = "Device or resource busy",
-    [ EINVAL ] = "Invalid argument",
-    [ ENOMEM ] = "Out of memory",
-    [ EINVFS ] = "Invalid file-system",
-    [ EIO ] = "I/O error",
-    [ ETIMEDOUT ] = "Connection timed out",
-    [ ENOENT ] = "No such file or directory",
-    [ EBADHNDL ] = "Bad handle",
-    [ ENOSYS ] = "Function not implemented",
-    [ ESRCH ] = "No such process",
-    [ EACCES ] = "Permission denied",
-    [ EFAULT ] = "Bad address",
-    [ ENOEXEC ] = "Exec format error",
+__attribute__((unused)) static const char *errstr[] = {
+    [0] = "OK",
+    [ENODEV] = "No such device",
+    [EPERM] = "Operation not permitted",
+    [EBUSY] = "Device or resource busy",
+    [EINVAL] = "Invalid argument",
+    [ENOMEM] = "Out of memory",
+    [EINVFS] = "Invalid file-system",
+    [EIO] = "I/O error",
+    [ETIMEDOUT] = "Connection timed out",
+    [ENOENT] = "No such file or directory",
+    [EBADHNDL] = "Bad handle",
+    [ENOSYS] = "Function not implemented",
+    [ESRCH] = "No such process",
+    [EACCES] = "Permission denied",
+    [EFAULT] = "Bad address",
+    [ENOEXEC] = "Exec format error",
 };
 
-// 
+//
 // #define	ENOENT		 2	/* No such file or directory */
 // #define	ESRCH		 3	/* No such process */
 // #define	EINTR		 4	/* Interrupted system call */
@@ -52,17 +51,17 @@ __attribute__((unused)) static const char *errstr[] =
 // #define	EBADF		 9	/* Bad file number */
 // #define	ECHILD		10	/* No child processes */
 // #define	EAGAIN		11	/* Try again */
-// 
+//
 // #define	EACCES		13	/* Permission denied */
 // #define	EFAULT		14	/* Bad address */
 // #define	ENOTBLK		15	/* Block device required */
-// 
+//
 // #define	EEXIST		17	/* File exists */
 // #define	EXDEV		18	/* Cross-device link */
 // #define	ENODEV		19	/* No such device */
 // #define	ENOTDIR		20	/* Not a directory */
 // #define	EISDIR		21	/* Is a directory */
-// 
+//
 // #define	ENFILE		23	/* File table overflow */
 // #define	EMFILE		24	/* Too many open files */
 // #define	ENOTTY		25	/* Not a typewriter */

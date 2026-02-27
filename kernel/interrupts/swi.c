@@ -1,13 +1,12 @@
-#include <kernel/inari.h>
 #include <kernel/errno.h>
-#include <kernel/mm/kmalloc.h>
+#include <kernel/inari.h>
 #include <kernel/interrupts/swi.h>
+#include <kernel/mm/kmalloc.h>
 
 #include <arch/sys.h>
 #include <misc/list.h>
 
-struct swi_handler_node
-{
+struct swi_handler_node {
     swi_handler_t handler;
     uint32_t swi;
     void *driver_data;
@@ -17,10 +16,10 @@ struct swi_handler_node
 
 LIST_HEAD(swi_handlers_list);
 
-int swi_request(uint32_t swi, swi_handler_t handler, void *driver_data)
-{
+int swi_request(uint32_t swi, swi_handler_t handler, void *driver_data) {
     struct swi_handler_node *node = kmalloc(sizeof(*node));
-    if (!node) return -ENOMEM;
+    if (!node)
+        return -ENOMEM;
     node->swi = swi;
     node->driver_data = driver_data;
     node->handler = handler;
@@ -28,8 +27,7 @@ int swi_request(uint32_t swi, swi_handler_t handler, void *driver_data)
     return 0;
 }
 
-int swi_free(uint32_t swi, swi_handler_t handler)
-{
+int swi_free(uint32_t swi, swi_handler_t handler) {
     struct list_head *pos, *n;
     struct swi_handler_node *entry;
 
@@ -45,8 +43,7 @@ int swi_free(uint32_t swi, swi_handler_t handler)
     return -1;
 }
 
-void swi_dispatch(struct interrupt_frame frame)
-{
+void swi_dispatch(struct interrupt_frame frame) {
     struct list_head *pos;
     struct swi_handler_node *entry;
 

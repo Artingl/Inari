@@ -1,11 +1,11 @@
 #ifndef _INARI_SWI_H
 #define _INARI_SWI_H
 
-#include <misc/types.h>
 #include <kernel/interrupts/interrupts.h>
+#include <misc/types.h>
 
 #define SWI_RESCHEDULE 0x2000
-#define SWI_SYSCALL    0x2080
+#define SWI_SYSCALL 0x2080
 
 #define SWI_HANDLED 1
 

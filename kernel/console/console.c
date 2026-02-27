@@ -1,21 +1,20 @@
+#include <kernel/console/console.h>
+#include <kernel/console/earlycon.h>
+#include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>
-#include <kernel/console/console.h>
 #include <kernel/mm/kmalloc.h>
-#include <kernel/console/earlycon.h>
 #include <kernel/proc/sched.h>
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
-#include <kernel/errno.h>
 #include <kernel/timer.h>
 
-#include <misc/string.h>
-#include <misc/list.h>
-#include <misc/types.h>
 #include <kernel/sync/spinlock.h>
+#include <misc/list.h>
+#include <misc/string.h>
+#include <misc/types.h>
 
-struct console_lazy_buffer
-{
+struct console_lazy_buffer {
     char buffer[CONFIG_CONSOLE_BUFF_SZ];
     uint32_t buffer_offset;
     struct list_head list;
@@ -36,8 +35,7 @@ static int flush_device = 0;
 static tid_t console_task_id;
 int console_is_early = 1;
 
-static void console_pool_init(void)
-{
+static void console_pool_init(void) {
     int i;
     INIT_LIST_HEAD(&console_pool_free_list);
     for (i = 0; i < CONFIG_CONSOLE_POOL_SZ; ++i) {
@@ -48,8 +46,7 @@ static void console_pool_init(void)
     }
 }
 
-static struct console_lazy_buffer *console_pool_alloc_nosleep(void)
-{
+static struct console_lazy_buffer *console_pool_alloc_nosleep(void) {
     struct list_head *pos;
     if (list_empty(&console_pool_free_list))
         return NULL;
@@ -59,9 +56,9 @@ static struct console_lazy_buffer *console_pool_alloc_nosleep(void)
     return list_entry(pos, struct console_lazy_buffer, list);
 }
 
-static void console_buffer_free(struct console_lazy_buffer *b)
-{
-    if (!b) return;
+static void console_buffer_free(struct console_lazy_buffer *b) {
+    if (!b)
+        return;
     if (b->from_pool) {
         b->buffer_offset = 0;
         /* push back to pool free list */
@@ -74,8 +71,7 @@ static void console_buffer_free(struct console_lazy_buffer *b)
     }
 }
 
-static void console_print_dev(int type, const char *s, uint32_t count, int do_flush)
-{
+static void console_print_dev(int type, const char *s, uint32_t count, int do_flush) {
     /* TODO: respect type */
     struct console_dev *entry;
     struct list_head *pos;
@@ -93,8 +89,7 @@ static void console_print_dev(int type, const char *s, uint32_t count, int do_fl
     }
 }
 
-static void console_rewind_dev(uint32_t count, int clear)
-{
+static void console_rewind_dev(uint32_t count, int clear) {
     struct console_dev *entry;
     struct list_head *pos;
 
@@ -108,8 +103,7 @@ static void console_rewind_dev(uint32_t count, int clear)
     }
 }
 
-static void console_clear_dev()
-{
+static void console_clear_dev() {
     struct console_dev *entry;
     struct list_head *pos;
 
@@ -123,15 +117,14 @@ static void console_clear_dev()
     }
 }
 
-static int console_flush_buffer(void)
-{
+static int console_flush_buffer(void) {
     struct list_head local_list;
     struct list_head *pos, *n;
     struct console_lazy_buffer *entry;
     int flushed = 0;
 
     INIT_LIST_HEAD(&local_list);
-    
+
     /* Move any latest buffer into the lazy list, and then steal the whole lazy list */
     unsigned long flags;
     spin_lock_irqsave(&console_lock, flags);
@@ -171,16 +164,14 @@ static int console_flush_buffer(void)
     return flushed;
 }
 
-static void console_thread(void* arg)
-{
+static void console_thread(void *arg) {
     /* Before switching off early con, flush the buffer last time */
     console_flush_buffer();
 
     console_is_early = 0;
     kprintf("console: early console disabled");
 
-    while (1)
-    {
+    while (1) {
         /* If there's nothing to do, wait a bit to avoid busy spin. */
         if (!console_flush_buffer())
             usleep(1000);
@@ -188,19 +179,14 @@ static void console_thread(void* arg)
 }
 
 static dev_t console_dev = 0;
-static int console_write_char(struct device *chardev, const uint8_t *buf, size_t sz)
-{
+static int console_write_char(struct device *chardev, const uint8_t *buf, size_t sz) {
     console_puts(CONSOLE_PRINT, (const char *)buf, sz);
     return 0;
 }
 
-static int console_read_char(struct device *chardev, uint8_t *buf, size_t sz)
-{
-    return -1;
-}
+static int console_read_char(struct device *chardev, uint8_t *buf, size_t sz) { return -1; }
 
-static int console_ioctl_char(struct device *chardev, unsigned long req, void *arg)
-{
+static int console_ioctl_char(struct device *chardev, unsigned long req, void *arg) {
     int ret = 0;
     unsigned long flags;
     uint32_t remaining_to_rewind = (uint32_t)(unsigned long)arg;
@@ -213,23 +199,17 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
 
     spin_lock_irqsave(&console_lock, flags);
 
-    if (req == CONSOLE_IOCTL_CLR)
-    {
+    if (req == CONSOLE_IOCTL_CLR) {
         console_clear_dev();
-    }
-    else if (req == CONSOLE_IOCTL_FLUSH)
-    {
+    } else if (req == CONSOLE_IOCTL_FLUSH) {
         console_flush();
-    }
-    else if (req != CONSOLE_IOCTL_REWIND && req != CONSOLE_IOCTL_REWIND_CLR)
-    {
-        while (remaining_to_rewind > 0)
-        {
+    } else if (req != CONSOLE_IOCTL_REWIND && req != CONSOLE_IOCTL_REWIND_CLR) {
+        while (remaining_to_rewind > 0) {
             if (!console_latest_buffer) {
                 if (list_empty(&console_lazy_list)) {
-                    /* We've exhausted all buffered characters. 
-                    * The rest must have already been printed to the hardware. */
-                    break; 
+                    /* We've exhausted all buffered characters.
+                     * The rest must have already been printed to the hardware. */
+                    break;
                 }
                 console_latest_buffer = list_entry(console_lazy_list.prev, struct console_lazy_buffer, list);
                 list_del(&console_latest_buffer->list);
@@ -238,16 +218,17 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
             if (console_latest_buffer->buffer_offset >= remaining_to_rewind) {
                 /* We can satisfy the remaining rewind entirely within this buffer */
                 console_latest_buffer->buffer_offset -= remaining_to_rewind;
-                
+
                 if (clear) {
-                    memset(&console_latest_buffer->buffer[console_latest_buffer->buffer_offset], 0, remaining_to_rewind);
+                    memset(&console_latest_buffer->buffer[console_latest_buffer->buffer_offset], 0,
+                           remaining_to_rewind);
                 }
                 remaining_to_rewind = 0;
             } else {
                 /* The rewind consumes this entire buffer; we must step back to the previous one */
                 remaining_to_rewind -= console_latest_buffer->buffer_offset;
                 console_latest_buffer->buffer_offset = 0;
-                
+
                 if (clear) {
                     memset(console_latest_buffer->buffer, 0, CONFIG_CONSOLE_BUFF_SZ);
                 }
@@ -256,8 +237,8 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
                 console_latest_buffer = NULL;
             }
         }
-    }
-    else ret = -EINVAL;
+    } else
+        ret = -EINVAL;
 
     spin_unlock_irqrestore(&console_lock, flags);
 
@@ -274,21 +255,17 @@ static int console_ioctl_char(struct device *chardev, unsigned long req, void *a
     return ret;
 }
 
-static int console_flush_char(struct device *chardev)
-{
+static int console_flush_char(struct device *chardev) {
     console_flush();
     return 0;
 }
 
-static struct char_ops console_ops = {
-    .write = &console_write_char,
-    .read = &console_read_char,
-    .ioctl = &console_ioctl_char,
-    .flush = &console_flush_char
-};
+static struct char_ops console_ops = {.write = &console_write_char,
+                                      .read = &console_read_char,
+                                      .ioctl = &console_ioctl_char,
+                                      .flush = &console_flush_char};
 
-int console_init(void)
-{
+int console_init(void) {
     int ret;
 
     console_pool_init();
@@ -298,8 +275,7 @@ int console_init(void)
     return ret;
 }
 
-int console_register(struct console_dev *dev)
-{
+int console_register(struct console_dev *dev) {
     struct console_dev *entry;
     struct list_head *pos;
 
@@ -318,22 +294,19 @@ int console_register(struct console_dev *dev)
     return 0;
 }
 
-int console_unregister(struct console_dev *dev)
-{
+int console_unregister(struct console_dev *dev) {
     if (!dev)
         return -EINVAL;
-    
+
     list_del(&dev->list);
     kprintf("console: device %s unregistered", dev->name);
     return 0;
 }
 
-int console_puts(int type, const char *s, uint32_t count)
-{
+int console_puts(int type, const char *s, uint32_t count) {
     unsigned long flags;
 
-    if (console_is_early || type == CONSOLE_PANIC)
-    {
+    if (console_is_early || type == CONSOLE_PANIC) {
         console_print_dev(type, s, count, 1);
         return 0;
     }
@@ -341,8 +314,7 @@ int console_puts(int type, const char *s, uint32_t count)
     /* Enqueue characters into buffers protected by a single lock block */
     spin_lock_irqsave(&console_lock, flags);
 
-    while (count > 0)
-    {
+    while (count > 0) {
         /* ensure we have a current buffer */
         if (!console_latest_buffer) {
             console_latest_buffer = console_pool_alloc_nosleep();
@@ -361,14 +333,13 @@ int console_puts(int type, const char *s, uint32_t count)
 
         /* Bulk copy the string into the buffer rather than iterating per-character */
         memcpy(&console_latest_buffer->buffer[console_latest_buffer->buffer_offset], s, to_copy);
-        
+
         console_latest_buffer->buffer_offset += to_copy;
         s += to_copy;
         count -= to_copy;
 
         /* if current buffer full, move it to lazy list */
-        if (console_latest_buffer->buffer_offset >= CONFIG_CONSOLE_BUFF_SZ)
-        {
+        if (console_latest_buffer->buffer_offset >= CONFIG_CONSOLE_BUFF_SZ) {
             list_add_tail(&console_latest_buffer->list, &console_lazy_list);
             console_latest_buffer = NULL;
         }
@@ -378,22 +349,19 @@ int console_puts(int type, const char *s, uint32_t count)
     return 0;
 }
 
-void console_flush(void)
-{
+void console_flush(void) {
     unsigned long flags;
     spin_lock_irqsave(&console_lock, flags);
     flush_device = 1;
     spin_unlock_irqrestore(&console_lock, flags);
 }
 
-void console_switch_early(void)
-{
+void console_switch_early(void) {
     console_flush_buffer();
     console_is_early = 1;
 }
 
-void console_switch_normal(void)
-{
+void console_switch_normal(void) {
     console_flush_buffer();
     console_is_early = 0;
 }

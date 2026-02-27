@@ -1,11 +1,11 @@
 #ifndef _INARI_CHAR_H
 #define _INARI_CHAR_H
 
-#include <misc/types.h>
 #include <misc/list.h>
+#include <misc/types.h>
 
-#include <kernel/sys/driver.h>
 #include <kernel/sys/device.h>
+#include <kernel/sys/driver.h>
 
 int chardev_init();
 

@@ -1,8 +1,8 @@
 #ifndef _INARI_IRQ_H
 #define _INARI_IRQ_H
 
-#include <misc/types.h>
 #include <kernel/interrupts/interrupts.h>
+#include <misc/types.h>
 
 #define IRQ_TIMER_INTERRUPT 0x1000
 

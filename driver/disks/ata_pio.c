@@ -1,29 +1,24 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_ATA_PIO
 
-#include <kernel/inari.h>
-#include <kernel/timer.h>
 #include <kernel/console/console.h>
 #include <kernel/errno.h>
+#include <kernel/inari.h>
+#include <kernel/interrupts/irq.h>
 #include <kernel/module.h>
 #include <kernel/timer.h>
-#include <kernel/interrupts/irq.h>
 
-#include <misc/string.h>
-#include <arch/x86/arch.h>
 #include <arch/sys.h>
+#include <arch/x86/arch.h>
+#include <misc/string.h>
 
 #include <driver/disk/ata/ata.h>
 
 static uint8_t ata_pio_ints_installed;
 
-static int ata_pio_irq(uint32_t irq, void *driver_data)
-{
-    return IRQ_HANDLED;
-}
+static int ata_pio_irq(uint32_t irq, void *driver_data) { return IRQ_HANDLED; }
 
-static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t nsects)
-{
+static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t nsects) {
     uint8_t status;
     size_t i;
 
@@ -45,39 +40,30 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
     /* "read sectors" command */
     x86_outb(io_port + ATA_COMMAND, 0x20);
 
-    for (i = 0; i < nsects; i++)
-    {
+    for (i = 0; i < nsects; i++) {
         /* Wait for the data by polling */
-        do
-        {
+        do {
             status = x86_inb(io_port + ATA_STATUS);
             if (status & ATA_SR_ERR || status & ATA_SR_DF)
                 break;
-            usleep(400);    /* If scheduler is active, it will yield to avoid busylooping */
+            usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
         } while (status & ATA_SR_BSY && (status & ATA_SR_DRQ) != ATA_SR_DRQ);
 
         /* Receive 256 16-bit values */
-        x86_insw(io_port + ATA_DATA, &((uint16_t*)&((uint8_t*)buf)[0])[i * 256], 256);
+        x86_insw(io_port + ATA_DATA, &((uint16_t *)&((uint8_t *)buf)[0])[i * 256], 256);
 
         /* 400ns delay */
-        usleep(400);    /* If scheduler is active, it will yield to avoid busylooping */
+        usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
     }
 
     return 0;
 }
 
-static int ata_pio_write(struct ata_drive *drive, uint32_t lba, const void *buf, size_t nsects)
-{
-    return -ENODEV;
-}
+static int ata_pio_write(struct ata_drive *drive, uint32_t lba, const void *buf, size_t nsects) { return -ENODEV; }
 
-static struct ata_ops ata_pio_ops = {
-    .read = &ata_pio_read,
-    .write = &ata_pio_write
-};
+static struct ata_ops ata_pio_ops = {.read = &ata_pio_read, .write = &ata_pio_write};
 
-void ata_pio_init(struct ata_drive *drive)
-{
+void ata_pio_init(struct ata_drive *drive) {
     if (!ata_pio_ints_installed) {
         irq_request(14, &ata_pio_irq, NULL);
         // irq_request(15, &ata_pio_irq, NULL);

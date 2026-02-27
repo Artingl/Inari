@@ -1,26 +1,26 @@
 #ifndef _INARI_VFS_H
 #define _INARI_VFS_H
 
-#include <misc/types.h>
 #include <misc/list.h>
+#include <misc/types.h>
 
-#include <kernel/sys/block.h>
 #include <kernel/proc/proc.h>
+#include <kernel/sys/block.h>
 
-#define	VFS_READ			0x01
-#define	VFS_WRITE			0x02
-#define	VFS_OPEN_EXISTING	0x00
-#define	VFS_CREATE_NEW		0x04
-#define	VFS_CREATE_ALWAYS	0x08
-#define	VFS_OPEN_ALWAYS		0x10
-#define	VFS_OPEN_APPEND		0x30
+#define VFS_READ 0x01
+#define VFS_WRITE 0x02
+#define VFS_OPEN_EXISTING 0x00
+#define VFS_CREATE_NEW 0x04
+#define VFS_CREATE_ALWAYS 0x08
+#define VFS_OPEN_ALWAYS 0x10
+#define VFS_OPEN_APPEND 0x30
 
-#define VFS_STAT_FILE       (1 << 0)
-#define VFS_STAT_DIR        (1 << 1)
-#define VFS_STAT_BLOCK      (1 << 2)
-#define VFS_STAT_CHAR       (1 << 3)
+#define VFS_STAT_FILE (1 << 0)
+#define VFS_STAT_DIR (1 << 1)
+#define VFS_STAT_BLOCK (1 << 2)
+#define VFS_STAT_CHAR (1 << 3)
 
-#define VFS_PATH_SIZE       256
+#define VFS_PATH_SIZE 256
 
 struct vfs_node;
 struct vfs_mount_point;
@@ -30,10 +30,10 @@ typedef int64_t vfs_handle_t;
 
 struct vfs_node {
     char name[VFS_PATH_SIZE];
-    uint32_t st_mode;     // File type + permissions
-    uint64_t size;        // File size (bytes)
+    uint32_t st_mode; // File type + permissions
+    uint64_t size;    // File size (bytes)
 
-    uint32_t off;         // Node offset in the directory
+    uint32_t off; // Node offset in the directory
 } __attribute__((packed));
 
 struct vfs_layer_ops {
@@ -50,10 +50,9 @@ struct vfs_layer_ops {
     int (*flush)(struct vfs_mount_point *mount, vfs_handle_t handle);
 };
 
-struct vfs_layer
-{
-    int (*mount)(struct vfs_mount_point*);
-    int (*unmount)(struct vfs_mount_point*);
+struct vfs_layer {
+    int (*mount)(struct vfs_mount_point *);
+    int (*unmount)(struct vfs_mount_point *);
 
     const char *name;
     struct vfs_layer_ops *ops;
@@ -61,8 +60,7 @@ struct vfs_layer
     struct list_head list;
 };
 
-struct vfs_mount_point
-{
+struct vfs_mount_point {
     const char *fs_name; // e.g. FAT32, EXT2
     char mount_point[VFS_PATH_SIZE];
 
@@ -76,8 +74,8 @@ struct vfs_mount_point
 
 int vfs_init();
 
-int vfs_mount(dev_t dev, const char* path);
-int vfs_unmount(const char* path);
+int vfs_mount(dev_t dev, const char *path);
+int vfs_unmount(const char *path);
 
 int vfs_add_layer(struct vfs_layer *layer);
 int vfs_remove_layer(struct vfs_layer *layer);
