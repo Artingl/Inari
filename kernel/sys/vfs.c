@@ -31,10 +31,10 @@ struct vfs_handle
     struct list_head list;
 };
 
-static void normalize_path(char *path, char *result)
+static void normalize_path(const char *path, char *result)
 {
     size_t i, off = 0;
-    uint8_t had_slash = 0;
+    // uint8_t had_slash = 0;
 
     /* Remove duplicate slash, e.g. `//` */
     for (i = 0; i < VFS_PATH_SIZE && path[i]; i++)
@@ -47,7 +47,7 @@ static void normalize_path(char *path, char *result)
         result[i - off] = path[i];
     }
     result[i - off] = 0;
-    kprintf("-- %s %s", result, path);
+    // kprintf("-- %s %s", result, path);
 }
 
 int vfs_init()
@@ -230,7 +230,6 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
 
     struct list_head *pos;
     struct vfs_mount_point *entry;
-    struct device *bdev;
 
     /* Search mount point that owns this path */
     list_for_each(pos, &vfs_mount_points) {

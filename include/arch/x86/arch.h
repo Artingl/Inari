@@ -5,7 +5,7 @@
 
 #include <kernel/proc/signals.h>
 
-static uint32_t signal_exception[] =
+__attribute__((unused)) static uint32_t signal_exception[] =
 {
     [ 0x10 ]  = SIGFPE,  // FP_Exception
     [ 0x6  ]  = SIGILL,  // Invalid_Opcode
@@ -15,7 +15,7 @@ static uint32_t signal_exception[] =
     [ 0xe  ]  = SIGSEGV, // Page_Fault
 };
 
-static uint8_t non_critical_exceptions[] =
+__attribute__((unused)) static uint8_t non_critical_exceptions[] =
 {
     [ 0x10 ]  = 1,  // FP_Exception
     [ 0x6  ]  = 1,  // Invalid_Opcode
@@ -25,7 +25,7 @@ static uint8_t non_critical_exceptions[] =
     [ 0xe  ]  = 1,  // Page_Fault
 };
 
-static const char *exceptionstr[] =
+__attribute__((unused)) static const char *exceptionstr[] =
 {
     [ 0x0 ] = "Division_Error",
     [ 0x1 ] = "Debug_Exception",

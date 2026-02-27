@@ -38,7 +38,7 @@ void modules_cleanup()
         {
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_UNLOAD,
-                .as = { .custom = dev->name }
+                .as = { .custom = (void*)dev->name }
             });
             if (dev->module->cleanup)
                 dev->module->cleanup();
@@ -64,7 +64,7 @@ int modules_insmod(const char *name)
 
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_LOAD,
-                .as = { .custom = dev->name }
+                .as = { .custom = (void*)dev->name }
             });
             dev->module->flags |= MODULE_FLAG_IS_LOADED;
             return ret;
@@ -81,7 +81,7 @@ int modules_ls(int idx, char *name, uintptr_t *ptr, uint32_t *flags)
          dev < (module_metadata_t *)&__stop_modules;
          dev++)
     {
-        if (i++ >= idx)
+        if (i++ >= (size_t)idx)
         {
             if (ptr)    *ptr = (uintptr_t)dev->module->probe;
             if (name)    memcpy((void*)name, (void*)dev->name, strlen(dev->name) + 1);
@@ -103,7 +103,7 @@ int modules_rmmod(const char *name)
         {
             event_bus_broadcast((event_t){
                 .type = EVENT_MODULE_UNLOAD,
-                .as = { .custom = dev->name }
+                .as = { .custom = (void*)dev->name }
             });
             if (dev->module->cleanup)
                 dev->module->cleanup();
@@ -138,7 +138,7 @@ int modules_init()
 
         event_bus_broadcast((event_t){
             .type = EVENT_MODULE_LOAD,
-            .as = { .custom = dev->name }
+            .as = { .custom = (void*)dev->name }
         });
         dev->module->flags |= MODULE_FLAG_IS_LOADED;
     }

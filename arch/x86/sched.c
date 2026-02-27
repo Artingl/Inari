@@ -105,7 +105,6 @@ int arch_sched_load(struct thread *task)
             task->sig_saved_stack = kmalloc(sizeof(struct x86_regs32));
             task->sig_saved_stack_base = task->saved_stack;
             memcpy(task->sig_saved_stack, task->saved_stack, sizeof(struct x86_regs32) - 8);
-            volatile uint32_t test = (uint32_t)&regs_frame->useresp;
             regs_frame->useresp -= 4;
             *((uint32_t*)regs_frame->useresp) = 0x0;
             regs_frame->useresp -= 4;

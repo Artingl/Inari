@@ -26,7 +26,6 @@ int syscall_handle(
 {
     size_t i;
     tid_t tid;
-    char *s;
     int res = 0;
     struct thread *th;
     if (sched_current_thread(&tid) != 0)

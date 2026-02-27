@@ -28,7 +28,7 @@
 
 static int ps2_is_dual = 0;
 
-static int ps2_devices_off = 0;
+static size_t ps2_devices_off = 0;
 static struct {
     uint8_t port;   // 0 - disabled; 1 - first; 2 - second
     uint8_t type;   // 1 - keyboard; 2 - mouse
@@ -334,7 +334,7 @@ static int ps2_irq12(uint32_t irq, void *driver_data)
 
 static int ps2_read_event(struct hid_device *device, void *event)
 {
-    int dev_id = 0;
+    size_t dev_id = 0;
     if (!device || !event) return -EINVAL;
     
     for (dev_id = 0; dev_id < ps2_devices_off; dev_id++)
@@ -364,7 +364,6 @@ struct hid_ops ps2_hid_ops =
 
 static int ps2_kbd_init(uint8_t port)
 {
-    int res;
     int type, timeout;
     dev_t dev;
     if (ps2_devices_off >= 2) return -ENODEV;
@@ -445,7 +444,6 @@ static int ps2_mouse_init(uint8_t port)
 static int ps2_init()
 {
     uint8_t in;
-    int timeout;
     ps2_is_dual = 0;
 
     /* Disable devices */
@@ -481,7 +479,7 @@ static int ps2_init()
     while (!(x86_inb(0x64) & 1))
         usleep(0x1000);
     in = x86_inb(0x60);
-    if (ps2_is_dual = !(in & (1 << 5)))
+    if ((ps2_is_dual = !(in & (1 << 5))))
     {
         /* Second port available. Disable again */
         x86_outb(0x64, 0xA7);

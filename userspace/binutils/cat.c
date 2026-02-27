@@ -28,6 +28,12 @@ int main(int argc, char const *argv[])
     }
     
     char *data = malloc(sz + 2);
+    if (!data)
+    {
+        printf("%s: %s: %s.\n", argv[0], argv[1], errstr[ENOMEM]);
+        goto close;
+    }
+
     data[sz] = '\n';
     data[sz + 1] = '\0';
 

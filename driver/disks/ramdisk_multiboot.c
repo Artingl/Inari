@@ -12,7 +12,7 @@
 
 #define RAMDISK_BLOCK_SIZE 512
 
-static int dev_off = 0;
+static size_t dev_off = 0;
 static dev_t devices[16];
 
 static int initrd_read(struct device *bdev, uint64_t lba, void *buf, size_t nblocks)
@@ -42,7 +42,7 @@ static int ramdisk_probe()
 
     if (multiboot->flags & MULTIBOOT_INFO_MODS)
     {
-        for (i = 0; i < multiboot->mods_count && dev_off < 16; i++)
+        for (i = 0; i < (size_t)multiboot->mods_count && dev_off < 16; i++)
         {
             /* The module struct ad mods_addr isn't subject to change,  
                so we can pass it directly to our blkdev */

@@ -6,11 +6,6 @@
 
 static int video_subsystem_ready = 0;
 
-static void splash_show()
-{
-
-}
-
 static int splash_probe()
 {
     return 0;

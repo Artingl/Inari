@@ -43,5 +43,5 @@ build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \
 	make -C libc build && \
 	make -C userspace/binutils build && \
-	make -C userspace/shell build
+	make -C userspace/shell/ism build
 	cp arch/${TARGET}/kernel.elf build/kernel.elf

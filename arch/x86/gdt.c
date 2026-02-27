@@ -9,7 +9,6 @@
 #include <misc/types.h>
 
 extern char _arch_stack_bsp;
-static uintptr_t kernel_stack;
 struct tss_entry_struct tss_entry;
 static struct gdt_entry_bits gdt[6] = {0}; /* One null, code/data ring0, code/data ring3, TSS */
 static struct gdt_ptr gp = {

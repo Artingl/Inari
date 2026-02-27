@@ -399,7 +399,7 @@ static int vesa_blit(struct video_device *device, struct video_blit *blit_info)
             buf_off = (y - blit_info->y) * 3 * blit_info->width + (x - blit_info->x) * 3;
             if (off >= size || buf_off + 2 >= buf_size)
                 continue;
-            current_mode_base[off] = (((((0xff << 8) | blit_info->buffer[buf_off++]) << 8) | blit_info->buffer[buf_off++]) << 8) | blit_info->buffer[buf_off++];
+            current_mode_base[off] = (((((0xff << 8) | blit_info->buffer[buf_off + 1]) << 8) | blit_info->buffer[buf_off + 2]) << 8) | blit_info->buffer[buf_off + 3];
         }
     
     res = 0;

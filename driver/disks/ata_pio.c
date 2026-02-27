@@ -28,7 +28,6 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
     size_t i;
 
     uint16_t io_port = drive->controller ? ATA_SECONDARY_IO : ATA_PRIMARY_IO;
-    uint16_t ctrl_port = drive->drive ? ATA_SECONDARY_CTRL : ATA_PRIMARY_CTRL;
     uint8_t ata_drive = drive->drive ? ATA_SLAVE_DRIVE : ATA_MASTER_DRIVE;
 
     if (!buf || !drive || !drive->present)
@@ -58,7 +57,7 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
         } while (status & ATA_SR_BSY && (status & ATA_SR_DRQ) != ATA_SR_DRQ);
 
         /* Receive 256 16-bit values */
-        x86_insw(io_port + ATA_DATA, &((uint16_t*)&buf[0])[i * 256], 256);
+        x86_insw(io_port + ATA_DATA, &((uint16_t*)&((uint8_t*)buf)[0])[i * 256], 256);
 
         /* 400ns delay */
         usleep(400);    /* If scheduler is active, it will yield to avoid busylooping */

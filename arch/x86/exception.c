@@ -106,7 +106,7 @@ static const char *retrieve_symbol(uintptr_t base)
 void _print_stacktrace(void *r, void *print_handler)
 {
     uintptr_t i;
-    struct x86_regs32 *regs = (struct x86_regs32*)r;
+    // struct x86_regs32 *regs = (struct x86_regs32*)r;
     struct stackframe *stk;
     char *ksym_name;
 
@@ -116,7 +116,7 @@ void _print_stacktrace(void *r, void *print_handler)
     {
         if (stk->eip >= 0xC0000000)
         {
-            ksym_name = retrieve_symbol(stk->eip);
+            ksym_name = (char*)retrieve_symbol(stk->eip);
             ((void(*)(const char*, ...))print_handler)("  %s @ 0x%x\n", ksym_name, stk->eip);
         }
         stk = stk->ebp;

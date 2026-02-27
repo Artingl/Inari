@@ -25,7 +25,6 @@ int pe_load(pagedir_t *proc_pagedir, void **entrypoint, uint8_t *buf, size_t sz)
     struct pe_header *header = (struct pe_header*)&buf[pe_offset + 4];
     struct pe32_header *header32 = (struct pe32_header*)&buf[pe_offset + 4 + sizeof(struct pe_header)];
     struct pe_image_section *section;
-    struct pe_symbol *symbol;
     
     if (header->magic != PE_MAGIC) return -ENOEXEC;
     if (header32->magic != PE32_MAGIC) return -ENOEXEC;

@@ -190,7 +190,7 @@ int insmod(const char *name)
 
 int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t *flags)
 {
-    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, (uint32_t*)flags, 0);
+    return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, (uint32_t)flags, 0);
 }
 
 int lsproc(int idx, char *name, pid_t *pid, double *usg)

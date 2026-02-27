@@ -18,6 +18,9 @@
 /
 /----------------------------------------------------------------------------*/
 #ifdef CONFIG_DRV_FATFS
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 #include <misc/string.h>
 #include <kernel/sys/driver.h>
@@ -7246,5 +7249,8 @@ FRESULT f_setcp (
 	return FR_OK;
 }
 #endif	/* FF_CODE_PAGE == 0 */
+
+
+#pragma GCC diagnostic pop
 
 #endif

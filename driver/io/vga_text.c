@@ -52,7 +52,7 @@ static void vga_clear()
 {
     /* Clear the screen */
     uint8_t *base = (uint8_t*)vga_shadow_base;
-    while ((uintptr_t)base < vga_shadow_base+VGA_SIZE)
+    while (base < vga_shadow_base+VGA_SIZE)
     {
         *base++ = ' ';
         *base++ = DEF_COLOR;

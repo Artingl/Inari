@@ -44,7 +44,7 @@ void *kmalloc(size_t size)
 
     /* Small allocation: try to reuse free blocks */
     struct block *curr = heap_start;
-    if (curr < VIRTUAL_ADDR)
+    if ((uintptr_t)curr < VIRTUAL_ADDR)
         panic("kmalloc: heap corrupted.");
 
     while (curr)

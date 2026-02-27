@@ -11,7 +11,7 @@
 
 char command[128] = {0};
 char history[8][128] = {0};
-char current_dir[128] = {'/', NULL};
+char current_dir[128] = {'/', 0};
 int history_offset = 0, history_scroll = 0;
 int command_offset = 0, last_exitcode = 0;
 handle_t kb_hndl;
@@ -137,7 +137,7 @@ int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, in
 
 void exec_cmd()
 {
-    int res, i;
+    int res;
     char buff[256] = {0};
     char *exec_path = NULL;
     int is_background = command[command_offset-1] == '&';
@@ -204,7 +204,6 @@ int main(int argc, char const *argv[])
     int is_shift_pressed = 0;
     char *cat_argv[] = { "/system/motd.txt", NULL };
     struct kbd_event kbd;
-    struct hid_device_info kbd_info;
 
     if (execpv(&pid, "/programs/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
@@ -271,8 +270,8 @@ int main(int argc, char const *argv[])
             }
             else if (kbd.key >= 0x20 && kbd.key <= 0x7E) { // is ascii
                 char key = kbd.key;
-                if (is_shift_pressed && shift_keys[key] != 0)
-                    key = shift_keys[key];
+                if (is_shift_pressed && shift_keys[(int)key] != 0)
+                    key = shift_keys[(int)key];
 
                 command[command_offset++] = key;
                 command[command_offset] = '\0';

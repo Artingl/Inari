@@ -110,7 +110,6 @@ static int sched_load(struct thread *task)
 
 static void sched_update_tasks(struct sched_core *core)
 {
-    tid_t current_tid = core->task ? core->task->tid : 0;
     struct list_head *pos, *n;
     struct thread *entry;
 
@@ -141,7 +140,7 @@ static void sched_reschedule(struct sched_core *core)
 {
     tid_t current_tid = core->task ? core->task->tid : 0;
     struct list_head *pos;
-    struct thread *entry, *new_task = (struct thread*)NULL;
+    struct thread *entry;
 
     if (core->task)
         sched_save(core->task);

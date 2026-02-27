@@ -165,7 +165,6 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv)
     void *entrypoint = NULL, *args_pbase = NULL, *tmp_args_base = NULL;
     uint8_t *buf = NULL;
     int res = 0;
-    uint32_t flags;
 
     if (!path) return -EINVAL;
 
@@ -253,7 +252,6 @@ int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor)
 int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo)
 {
     int res = 0;
-    size_t i;
     uint32_t flags;
     struct process *proc;
     if (signo >= 32) return -EINVAL;
@@ -296,7 +294,7 @@ int proc_ls(int idx, char *name, pid_t *pid, double *usg)
     spin_lock_irqsave(&lock, flags);
     list_for_each(pos, &processes) {
         entry = list_entry(pos, struct process, list);
-        if (i++ >= idx)
+        if (i++ >= (size_t)idx)
         {
             if (name) memcpy((void*)name, (void*)entry->path, strlen(entry->path) + 1);
             if (pid)  *pid = entry->pid;
@@ -391,7 +389,6 @@ int waitpid(pid_t pid, tid_t observer_tid)
     int res = 0;
     uint32_t flags;
     struct process *proc;
-    struct thread *observer;
     struct thread *th;
     struct process_waitpid *wait = NULL;
     

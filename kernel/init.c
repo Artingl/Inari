@@ -94,9 +94,6 @@ void kmain(void)
 
 int mount_root()
 {
-    int res;
-    vfs_handle_t file;
-    
     char name_buff[ARG_MAX_LEN];
     char device[ARG_MAX_LEN];
     int found_root = parse_cmdline_argument("root", &device[0]) == 0;

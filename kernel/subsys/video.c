@@ -108,6 +108,8 @@ int video_disable(void)
         if (entry->ops && entry->ops->disable)
             entry->ops->disable(entry);
     }
+
+    return 0;
 }
 
 #endif

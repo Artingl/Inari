@@ -77,8 +77,6 @@ static void handle_dev_load(uint8_t is_blk, dev_t dev)
     item->is_blk = is_blk;
     INIT_LIST_HEAD(&item->list);
     list_add(&item->list, group);
-    struct list_head *pos;
-    struct devfs_group_item *entry;
 
 #ifdef CONFIG_DEBUG
     kprintf("devfs: new entry dev:%s_%s%d in group %s", (is_blk ? "blk" : "char"), group_name, DEVID(dev), name);
@@ -134,7 +132,7 @@ static int find_group_by_path(struct list_head **group, char **group_path, const
             if (strncmp(&path[9], devfs_groups[i], strlen(devfs_groups[i])) == 0)
             {
                 if (group_path)
-                    *group_path = devfs_groups[i];
+                    *group_path = (char*)devfs_groups[i];
                 *group = devfs_groups_list[i];
                 return 0;
             }
@@ -255,14 +253,13 @@ static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const
 static int devfs_close(struct vfs_mount_point *mount, vfs_handle_t handle)
 {
     if (!mount) return -EINVAL;
-    struct devfs_group_item *item = get_item_by_handle(handle);
+    // struct devfs_group_item *item =
+    get_item_by_handle(handle);
     return 0;
 }
 
 static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const char *path, int flags)
 {
-    int res;
-    size_t i;
     struct list_head *pos;
     struct devfs_group_item *entry;
     struct device *bdev = NULL;
@@ -277,7 +274,6 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
         return -ENOENT;
 
     /* Iterate through all nodes in the group to find required file */
-    i = 0;
     list_for_each(pos, group) {
         entry = list_entry(pos, struct devfs_group_item, list);
         if (entry->is_blk && (bdev = block_get(entry->dev))) dev_group_name = bdev->group->name;
@@ -404,7 +400,7 @@ static int devfs_event_handler(event_t event)
     switch (event.type)
     {
         case EVENT_LOAD_CHARDEV:
-            is_blk = 0;
+            is_blk = 0; // fallthrough
         case EVENT_LOAD_BLKDEV:
             handle_dev_load(is_blk, event.as.dev);
             break;

@@ -21,7 +21,7 @@
 #define	EINTR		16	/* Interrupted */
 #define	EKILLED		17	/* Killed */
 
-static const char *errstr[] = 
+__attribute__((unused)) static const char *errstr[] = 
 {
     [ 0 ]   = "OK",
     [ ENODEV ] = "No such device",

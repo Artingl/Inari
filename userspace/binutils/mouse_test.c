@@ -173,8 +173,8 @@ int main(int argc, char *argv[])
 
             if (mouse_x < 0) mouse_x = 0;
             if (mouse_y < 0) mouse_y = 0;
-            if (mouse_x > info.width - 1) mouse_x = info.width - 1;
-            if (mouse_y > info.height - 1) mouse_y = info.height - 1;
+            if (mouse_x > (int)info.width - 1) mouse_x = (int)info.width - 1;
+            if (mouse_y > (int)info.height - 1) mouse_y = (int)info.height - 1;
 
             /* Clear old mouse position */
             blit.width = MOUSE_WIDTH;
@@ -185,8 +185,8 @@ int main(int argc, char *argv[])
             /* Draw with mouse */
             if (mouse.buttons[HID_MOUSE_BTN1])
             {
-                char single_pixel[3] = {0xff, 0xff, 0xff};
-                blit.buffer = &single_pixel;
+                uint8_t single_pixel[3] = {0xff, 0xff, 0xff};
+                blit.buffer = (uint8_t*)&single_pixel;
                 blit.width = 1;
                 blit.height = 1;
                 ioctl(video_hndl, VIDEO_IOCTL_BLIT, &blit);

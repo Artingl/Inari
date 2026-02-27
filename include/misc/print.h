@@ -83,7 +83,7 @@ static inline int do_kprintfn(const char *fmt, va_list args,
         case 's':
             count += emit_string(fn, ud, va_arg(args, const char *));
             break;
-        case 'd': case 'i': flags |= PR_SG;
+        case 'd': case 'i': flags |= PR_SG; // fallthrough
         case 'u':
             num = (flags & PR_64) ? va_arg(args, unsigned long long) :
                   (flags & PR_32) ? va_arg(args, unsigned long) :

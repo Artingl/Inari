@@ -98,7 +98,7 @@ int block_get_refs(dev_t *devs, uint32_t offset, uint32_t limit)
 {
     if (!devs) return -EINVAL;
 
-    int count = 0;
+    uint32_t count = 0;
     size_t driver;
 
     for (driver = 0; driver < DRIVER_TOTAL; driver++)
@@ -122,12 +122,12 @@ int block_get_refs(dev_t *devs, uint32_t offset, uint32_t limit)
         }
     }
 end:
-    return count;
+    return (int)count;
 }
 
 struct device *block_get(dev_t dev)
 {
-    uint32_t driver = DRVID(dev), minor = DEVID(dev);
+    uint32_t driver = DRVID(dev);
     if (driver >= DRIVER_TOTAL) return NULL;
 
     struct device_group *group = &group_entries[driver];

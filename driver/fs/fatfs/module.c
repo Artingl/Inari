@@ -151,7 +151,6 @@ static int fatfs_readdir(struct vfs_mount_point *mount, const char *path, struct
         break;
     }
 
-end:
     f_closedir(&dp, mount->fs_data);
     return res;
 }
