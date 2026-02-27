@@ -2,6 +2,7 @@
 #include <arch/sys.h>
 #include <kernel/console/console.h>
 #include <kernel/proc/sched.h>
+#include <kernel/subsys/video.h>
 #include <kernel/sync/spinlock.h>
 
 #include <arch/sys.h>
@@ -47,6 +48,9 @@ void panic(const char *fmt, ...)
     }
 
     spin_lock_irqsave(&panic_lock, flags);
+#ifdef CONFIG_SUBSYS_VIDEO
+    video_disable();    /* Disable video if possible */
+#endif
     
     va_list args;
     va_start(args, fmt);

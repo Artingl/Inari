@@ -5,6 +5,7 @@
 #include <kernel/sys/device.h>
 
 #include <misc/types.h>
+#include <misc/list.h>
 
 #define VIDEO_IOCTL_INFO                0   // Current mode info
 #define VIDEO_IOCTL_MODE_SWITCH         1   // Switch to different mode
@@ -21,6 +22,7 @@ struct video_ops
     int (*mode_switch)(struct video_device *device, struct video_mode_info *new_mode);           // Switch to a new mode
     int (*mode_find_next)(struct video_device *device, struct video_mode_info *mode);           // Iterate through all modes
     int (*blit)(struct video_device *device, struct video_blit *blit_info);
+    void (*disable)(struct video_device *device); // Disable device (e.g. switch to text mode in VESA)
 
 } __attribute__((packed));
 
@@ -54,11 +56,14 @@ struct video_device
     uintptr_t base;
     struct video_ops *ops;
     dev_t dev;
+
+    struct list_head list;
 } __attribute__((packed));
 
 int video_init(void);
 int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_ops *ops);
 int video_remove_device(dev_t dev);
+int video_disable(void);
 struct device *video_get(dev_t dev);
 
 #endif

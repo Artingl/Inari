@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 {
     struct video_mode_info info = {0};
     handle_t hndl;
-    char *video_device = "/dev/video/char_video0";
+    char *video_device = "/devices/video/char_video0";
     int res, argv_off = 0;
 
     if (argc < 2)

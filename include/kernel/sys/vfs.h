@@ -20,6 +20,8 @@
 #define VFS_STAT_BLOCK      (1 << 2)
 #define VFS_STAT_CHAR       (1 << 3)
 
+#define VFS_PATH_SIZE       256
+
 struct vfs_node;
 struct vfs_mount_point;
 struct vfs_layer;
@@ -27,7 +29,7 @@ struct vfs_layer;
 typedef int64_t vfs_handle_t;
 
 struct vfs_node {
-    char name[256];
+    char name[VFS_PATH_SIZE];
     uint32_t st_mode;     // File type + permissions
     uint64_t size;        // File size (bytes)
 
@@ -62,7 +64,7 @@ struct vfs_layer
 struct vfs_mount_point
 {
     const char *fs_name; // e.g. FAT32, EXT2
-    const char *mount_point;
+    char mount_point[VFS_PATH_SIZE];
 
     dev_t bdev;
 

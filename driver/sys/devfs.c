@@ -125,13 +125,13 @@ static struct devfs_group_item *get_item_by_handle(vfs_handle_t handle)
 static int find_group_by_path(struct list_head **group, char **group_path, const char *path)
 {
     size_t i;
-    if (strncmp(path, "/dev/", 5) == 0)
+    if (strncmp(path, "/devices/", 9) == 0)
     {
         /* Determine in what group we are */
         for (i = 0; i < devfs_groups_count; i++)
         {
-            /* &path[5] => skip /dev/ part in the path */
-            if (strncmp(&path[5], devfs_groups[i], strlen(devfs_groups[i])) == 0)
+            /* &path[9] => skip /devices/ part in the path */
+            if (strncmp(&path[9], devfs_groups[i], strlen(devfs_groups[i])) == 0)
             {
                 if (group_path)
                     *group_path = devfs_groups[i];
@@ -159,12 +159,12 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
     /* Reading from root */
     if (strcmp(path, "/") == 0)
     {
-        strcpy(&node->name[0], "dev");
+        strcpy(&node->name[0], "devices");
         node->st_mode = VFS_STAT_DIR;
         return 1;
     }
-    /* Reading just /dev */
-    else if (strcmp(path, "/dev") == 0)
+    /* Reading just /devices */
+    else if (strcmp(path, "/devices") == 0)
     {
         for (i = 0; i < devfs_groups_count; i++)
         {
@@ -174,8 +174,8 @@ static int devfs_readdir(struct vfs_mount_point *mount, const char *path, struct
             return 1;
         }
     }
-    /* Reading /dev/GROUP */
-    else if (strncmp(path, "/dev/", 5) == 0)
+    /* Reading /devices/GROUP */
+    else if (strncmp(path, "/devices/", 9) == 0)
     {
         if (find_group_by_path(&group, NULL, path) != 0)
             return -ENOENT;
@@ -284,7 +284,7 @@ static int devfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
         else if ((chardev = char_get(entry->dev))) dev_group_name = chardev->group->name;
         if (!dev_group_name) continue;
             
-        sprintf(&dev_name[0], "/dev/%s/%s_%s%d", group_name, (entry->is_blk ? "blk" : "char"), dev_group_name, DEVID(entry->dev));
+        sprintf(&dev_name[0], "/devices/%s/%s_%s%d", group_name, (entry->is_blk ? "blk" : "char"), dev_group_name, DEVID(entry->dev));
         if (strcmp(dev_name, path) == 0)
         {
             return vfs_alloc_handle(mount, handle, entry);
@@ -303,7 +303,7 @@ static int devfs_unmount(struct vfs_mount_point *mount)
 static int devfs_mount(struct vfs_mount_point *mount)
 {
     if (!mount) return -EINVAL;
-    if (strcmp(mount->mount_point, "/dev") == 0)
+    if (strcmp(mount->mount_point, "/devices") == 0)
     {
         /* It is possible that some block devs were loaded before devfs was mounted. */
         dev_t devs[128];

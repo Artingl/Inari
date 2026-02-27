@@ -88,7 +88,7 @@ static void console_print_dev(int type, const char *s, uint32_t count, int do_fl
 
         entry->write(s, count);
 
-        if (entry->flush && do_flush && !console_is_early)
+        if (entry->flush && do_flush && (!console_is_early || type == CONSOLE_PANIC))
             entry->flush();
     }
 }

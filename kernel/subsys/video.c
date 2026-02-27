@@ -11,7 +11,10 @@
 
 #include <misc/string.h>
 #include <misc/types.h>
+#include <misc/list.h>
 
+static LIST_HEAD(video_devices);
+static int is_initialized = 0;
 
 static int video_ioctl(struct device *chardev, unsigned long req, void *arg)
 {
@@ -50,12 +53,13 @@ static struct char_ops ops =
 int video_init(void)
 {
     register_chardev_group(VIDEO_DRIVER, "video");
+    is_initialized = 1;
     return 0;
 }
 
 int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_ops *video_ops)
 {
-    if (!video_ops || !name)    return -EINVAL;
+    if (!video_ops || !name || !is_initialized)    return -EINVAL;
 
     int res;
     struct video_device *device = (struct video_device*)kmalloc(sizeof(struct video_device));
@@ -72,6 +76,7 @@ int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_
         return res;
     }
 
+    list_add(&device->list, &video_devices);
     if (dev) *dev = device->dev;
 
     return 0;
@@ -79,10 +84,30 @@ int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_
 
 int video_remove_device(dev_t dev)
 {
+    if (!is_initialized)  return -EINVAL;
+
     struct device *chardev = char_get(dev);
     if (!chardev) return -ENODEV;
-    if (chardev->driver_data)   kfree(chardev->driver_data);
+    if (chardev->driver_data)
+    {
+        list_del(&((struct video_device*)chardev->driver_data)->list);
+        kfree(chardev->driver_data);
+    }
     return unregister_chardev(dev);
+}
+
+int video_disable(void)
+{
+    if (!is_initialized)  return -EINVAL;
+
+    struct video_device *entry;
+    struct list_head *pos;
+
+    list_for_each(pos, &video_devices) {
+        entry = list_entry(pos, struct video_device, list);
+        if (entry->ops && entry->ops->disable)
+            entry->ops->disable(entry);
+    }
 }
 
 #endif

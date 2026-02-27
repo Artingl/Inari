@@ -34,10 +34,14 @@ mkconfig:
 	echo "#define CONFIG_ARCH_$(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]')" >> build/config.h
 
 clean:
-	-rm -rf build && \
+	-rm -rf build userspace/binutils/*.exe userspace/binutils/*.o && \
+	make -C libc clean && \
 	make -C arch/${TARGET} clean && \
 	make -C libc clean
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \
+	make -C libc build && \
+	make -C userspace/binutils build && \
+	make -C userspace/shell build
 	cp arch/${TARGET}/kernel.elf build/kernel.elf

@@ -31,6 +31,25 @@ struct vfs_handle
     struct list_head list;
 };
 
+static void normalize_path(char *path, char *result)
+{
+    size_t i, off = 0;
+    uint8_t had_slash = 0;
+
+    /* Remove duplicate slash, e.g. `//` */
+    for (i = 0; i < VFS_PATH_SIZE && path[i]; i++)
+    {
+        // if (path[i] == '/' && had_slash)
+        // { off++; continue; }
+        // else if (path[i] == '/') had_slash = 1;
+        // else had_slash = 0;
+
+        result[i - off] = path[i];
+    }
+    result[i - off] = 0;
+    kprintf("-- %s %s", result, path);
+}
+
 int vfs_init()
 {
 
@@ -98,6 +117,9 @@ void *vfs_handle_data(vfs_handle_t handle)
 
 int vfs_mount(dev_t dev, const char* path)
 {
+    char path_buf[VFS_PATH_SIZE];
+    if (!path)  return -EINVAL;
+    normalize_path(path, path_buf);
     struct list_head *pos;
     struct vfs_layer *entry;
     struct device *bdev = block_get(dev);
@@ -107,7 +129,7 @@ int vfs_mount(dev_t dev, const char* path)
     spin_lock_irqsave(&vfs_lock, flags);
     if (!mount) return -ENOMEM;
     mount->bdev = dev;
-    mount->mount_point = path;
+    memcpy(mount->mount_point, path_buf, VFS_PATH_SIZE);
     INIT_LIST_HEAD(&mount->list);
 
     /* TODO: When mounting, ensure there's actual folder we can mount to */
@@ -137,6 +159,9 @@ int vfs_mount(dev_t dev, const char* path)
 
 int vfs_unmount(const char* path)
 {
+    char path_buf[VFS_PATH_SIZE];
+    if (!path)  return -EINVAL;
+    normalize_path(path, path_buf);
     uint32_t flags;
     spin_lock_irqsave(&vfs_lock, flags);
     
@@ -146,7 +171,7 @@ int vfs_unmount(const char* path)
 
     list_for_each(pos, &vfs_mount_points) {
         entry = list_entry(pos, struct vfs_mount_point, list);
-        if (strcmp(path, entry->mount_point) == 0)
+        if (strcmp(path_buf, entry->mount_point) == 0)
         {
             bdev = block_get(entry->bdev);
 
@@ -195,6 +220,9 @@ int vfs_remove_layer(struct vfs_layer *layer)
 
 int vfs_open(vfs_handle_t *file, const char *path, int flags)
 {
+    char path_buf[VFS_PATH_SIZE];
+    if (!path)  return -EINVAL;
+    normalize_path(path, path_buf);
     if (!file) return -EINVAL;
     int res;
     uint32_t lock_flags;
@@ -208,17 +236,12 @@ int vfs_open(vfs_handle_t *file, const char *path, int flags)
     list_for_each(pos, &vfs_mount_points) {
         entry = list_entry(pos, struct vfs_mount_point, list);
 
-        /* TODO: we use dumb approach here: just check that the mount point path
-         *       IS in the beginning of the target path.
-         *
-         *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
-         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg` */
-        if (strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
+        if (strncmp(entry->mount_point, path_buf, strlen(entry->mount_point)) == 0)
         {
             res = -ENOSYS;
             spin_unlock_irqrestore(&vfs_lock, lock_flags);
             if (entry->layer->ops->open)
-                res = entry->layer->ops->open(entry, file, path, flags);
+                res = entry->layer->ops->open(entry, file, path_buf, flags);
             return res;
         }
     }
@@ -434,7 +457,10 @@ int vfs_size(vfs_handle_t handle, size_t *size)
 
 int vfs_readdir(const char *path, struct vfs_node *node)
 {
-    if (!node || !path) return -EINVAL;
+    char path_buf[VFS_PATH_SIZE];
+    if (!path)  return -EINVAL;
+    normalize_path(path, path_buf);
+    if (!node) return -EINVAL;
     uint32_t flags;
     spin_lock_irqsave(&vfs_lock, flags);
 
@@ -446,14 +472,9 @@ int vfs_readdir(const char *path, struct vfs_node *node)
     list_for_each(pos, &vfs_mount_points) {
         entry = list_entry(pos, struct vfs_mount_point, list);
 
-        /* TODO: we use dumb approach here: just check that the mount point path
-         *       IS in the beginning of the target path.
-         *
-         *       This allows to say something like "open /media/drive/boot.cfg", and this code WILL
-         *       find required mount point. Things break when we specify something like `/media//drive/boot.cfg` */
-        if (entry->layer->ops->readdir && strncmp(entry->mount_point, path, strlen(entry->mount_point)) == 0)
+        if (entry->layer->ops->readdir && strncmp(entry->mount_point, path_buf, strlen(entry->mount_point)) == 0)
         {
-            res = entry->layer->ops->readdir(entry, path, node, total_files);
+            res = entry->layer->ops->readdir(entry, path_buf, node, total_files);
             if (res != -ENOENT) found_dir = 1;
             if (res > 0)
                 total_files += res;

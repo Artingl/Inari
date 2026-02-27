@@ -76,11 +76,13 @@ mount "${LOOP_DEV}p1" $MOUNT_DIR
 
 # Copy Files
 echo ">>> Copying kernel and config..."
-mkdir -p $MOUNT_DIR/prog
-mkdir -p $MOUNT_DIR/sys
-mkdir -p $MOUNT_DIR/dev
-cp binutils/*.exe $MOUNT_DIR/prog
-cp motd.txt $MOUNT_DIR/sys
+mkdir -p $MOUNT_DIR/programs
+mkdir -p $MOUNT_DIR/shell
+mkdir -p $MOUNT_DIR/system
+mkdir -p $MOUNT_DIR/devices
+cp userspace/binutils/*.exe $MOUNT_DIR/programs 2>/dev/null || :
+cp userspace/shell/*.exe $MOUNT_DIR/shell 2>/dev/null || :
+cp motd.txt $MOUNT_DIR/system
 
 # grub-install \
 #     --target=i386-pc \

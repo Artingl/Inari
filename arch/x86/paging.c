@@ -67,7 +67,7 @@ pagedir_t *arch_get_pagedir(void)
 
 void arch_switch_pagedir(pagedir_t *directory)
 {
-    if (!directory)
+    if (!directory || directory == x86_current_dir)
         return;
     
     __asm__ volatile("mov %0, %%cr3" ::"r"(arch_virt_to_phys((pagedir_t*)x86_current_dir, (void*)directory)));

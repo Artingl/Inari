@@ -16,8 +16,8 @@
 #include <arch/sys.h>
 #include <arch/x86/arch.h>
 
-#define PS2_KBD_IRQ   1
-#define PS2_MOUSE_IRQ 12
+#define PS2_IRQ1   1
+#define PS2_IRQ12 12
 
 #define PS2_TYPE_UNKNOWN      -1
 #define PS2_TYPE_MOUSE_STD     0
@@ -221,6 +221,10 @@ static int ps2_identify(uint8_t port)
             b1 = x86_inb(0x60);
         }
     }
+    else {
+        kprintf("ps2: unknown device id 0x%x 0x%x", b0, b1);
+        return PS2_TYPE_UNKNOWN;
+    }
 
     /* Enable Data Reporting */
     ps2_send_command(port, 0xF4);
@@ -250,14 +254,11 @@ static void ps2_handle_input()
 
         for (i = 0; i < ps2_devices_off; i++)
         {
-            if (ps2_devices[i].port == 0) continue;
+            if (ps2_devices[i].port != (status & 0x20 ? 2 : 1)) continue;
 
-            /* Check if mouse */
-            if (status & 0x20)
+            /* Check if mouse; Type 2 == mouse */
+            if (ps2_devices[i].type == 2)
             {
-                /* Type 2 == mouse */
-                if (ps2_devices[i].type != 2) continue;
-
                 switch (ps2_devices[i].mouse_state_idx++)
                 {
                     case 0:
@@ -305,11 +306,9 @@ static void ps2_handle_input()
                 }
                 break;
             }
-            /* Otherwise keyboard */
-            else
+            /* Otherwise keyboard; Type 1 == keyboard */
+            else if (ps2_devices[i].type == 1)
             {
-                /* Type 1 == keyboard */
-                if (ps2_devices[i].type != 1) continue;
 
                 ps2_devices[i].kbd.event_id++;
                 ps2_devices[i].kbd.released = in & 0x80;
@@ -423,7 +422,8 @@ static int ps2_mouse_init(uint8_t port)
         return -ENODEV;
 
     /* Set sample rate */
-    ps2_send_command(200, 0xf3);
+    // ps2_send_command(port, 0xf3);
+    // ps2_send_command(port, 200);
 
     if (port == 2) x86_outb(0x64, 0xD4);
     x86_outb(0x60, 0xF4);
@@ -551,8 +551,8 @@ static int ps2_probe()
         return res;
 
     kprintf("ps2: %d devices; is_dual = %d", ps2_devices_off, ps2_is_dual);
-    irq_request(PS2_KBD_IRQ, &ps2_irq1, NULL);
-    irq_request(PS2_MOUSE_IRQ, &ps2_irq12, NULL);
+    irq_request(PS2_IRQ1, &ps2_irq1, NULL);
+    irq_request(PS2_IRQ12, &ps2_irq12, NULL);
     return 0;
 }
 
@@ -566,8 +566,8 @@ static void ps2_cleanup()
         ps2_devices[i].port = 0;
     }
 
-    irq_free(PS2_KBD_IRQ, &ps2_irq1);
-    irq_free(PS2_MOUSE_IRQ, &ps2_irq12);
+    irq_free(PS2_IRQ1, &ps2_irq1);
+    irq_free(PS2_IRQ12, &ps2_irq12);
     ps2_devices_off = 0;
 }
 

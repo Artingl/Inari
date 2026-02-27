@@ -393,8 +393,10 @@ static int vesa_blit(struct video_device *device, struct video_blit *blit_info)
     for (y = blit_info->y; y < blit_info->height + blit_info->y; y++)
         for (x = blit_info->x; x < blit_info->width + blit_info->x; x++)
         {
+            if (y >= current_mode_info.v_res || x >= current_mode_info.h_res)
+                continue;
             off = y * current_mode_info.h_res + x;
-            buf_off = 0; /* TODO: accessing `blit_info->buffer` causes page fault */
+            buf_off = (y - blit_info->y) * 3 * blit_info->width + (x - blit_info->x) * 3;
             if (off >= size || buf_off + 2 >= buf_size)
                 continue;
             current_mode_base[off] = (((((0xff << 8) | blit_info->buffer[buf_off++]) << 8) | blit_info->buffer[buf_off++]) << 8) | blit_info->buffer[buf_off++];
@@ -406,13 +408,6 @@ end:
     return res;
 }
 #pragma GCC pop_options
-
-struct video_ops ops = {
-    .mode_info = &video_mode_info,
-    .mode_find_next = &video_mode_find_next,
-    .mode_switch = &video_mode_switch,
-    .blit = &vesa_blit
-};
 
 static int vesa_probe()
 {
@@ -448,18 +443,42 @@ static int vesa_probe()
     return 0;
 }
 
-static void vesa_cleanup()
+static void vesa_disable(struct video_device *device)
 {
-    kprintf("vesa: cleaning up");
-
+    if (!vesa_initialized) return;
     struct x86_regs16 r;
     struct vesa_mode_info *info = &lo_mode_info;
     uint16_t *modes;
     size_t i;
 
+    /* Switch back to 80x25 mode */
+    modes = (uint16_t*)REAL_PTR(vesa_block.video_mode_ptr);
+    for (i = 0 ; modes[i] != 0xFFFF ; i++)
+    {
+        r.ax = VESA_GET_MODE_INFO;
+        r.cx = modes[i];
+        r.es = SEG(info);
+        r.di = OFF(info);
+        v86_bios(0x10, &r);
+        
+        if (r.ax != 0x4f) continue;
+
+        if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
+            r.ax = VESA_SET_MODE;
+            r.bx = modes[i];
+            v86_bios(0x10, &r);
+            break;
+        }
+    }
+}
+
+static void vesa_cleanup()
+{
+    if (!vesa_initialized) return;
+    kprintf("vesa: cleaning up");
+
     uint32_t flags;
     spin_lock_irqsave(&vesa_lock, flags);
-    vesa_initialized = 0;
 
     if (vesa_dev)
         video_remove_device(vesa_dev);
@@ -483,33 +502,24 @@ static void vesa_cleanup()
         current_mode_base = NULL;
     }
 
-    /* Switch back to 80x25 mode */
-    modes = (uint16_t*)REAL_PTR(vesa_block.video_mode_ptr);
-    for (i = 0 ; modes[i] != 0xFFFF ; i++)
-    {
-        r.ax = VESA_GET_MODE_INFO;
-        r.cx = modes[i];
-        r.es = SEG(info);
-        r.di = OFF(info);
-        v86_bios(0x10, &r);
-        
-        if (r.ax != 0x4f) continue;
-
-        if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
-            r.ax = VESA_SET_MODE;
-            r.bx = modes[i];
-            v86_bios(0x10, &r);
-            break;
-        }
-    }
+    vesa_disable(NULL);
+    vesa_initialized = 0;
 
     spin_unlock_irqrestore(&vesa_lock, flags);
 }
 
+struct video_ops ops = {
+    .mode_info = &video_mode_info,
+    .mode_find_next = &video_mode_find_next,
+    .mode_switch = &video_mode_switch,
+    .blit = &vesa_blit,
+    .disable = &vesa_disable
+};
+
 module_t vesa_module = {
     .probe = vesa_probe,
     .cleanup = vesa_cleanup,
-    // .flags = MODULE_FLAG_LAZY_LOAD,
+    .flags = MODULE_FLAG_LAZY_LOAD,
 };
 
 

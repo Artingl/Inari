@@ -138,11 +138,10 @@ static void init_stub_thread()
     /* Initialize the rest of the kernel and mount root */
     modules_init();
     assert(mount_root() == 0, "no root found.");
-
-    vfs_mount(0, "/dev");
+    assert(vfs_mount(0, "/devices") == 0, "devfs mount failed.");
 
     char init_file[ARG_MAX_LEN];
-    strcpy(&init_file[0], "/prog/init.exe");
+    strcpy(&init_file[0], "/programs/init.exe");
     parse_cmdline_argument("init", &init_file[0]);
 
     pid_t pid;
@@ -168,6 +167,9 @@ bootinfo_t get_boot_info()
 void kpower_off(uint8_t do_reboot)
 {
     /* TODO: graceful shutdown */
+#ifdef CONFIG_SUBSYS_VIDEO
+    video_disable();
+#endif
 
     console_switch_early();
     kprintf("kernel: shutting down (do_reboot = %d)", do_reboot);

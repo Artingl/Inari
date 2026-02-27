@@ -166,13 +166,22 @@ void *vmm_alloc_user(pagedir_t *target_dir, size_t npages)
         start_addr = 0x1000000;
     }
     
-    return alloc_range(
+    void *vbase = alloc_range(
         entry,
         npages,
         start_addr,
         VIRTUAL_ADDR - PAGE_SIZE,
         PAGE_PRESENT | PAGE_RW | PAGE_USR
     );
+    if (!vbase)  return NULL;
+
+    /* Cleanup the memory to avoid leaking stuff to userspace */
+    pagedir_t *prev_dir = arch_get_pagedir();
+    arch_switch_pagedir(target_dir);
+    memset(vbase, 0, npages * PAGE_SIZE);
+    arch_switch_pagedir(prev_dir);
+
+    return vbase;
 }
 
 void *vmm_alloc_kernel(size_t npages)

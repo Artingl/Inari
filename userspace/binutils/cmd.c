@@ -186,9 +186,9 @@ void exec_cmd()
         return;
     }
 
-    if ((res = try_to_execute_at("/prog", NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/programs", NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
     if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at("/prog", ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/programs", ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
     if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
 
     if (errstr[-res] == NULL)
@@ -202,14 +202,14 @@ int main(int argc, char const *argv[])
     pid_t pid;
     int res;
     int is_shift_pressed = 0;
-    char *cat_argv[] = { "/sys/motd.txt", NULL };
+    char *cat_argv[] = { "/system/motd.txt", NULL };
     struct kbd_event kbd;
     struct hid_device_info kbd_info;
 
-    if (execpv(&pid, "/prog/cat.exe", 1, cat_argv) == 0)
+    if (execpv(&pid, "/programs/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
 
-    if (open(&kb_hndl, "/dev/input/char_kbd0", READ) != 0)
+    if (open(&kb_hndl, "/devices/input/char_kbd0", READ) != 0)
     {
         printf("error: unable to open keyboard.\n");
         exit(1);
