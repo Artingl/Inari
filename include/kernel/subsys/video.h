@@ -54,8 +54,8 @@ struct video_blit {
 #define VIDEO_R8G8B8_FORMAT 0
 #define VIDEO_GRAY8_FORMAT  1
 __attribute__((unused)) static uint8_t video_format_bpp[] = {
-    [ VIDEO_R8G8B8_FORMAT ] = 24,
-    [ VIDEO_GRAY8_FORMAT ]  = 8,
+    [VIDEO_R8G8B8_FORMAT] = 24,
+    [VIDEO_GRAY8_FORMAT] = 8,
 };
 
 struct video_mode_info {

@@ -21,7 +21,6 @@
 #define EINTR     16 /* Interrupted */
 #define EKILLED   17 /* Killed */
 
-
 __attribute__((unused)) static const char *errstr[] = {
     [0] = "OK",
     [ENODEV] = "No such device",
@@ -44,7 +43,13 @@ __attribute__((unused)) static const char *errstr[] = {
 #include <io.h>
 #include <sys.h>
 #undef errno
-#define errno(err)  (errstr[((err) < 0 ? -(err) : err)] ? errstr[((err) < 0 ? -(err) : err)] : "Invalid error")
-#define report_errno(err)   do { if (e < 0) {e*=-1;} printf("%s: %s.\n", get_name(), errno(err)); } while(0)
+#define errno(err) (errstr[((err) < 0 ? -(err) : err)] ? errstr[((err) < 0 ? -(err) : err)] : "Invalid error")
+#define report_errno(err)                                                                                              \
+    do {                                                                                                               \
+        if (e < 0) {                                                                                                   \
+            e *= -1;                                                                                                   \
+        }                                                                                                              \
+        printf("%s: %s.\n", get_name(), errno(err));                                                                   \
+    } while (0)
 
 #endif

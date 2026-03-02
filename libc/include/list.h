@@ -72,8 +72,7 @@ static inline int list_move_to_end(struct list_head *entry, struct list_head *he
 #define list_for_each(pos, head) for (pos = (head)->next; pos != (head); pos = pos->next)
 
 /* iterate over list backwards */
-#define list_for_each_prev(pos, head) \
-    for (pos = (head)->prev; pos != (head); pos = pos->prev)
+#define list_for_each_prev(pos, head) for (pos = (head)->prev; pos != (head); pos = pos->prev)
 
 /* safe iteration when you may delete the current node */
 #define list_for_each_safe(pos, n, head) for (pos = (head)->next, n = pos->next; pos != (head); pos = n, n = pos->next)

@@ -104,7 +104,7 @@ static int fatfs_open(struct vfs_mount_point *mount, vfs_handle_t *handle, const
 static int fatfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *buf, size_t len, size_t *rlen) {
     uint32_t br;
     if (!rlen)
-        rlen = (size_t*)&br;
+        rlen = (size_t *)&br;
     if (!mount)
         return -EINVAL;
     FIL *fp = vfs_handle_data(handle);

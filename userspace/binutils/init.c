@@ -2,12 +2,13 @@
 #include <sys.h>
 
 void ipc_handler() {
+    pid_t source;
     uint32_t message;
     void *data;
     size_t data_size;
 
     do {
-        int fetch = ipc_fetch_next(&message, &data, &data_size);
+        int fetch = ipc_fetch_next(&source, &message, &data, &data_size);
         if (fetch == 0) {
             printf("init: received ipc message %u, at 0x%x with size %llu\n", message, data, data_size);
         }

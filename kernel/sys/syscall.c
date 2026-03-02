@@ -11,8 +11,8 @@
 #include <kernel/proc/signals.h>
 #include <kernel/sys/syscall.h>
 #include <kernel/sys/vfs.h>
-#include <kernel/uname.h>
 #include <kernel/timer.h>
+#include <kernel/uname.h>
 
 #include <arch/paging.h>
 
@@ -298,13 +298,13 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         }
         res = uname((struct utsname *)param0);
         break;
-    
+
     case SYSCALL_TIME:
         if (!VMM_IS_PTR_USERSPACE(param1)) {
             res = -EINVAL;
             break;
         }
-        *((time_t*)param1) = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
+        *((time_t *)param1) = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
         res = 0;
         break;
 
@@ -313,7 +313,7 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
-        res = ipc_create((const char*)param0, (thread_entrypoint_t)param1);
+        res = ipc_create((const char *)param0, (thread_entrypoint_t)param1);
         break;
     case SYSCALL_IPC_FREE:
         if (!VMM_IS_PTR_USERSPACE(param0)) {
@@ -323,11 +323,11 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         res = ipc_free((const char *)param0);
         break;
     case SYSCALL_IPC_FETCH_NEXT:
-        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2)) {
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_fetch_next((uint32_t*)param0, (void**)param1, (size_t*)param2);
+        res = ipc_fetch_next((pid_t*)param0, (uint32_t *)param1, (void **)param2, (size_t *)param3);
         break;
     case SYSCALL_IPC_REPLY:
         res = ipc_reply((int)param0);
@@ -337,7 +337,7 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
-        res = ipc_open((const char *)param0, (ipc_handle_t*)param1);
+        res = ipc_open((const char *)param0, (ipc_handle_t *)param1);
         break;
     case SYSCALL_IPC_CLOSE:
         res = ipc_close((ipc_handle_t)param0);
@@ -347,12 +347,12 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
-        res = ipc_send((ipc_handle_t)param0, (uint32_t)param1, (void*)param2, (size_t)param3);
+        res = ipc_send((ipc_handle_t)param0, (uint32_t)param1, (void *)param2, (size_t)param3);
         break;
     case SYSCALL_IPC_WAIT:
         res = ipc_wait((ipc_handle_t)param0, (uint8_t)param1);
         break;
-    
+
     default:
         proc_signal(proc->pid, SIGSYS);
         res = -EINVAL;

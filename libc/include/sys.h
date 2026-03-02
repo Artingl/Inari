@@ -15,40 +15,40 @@ typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 typedef unsigned int dev_t;
 
-#define MEM_RW         (1 << 0)
-#define MEM_USR        (1 << 1)
-#define MEM_PRESENT    (1 << 2)
+#define MEM_RW      (1 << 0)
+#define MEM_USR     (1 << 1)
+#define MEM_PRESENT (1 << 2)
 
-#define	READ            0x01
-#define	WRITE			0x02
-#define	OPEN_EXISTING	0x00
-#define	CREATE_NEW		0x04
-#define	CREATE_ALWAYS	0x08
-#define	OPEN_ALWAYS		0x10
-#define	OPEN_APPEND		0x30
+#define READ          0x01
+#define WRITE         0x02
+#define OPEN_EXISTING 0x00
+#define CREATE_NEW    0x04
+#define CREATE_ALWAYS 0x08
+#define OPEN_ALWAYS   0x10
+#define OPEN_APPEND   0x30
 
-#define STAT_FILE       (1 << 0)
-#define STAT_DIR        (1 << 1)
-#define STAT_BLOCK      (1 << 2)
-#define STAT_CHAR       (1 << 3)
+#define STAT_FILE  (1 << 0)
+#define STAT_DIR   (1 << 1)
+#define STAT_BLOCK (1 << 2)
+#define STAT_CHAR  (1 << 3)
 
 struct fs_node {
     char name[256];
-    uint32_t st_mode;     // File type + permissions
-    uint64_t size;        // File size (bytes)
+    uint32_t st_mode; // File type + permissions
+    uint64_t size;    // File size (bytes)
 
-    uint32_t off;         // Node offset in the directory
+    uint32_t off; // Node offset in the directory
 } __attribute__((packed));
 
 struct utsname {
-    char sysname[16];    /* Operating system name */
-    char nodename[16];   /* Name within communications network
-                            to which the node is attached, if any */
-    char release[16];    /* Operating system release
-                            (e.g., "2.6.28") */
-    char version[16];    /* Operating system version */
-    char machine[16];    /* Hardware type identifier */
-}__attribute__((packed));
+    char sysname[16];  /* Operating system name */
+    char nodename[16]; /* Name within communications network
+                          to which the node is attached, if any */
+    char release[16];  /* Operating system release
+                          (e.g., "2.6.28") */
+    char version[16];  /* Operating system version */
+    char machine[16];  /* Hardware type identifier */
+} __attribute__((packed));
 
 int exit(int code);
 int usleep(size_t t);
@@ -69,7 +69,7 @@ int readdir(const char *path, struct fs_node *node);
 int write(handle_t hndl, const void *buf, size_t sz);
 int waitpid(pid_t pid);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
-void *memalloc(size_t npages, uint32_t flags);     // todo: this syscall currently ignores flags value
+void *memalloc(size_t npages, uint32_t flags); // todo: this syscall currently ignores flags value
 void memfree(void *vbase, size_t npages);
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags);
 void memunmap(void *vbase, size_t len);
@@ -93,7 +93,7 @@ int ipc_create(const char *name, thread_entrypoint_t handler);
 int ipc_free(const char *name);
 /* Used by IPC handler thread to read message data. The data buffer is directly mapped to the memory
    from caller process, allowing to send result to the caller using exactly the same memory */
-int ipc_fetch_next(uint32_t *message, void **data, size_t *data_sz);
+int ipc_fetch_next(pid_t *source, uint32_t *message, void **data, size_t *data_sz);
 /* Called by the IPC handler when it finishes processing the shared memory.
    This unmaps the memory from the handler's virtual space and wakes the sender. */
 int ipc_reply(int status);
@@ -104,9 +104,8 @@ int ipc_close(handle_t ipc);
 
 /* Send data to IPC handler process.
    message - Any value, it will be passed to IPC handler for processing.
-   data - Pointer to data that will be mapped to IPC handler process (using data_sz as the size, max 16KB of data at once).
-          If NULL, nothing will be provided to IPC handler. Must be aligned to 4KB.
-   Return: 0 on success. */
+   data - Pointer to data that will be mapped to IPC handler process (using data_sz as the size).
+   If NULL, nothing will be provided to IPC handler. Must be aligned to 4KB. Return: 0 on success. */
 int ipc_send(handle_t ipc, uint32_t message, void *data, size_t data_sz);
 /* Wait for answer from IPC handler.
    do_sleep - Determines whether this call is blocking/non-blocking
@@ -117,12 +116,6 @@ const char *get_name(void);
 const char **get_argv(void);
 int get_argc(void);
 
-int syscall(
-    uint32_t id,
-    uint32_t param0,
-    uint32_t param1,
-    uint32_t param2,
-    uint32_t param3,
-    uint32_t param4);
+int syscall(uint32_t id, uint32_t param0, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4);
 
 #endif

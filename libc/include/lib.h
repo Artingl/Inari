@@ -1,6 +1,7 @@
 #ifndef _LIBC_ALLOC_H
 #define _LIBC_ALLOC_H
 
+#include <types.h>
 
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
@@ -12,5 +13,3 @@ double atof(const char *str);
 long strtol(const char *str, char **endptr, int base);
 
 #endif
-
-

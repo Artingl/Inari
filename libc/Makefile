@@ -7,6 +7,8 @@ CFLAGS = -I include/ $(shell cat ../arch/$(TARGET)/cflags.txt) $(shell cat ../cf
 libc_source := $(shell find src/ -name '*.c')
 libc_objects := $(patsubst src/%.c, build/%.o, $(libc_source))
 
+headers := $(shell find include/ -name '*.h')
+
 $(libc_objects): build/%.o: src/%.c
 	mkdir -p $(dir $@) && \
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -14,6 +16,9 @@ $(libc_objects): build/%.o: src/%.c
 clean:
 	-rm -rf build && \
 	rm libc.a
+
+format: $(libc_source) $(headers)
+	clang-format -i $(libc_source) $(headers)
 
 build: $(libc_objects)
 	cp ../include/kernel/proc/signals.h include/ && \

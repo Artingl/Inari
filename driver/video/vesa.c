@@ -248,7 +248,7 @@ static int video_mode_find_next(struct video_device *device, struct video_mode_i
     int found = 0,
         // If mode values are 0, return any first found mode
         found_mode = mode->width == 0 || mode->height == 0 || mode->bpp == 0 || mode->mode_id == 0;
-    
+
     /* Try tp fetch display info with edid */
     r.ax = EDID_GET_DATA;
     r.bx = 0x0001;
@@ -355,9 +355,8 @@ int vesa_map_video(struct video_device *device, struct video_map_info *mmap) {
     if ((vmem = vmm_alloc_vmem_user(dir, (vesa_block.total_memory * 0x10000) >> 12)) == NULL)
         return -ENOMEM;
     mmap->size = vesa_block.total_memory * 0x10000;
-    mmap->base = (uint8_t*)arch_map_page(
-        dir, vmem, (void*)current_mode_info.lfb_ptr,
-        mmap->size, PAGE_USR | PAGE_PRESENT | PAGE_RW);
+    mmap->base = (uint8_t *)arch_map_page(dir, vmem, (void *)current_mode_info.lfb_ptr, mmap->size,
+                                          PAGE_USR | PAGE_PRESENT | PAGE_RW);
     return 0;
 }
 
@@ -381,7 +380,7 @@ static int vesa_blit(struct video_device *device, struct video_blit *blit_info) 
     size_t blit_bpp = video_format_bpp[blit_info->format] >> 3;
     uint8_t r, g, b;
     uintptr_t size = vesa_block.total_memory * 0x10000, off, buf_off = 0,
-        buf_size = blit_info->width * blit_info->height * blit_bpp;
+              buf_size = blit_info->width * blit_info->height * blit_bpp;
 
     for (y = blit_info->y; y < blit_info->height + blit_info->y; y++)
         for (x = blit_info->x; x < blit_info->width + blit_info->x; x++) {
@@ -485,7 +484,7 @@ static void vesa_disable(struct video_device *device) {
     // size_t i;
 
     /* Switch back to 80x25 mode */
-    r.ax = 0x0003;//VESA_SET_MODE;
+    r.ax = 0x0003; // VESA_SET_MODE;
     // r.bx = modes[i];
     v86_bios(0x10, &r);
     // modes = (uint16_t *)REAL_PTR(vesa_block.video_mode_ptr);

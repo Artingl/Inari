@@ -3,10 +3,12 @@ I guess this is my 5th or so attempt on trying to create a kernel/OS. Seems like
 
 Simple OS with custom-made kernel and ring 3 userspace
 
-## Building
-To build the kernel simply run `make build`. This will generate file in `build/kernel.elf`, which can be booted with any multiboot compliant bootloader.
+`
+Note: this kernel is NOT unix-based, not posix compliant. None of that, even though you might get a feeling of otherwise when examining the code. I am building it by taking little things from different kinds of OSes and doing it the way I like.
+`
 
-You can also build userspace apps by executing `./build.sh` in `binutils/` folder. This will also build custom libc for the userspace.
+## Building
+To build the kernel simply run `make build`. This will generate file in `build/kernel.elf`, which can be booted with any multiboot compliant bootloader. The `make build` will also build the userspace programs.
 
 To build rootfs you can use `./mkimg.sh`, this will bundle all binutils, kernel file and install grub.
 

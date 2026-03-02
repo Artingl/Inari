@@ -1,8 +1,8 @@
 #ifndef _LIBC_IO_H
 #define _LIBC_IO_H
 
-#include <sys.h>
 #include <stdarg.h>
+#include <sys.h>
 
 extern handle_t stdout;
 extern handle_t stdin;
