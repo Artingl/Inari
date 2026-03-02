@@ -5,19 +5,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container:
-      image: lordmilko/i686-elf-tools:latest
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-mingw-w64-i686 g++-mingw-w64-i686 binutils-mingw-w64-i686 nasm
 
+    - name: Cache i686-elf-tools
+      id: cache-tools
+      uses: actions/cache@v4
+      with:
+        path: ~/opt/i686-elf-tools
+        key: ubuntu-i686-elf-tools-15.2.0
+
+    - name: Download and unzip i686-elf-tools
+      if: steps.cache-tools.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ~/opt/i686-elf-tools
+        curl -sLf https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/i686-elf-tools-linux.zip -o tools.zip
+        unzip -q tools.zip -d ~/opt/i686-elf-tools
+
+    - name: Add tools to PATH
+      run: |
+        echo "$HOME/opt/i686-elf-tools/bin" >> $GITHUB_PATH
+    
     - name: Check
       run: |
         i686-elf-gcc --version
+        i686-w64-mingw32-gcc --version
         nasm --version
 
     - name: Build
       run: |
         make build
 
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: built-binaries
+        path: |
+          build/*.iso
+          build/*.img
+          build/kernel.elf
+        if-no-files-found: error
+        retention-days: 5
