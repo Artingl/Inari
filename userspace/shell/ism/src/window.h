@@ -13,6 +13,11 @@
 #include "core.h"
 #include "video.h"
 
+#define ISM_CURSOR_NORMAL       0
+#define ISM_CURSOR_HAND         1
+#define ISM_CURSOR_BEAM         2
+#define ISM_CURSOR_HOURGLASS    3
+
 typedef uint32_t wind_t;    // window id
 
 struct ism_window_event {
@@ -33,6 +38,8 @@ struct ism_window {
     wind_t window_id;
 
     char name[ISM_MAX_WINDOW_NAME_LN];
+
+    uint8_t controls_state[3];   // 0 - close; 1 - maximize; 2 - minimize
 
     struct ism_buffer buffer;
     struct ism_window *parent;
