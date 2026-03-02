@@ -11,31 +11,11 @@ static inline char k_toupper(char c) { return (c >= 'a' && c <= 'z') ? c - 0x20 
 /* =========================
    Memory functions
    ========================= */
-static inline void *memset(void *buf, int ch, size_t count) {
-    unsigned char *c = buf;
-    while (count--)
-        *c++ = (unsigned char)ch;
-    return buf;
-}
+void *memset(void *buf, int ch, size_t count);
 
-static inline void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-    unsigned char *d = dest;
-    const unsigned char *s = src;
-    while (n--)
-        *d++ = *s++;
-    return dest;
-}
+void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 
-static inline int memcmp(const void *s1, const void *s2, size_t n) {
-    const unsigned char *p1 = s1, *p2 = s2;
-    while (n--) {
-        if (*p1 != *p2)
-            return *p1 - *p2;
-        p1++;
-        p2++;
-    }
-    return 0;
-}
+int memcmp(const void *s1, const void *s2, size_t n);
 
 /* =========================
    String functions

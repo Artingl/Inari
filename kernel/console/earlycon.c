@@ -10,7 +10,7 @@ extern char __stop_earlycon;
 static earlycon_device_t *device_in_use = NULL;
 
 int earlycon_init() {
-    earlycon_device_t *fallback;
+    earlycon_device_t *fallback = NULL;
     char device[ARG_MAX_LEN];
     parse_cmdline_argument("earlycon", &device[0]);
 

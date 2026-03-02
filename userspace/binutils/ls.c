@@ -24,6 +24,8 @@ int main(int argc, char const *argv[])
             name = "bdev     ";
         else if (node.st_mode & STAT_CHAR)
             name = "chardev  ";
+        else
+            name = "invalid  ";
 
         printf("   %ssz %llu%s\tstat 0x%x\t%s\n", name, node.size >= 1024 ? node.size >> 10 : node.size, node.size >= 1024 ? "kb" : "b", (uint32_t)node.st_mode, node.name);
         found_files = 1;

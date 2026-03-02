@@ -1,8 +1,7 @@
 #ifndef _INARI_MISC_STRING_H
 #define _INARI_MISC_STRING_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <types.h>
 
 static inline int isspace(int c) {
     return (c == ' ' || (c >= 0x09 && c <= 0x0D));
@@ -47,20 +46,20 @@ static inline char k_toupper(char c) {
    Memory functions
    ========================= */
 static inline void *memset(void *buf, int ch, size_t count) {
-    unsigned char *c = buf;
+    volatile unsigned char *c = buf;
     while (count--) *c++ = (unsigned char)ch;
     return buf;
 }
 
 static inline void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-    unsigned char *d = dest;
+    volatile unsigned char *d = dest;
     const unsigned char *s = src;
     while (n--) *d++ = *s++;
     return dest;
 }
 
 static inline int memcmp(const void *s1, const void *s2, size_t n) {
-    const unsigned char *p1 = s1, *p2 = s2;
+    volatile const unsigned char *p1 = s1, *p2 = s2;
     while (n--) {
         if (*p1 != *p2) return *p1 - *p2;
         p1++; p2++;

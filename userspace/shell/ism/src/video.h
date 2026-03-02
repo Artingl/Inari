@@ -1,9 +1,7 @@
 #ifndef _INARI_ISM_VIDEO_H
 #define _INARI_ISM_VIDEO_H
 
-#include <stdint.h>
-#include <stddef.h>
-
+#include <types.h>
 #include <list.h>
 
 struct ism_video_map {

@@ -3,8 +3,7 @@
 #include <io.h>
 #include <string.h>
 
-#include <stdint.h>
-#include <stddef.h>
+#include <types.h>
 
 struct block {
     size_t size, real_size;

@@ -446,7 +446,7 @@ end:
 
 static int vesa_probe() {
     struct x86_regs16 r;
-    uint32_t x, y, bpp = 32;
+    uint32_t x = 800, y = 600, bpp = 32;
 
     r.ax = VESA_GET_INFO;
     r.es = SEG(&vesa_block);

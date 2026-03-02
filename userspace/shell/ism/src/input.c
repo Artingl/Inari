@@ -73,7 +73,7 @@ static void input_thread_entrypoint(void)
     struct mouse_event mouse_e;
     struct hid_device_info info;
     int32_t scr_w = 800, scr_h = 600;
-    uint32_t last_mouse_event_id;
+    uint32_t last_mouse_event_id = 0;
     handle_t last_mouse_handle = -1, last_keyboard_handle = -1;
 
     do {

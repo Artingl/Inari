@@ -12,10 +12,10 @@ static struct block *heap_start = NULL;
 
 int kmalloc_init(void) { return 0; }
 
-void *kmalloc(size_t size) {
+void *kmalloc(size_t real_size) {
     uint32_t flags;
     spin_lock_irqsave(&heap_lock, flags);
-    size = ALIGN(size + sizeof(struct block) + PAGE_SIZE, BLOCK_ALIGN);
+    size_t size = ALIGN(real_size + sizeof(struct block) + PAGE_SIZE, BLOCK_ALIGN);
 
     /* Large allocation: allocate whole pages */
     if (size > SMALL_ALLOC_THRESHOLD) {
@@ -32,7 +32,7 @@ void *kmalloc(size_t size) {
         b->large = 1;
         heap_start = b;
         spin_unlock_irqrestore(&heap_lock, flags);
-        memset((void *)(b + 1), 0, size);
+        memset((void *)(b + 1), 0, real_size);
         return (void *)(b + 1);
     }
 
@@ -45,7 +45,7 @@ void *kmalloc(size_t size) {
         if (curr->free && !curr->large && curr->size >= size) {
             curr->free = 0;
             spin_unlock_irqrestore(&heap_lock, flags);
-            memset((void *)(curr + 1), 0, size);
+            memset((void *)(curr + 1), 0, real_size);
             return (void *)(curr + 1);
         }
         curr = curr->next;
@@ -65,7 +65,7 @@ void *kmalloc(size_t size) {
     b->next = heap_start;
     heap_start = b;
     spin_unlock_irqrestore(&heap_lock, flags);
-    memset((void *)(b + 1), 0, size);
+    memset((void *)(b + 1), 0, real_size);
     return (void *)(b + 1);
 }
 

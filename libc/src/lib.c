@@ -2,8 +2,7 @@
 #include <lib.h>
 #include <string.h>
 
-#include <stdint.h>
-#include <stddef.h>
+#include <types.h>
 
 int atoi(const char *str) {
     int res = 0, sign = 1;

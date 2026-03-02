@@ -275,7 +275,7 @@ void vmm_init_directory(pagedir_t *pagedir) {
     if (!entry->pages_pool)
         panic("vmm: OOM during directory init.");
 
-    entry->pool_offset = (uintptr_t)(&kern_phys_end + PAGE_SIZE);
+    entry->pool_offset = ((uintptr_t)&kern_phys_end) + PAGE_SIZE;
     entry->pagedir = pagedir;
 
     /* Mark the whole virtual memory as available at first */

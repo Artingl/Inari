@@ -1,5 +1,4 @@
-#include <stddef.h>
-#include <stdint.h>
+#include <types.h>
 #include <io.h>
 #include <string.h>
 #include <sys.h>

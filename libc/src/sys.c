@@ -207,3 +207,48 @@ int uname(struct utsname *buf)
 {
     return (int)syscall(36, (uint32_t)buf, 0, 0, 0, 0);
 }
+
+int time(time_t *t)
+{
+    return (int)syscall(37, (uint32_t)t, 0, 0, 0, 0);
+}
+
+int ipc_create(const char *name, thread_entrypoint_t handler)
+{
+    return syscall(38, (uint32_t)name, (uint32_t)handler, 0, 0, 0);
+}
+
+int ipc_free(const char *name)
+{
+    return syscall(39, (uint32_t)name, 0, 0, 0, 0);
+}
+
+int ipc_fetch_next(uint32_t *message, void **data, size_t *data_sz)
+{
+    return syscall(40, (uint32_t)message, (uint32_t)data, (uint32_t)data_sz, 0, 0);
+}
+
+int ipc_reply(int status)
+{
+    return syscall(41, (uint32_t)status, 0, 0, 0, 0);
+}
+
+int ipc_open(const char *name, handle_t *ipc)
+{
+    return syscall(42, (uint32_t)name, (uint32_t)ipc, 0, 0, 0);
+}
+
+int ipc_close(handle_t ipc)
+{
+    return syscall(43, (uint32_t)ipc, 0, 0, 0, 0);
+}
+
+int ipc_send(handle_t ipc, uint32_t message, void *data, size_t data_sz)
+{
+    return syscall(44, (uint32_t)ipc, (uint32_t)message, (uint32_t)data, (uint32_t)data_sz, 0);
+}
+
+int ipc_wait(handle_t ipc, uint8_t do_sleep)
+{
+    return syscall(45, (uint32_t)ipc, (uint32_t)do_sleep, 0, 0, 0);
+}
