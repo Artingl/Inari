@@ -12,4 +12,7 @@ $(binutils_objects): ./%.exe: ./%.c
 	$(CC) $(CFLAGS) -c $< -o $@.o
 	$(LD) --entry=__start -no-pie -nostdlib -o $@ -m i386pe $@.o -L../../libc -lc --image-base 0x020000000
 
+clean:
+	-rm ./*.exe ./*.o
+
 build: $(binutils_objects)

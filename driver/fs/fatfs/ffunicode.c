@@ -27,7 +27,7 @@
 
 #if FF_USE_LFN != 0 /* This module will be blanked if in non-LFN configuration */
 
-#define MERGE2(a, b) a##b
+#define MERGE2(a, b)   a##b
 #define CVTBL(tbl, cp) MERGE2(tbl, cp)
 
 /*------------------------------------------------------------------------*/

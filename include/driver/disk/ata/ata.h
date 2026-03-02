@@ -4,19 +4,19 @@
 #include <misc/types.h>
 
 #define ATA_MAX_CONTROLLERS 2
-#define ATA_MAX_DRIVES (ATA_MAX_CONTROLLERS * 2)
+#define ATA_MAX_DRIVES      (ATA_MAX_CONTROLLERS * 2)
 
-#define ATA_PRIMARY_IO 0x1F0
+#define ATA_PRIMARY_IO   0x1F0
 #define ATA_SECONDARY_IO 0x170
 
-#define ATA_PRIMARY_CTRL 0x3F6
+#define ATA_PRIMARY_CTRL   0x3F6
 #define ATA_SECONDARY_CTRL 0x376
 
-#define ATA_PRIMARY_IRQ 14
+#define ATA_PRIMARY_IRQ   14
 #define ATA_SECONDARY_IRQ 15
 
 #define ATA_MASTER_DRIVE 0xA0
-#define ATA_SLAVE_DRIVE 0xB0
+#define ATA_SLAVE_DRIVE  0xB0
 
 // Offset from "I/O" base
 #define ATA_DATA 0x00 // R/W 	Data Register 	                  Read/Write PIO data bytes 16-bit / 16-bit
@@ -30,12 +30,12 @@
          // 16-bit
 #define ATA_SECTOR_NUM                                                                                                 \
     0x03 // R/W 	Sector Number Register (LBAlo) 	  This is CHS / LBA28 / LBA48 specific. 8-bit / 16-bit
-#define ATA_CYLINDER_LOW 0x04  // R/W 	Cylinder Low Register / (LBAmid)  Partial Disk Sector address. 8-bit / 16-bit
+#define ATA_CYLINDER_LOW  0x04 // R/W 	Cylinder Low Register / (LBAmid)  Partial Disk Sector address. 8-bit / 16-bit
 #define ATA_CYLINDER_HIGH 0x05 // R/W 	Cylinder High Register / (LBAhi)  Partial Disk Sector address. 8-bit / 16-bit
 #define ATA_DRIVE                                                                                                      \
     0x06 // R/W 	Drive / Head Register 	          Used to select a drive and/or head. Supports extra address/flag
          // bits.  8-bit / 8-bit
-#define ATA_STATUS 0x07  // R 	Status Register 	              Used to read the current status. 8-bit / 8-bit
+#define ATA_STATUS  0x07 // R 	Status Register 	              Used to read the current status. 8-bit / 8-bit
 #define ATA_COMMAND 0x07 // W 	Command Register 	              Used to send ATA commands to the device. 8-bit / 8-bit
 
 // Offset from "Control" base
@@ -48,39 +48,39 @@
     0x01 // R 	Drive Address Register 	          Provides drive select and head select information. 8-bit / 8-bit
 
 // Error Register
-#define ATA_ER_AMNF (1 << 0)  //    	Address mark not found.
+#define ATA_ER_AMNF  (1 << 0) //    	Address mark not found.
 #define ATA_ER_TKZNF (1 << 1) //    	Track zero not found.
-#define ATA_ER_ABRT (1 << 2)  //    	Aborted command.
-#define ATA_ER_MCR (1 << 3)   //    	Media change request.
-#define ATA_ER_IDNF (1 << 4)  //    	ID not found.
-#define ATA_ER_MC (1 << 5)    //    	Media changed.
-#define ATA_ER_UNC (1 << 6)   //    	Uncorrectable data error.
-#define ATA_ER_BBK (1 << 7)   //    	Bad Block detected.
+#define ATA_ER_ABRT  (1 << 2) //    	Aborted command.
+#define ATA_ER_MCR   (1 << 3) //    	Media change request.
+#define ATA_ER_IDNF  (1 << 4) //    	ID not found.
+#define ATA_ER_MC    (1 << 5) //    	Media changed.
+#define ATA_ER_UNC   (1 << 6) //    	Uncorrectable data error.
+#define ATA_ER_BBK   (1 << 7) //    	Bad Block detected.
 
 // Status Register (I/O base + 7)
 #define ATA_SR_ERR                                                                                                     \
     (1 << 0) //       Indicates an error occurred. Send a new command to clear it (or nuke it with a Software Reset).
-#define ATA_SR_IDX (1 << 1)  //       Index. Always set to zero.
+#define ATA_SR_IDX  (1 << 1) //       Index. Always set to zero.
 #define ATA_SR_CORR (1 << 2) //       Corrected data. Always set to zero.
-#define ATA_SR_DRQ (1 << 3)  //       Set when the drive has PIO data to transfer, or is ready to accept PIO data.
-#define ATA_SR_SRV (1 << 4)  //       Overlapped Mode Service Request.
-#define ATA_SR_DF (1 << 5)   //       Drive Fault Error (does not set ERR).
-#define ATA_SR_RDY (1 << 6)  //       Bit is clear when drive is spun down, or after an error. Set otherwise.
+#define ATA_SR_DRQ  (1 << 3) //       Set when the drive has PIO data to transfer, or is ready to accept PIO data.
+#define ATA_SR_SRV  (1 << 4) //       Overlapped Mode Service Request.
+#define ATA_SR_DF   (1 << 5) //       Drive Fault Error (does not set ERR).
+#define ATA_SR_RDY  (1 << 6) //       Bit is clear when drive is spun down, or after an error. Set otherwise.
 #define ATA_SR_BSY                                                                                                     \
     (1 << 7) //       Indicates the drive is preparing to send/receive data (wait for it to clear). In case of 'hang'
              //       (it never clears), do a software reset.
 
-#define ATA_IDENT_DEVICETYPE 0
-#define ATA_IDENT_CYLINDERS 2
-#define ATA_IDENT_HEADS 6
-#define ATA_IDENT_SECTORS 12
-#define ATA_IDENT_SERIAL 20
-#define ATA_IDENT_MODEL 54
+#define ATA_IDENT_DEVICETYPE   0
+#define ATA_IDENT_CYLINDERS    2
+#define ATA_IDENT_HEADS        6
+#define ATA_IDENT_SECTORS      12
+#define ATA_IDENT_SERIAL       20
+#define ATA_IDENT_MODEL        54
 #define ATA_IDENT_CAPABILITIES 98
-#define ATA_IDENT_FIELDVALID 106
-#define ATA_IDENT_MAX_LBA 120
-#define ATA_IDENT_COMMANDSETS 164
-#define ATA_IDENT_MAX_LBA_EXT 200
+#define ATA_IDENT_FIELDVALID   106
+#define ATA_IDENT_MAX_LBA      120
+#define ATA_IDENT_COMMANDSETS  164
+#define ATA_IDENT_MAX_LBA_EXT  200
 
 #define ATA_BLOCK_SIZE 512
 

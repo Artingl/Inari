@@ -5,9 +5,9 @@
 #define SIGSEGV 1 /* Segmentation fault */
 #define SIGTRAP 2 /* Trace/breakpoint trap */
 #define SIGQUIT 3 /* Quit */
-#define SIGFPE 4  /* Floating point exception */
-#define SIGILL 5  /* Illegal instruction */
-#define SIGSYS 6  /* Bad system call */
+#define SIGFPE  4 /* Floating point exception */
+#define SIGILL  5 /* Illegal instruction */
+#define SIGSYS  6 /* Bad system call */
 #define SIGKILL 9 /* Kill, cannot be caught or ignored */
 
 /* Range for real-time signals */

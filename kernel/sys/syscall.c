@@ -106,6 +106,11 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
+        /* Can only spawn threads for itself */
+        if ((pid_t)param1 != proc->pid) {
+            res = -EINVAL;
+            break;
+        }
         return spawn_thread((tid_t *)param0, (pid_t)param1, (thread_entrypoint_t)param2);
 
     case SYSCALL_GET_TID:

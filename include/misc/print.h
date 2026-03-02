@@ -5,14 +5,14 @@
 #include <misc/string.h>
 #include <stdarg.h>
 
-#define PR_LJ 0x01
-#define PR_CA 0x02
-#define PR_SG 0x04
-#define PR_32 0x08
-#define PR_16 0x10
-#define PR_WS 0x20
-#define PR_LZ 0x40
-#define PR_64 0x60
+#define PR_LJ     0x01
+#define PR_CA     0x02
+#define PR_SG     0x04
+#define PR_32     0x08
+#define PR_16     0x10
+#define PR_WS     0x20
+#define PR_LZ     0x40
+#define PR_64     0x60
 #define PR_BUFLEN 32
 
 static inline int emit_char(void (*fn)(char, void *), void *ud, char c) {

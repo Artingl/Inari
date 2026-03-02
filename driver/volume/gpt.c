@@ -11,7 +11,7 @@
 #include <misc/string.h>
 
 #define GPT_UNUSED_ENTRY "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
-#define GPT_MAGIC "EFI PART"
+#define GPT_MAGIC        "EFI PART"
 
 struct gpt_header {
     char magic[8];

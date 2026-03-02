@@ -23,7 +23,7 @@
 #define MULTIBOOT_HEADER 1
 
 /* How many bytes from the start of the file we search for the header. */
-#define MULTIBOOT_SEARCH 8192
+#define MULTIBOOT_SEARCH       8192
 #define MULTIBOOT_HEADER_ALIGN 4
 
 /* The magic field should contain this. */
@@ -55,20 +55,20 @@
 /* Flags to be set in the ’flags’ member of the multiboot info structure. */
 
 /* is there basic lower/upper memory information? */
-#define MULTIBOOT_INFO_MEMORY 0x00000001
+#define MULTIBOOT_INFO_MEMORY  0x00000001
 /* is there a boot device set? */
 #define MULTIBOOT_INFO_BOOTDEV 0x00000002
 /* is the command-line defined? */
 #define MULTIBOOT_INFO_CMDLINE 0x00000004
 /* are there modules to do something with? */
-#define MULTIBOOT_INFO_MODS 0x00000008
+#define MULTIBOOT_INFO_MODS    0x00000008
 
 /* These next two are mutually exclusive */
 
 /* is there a symbol table loaded? */
 #define MULTIBOOT_INFO_AOUT_SYMS 0x00000010
 /* is there an ELF section header table? */
-#define MULTIBOOT_INFO_ELF_SHDR 0X00000020
+#define MULTIBOOT_INFO_ELF_SHDR  0X00000020
 
 /* is there a full memory map? */
 #define MULTIBOOT_INFO_MEM_MAP 0x00000040
@@ -89,7 +89,7 @@
 #define MULTIBOOT_INFO_VIDEO_INFO 0x00000800
 
 /* Is there video information? */
-#define MULTIBOOT_INFO_VBE_INFO 0x00000800
+#define MULTIBOOT_INFO_VBE_INFO         0x00000800
 #define MULTIBOOT_INFO_FRAMEBUFFER_INFO 0x00001000
 
 #ifndef ASM_FILE
@@ -194,8 +194,8 @@ struct multiboot_info {
     multiboot_uint32_t framebuffer_width;
     multiboot_uint32_t framebuffer_height;
     multiboot_uint8_t framebuffer_bpp;
-#define MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED 0
-#define MULTIBOOT_FRAMEBUFFER_TYPE_RGB 1
+#define MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED  0
+#define MULTIBOOT_FRAMEBUFFER_TYPE_RGB      1
 #define MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT 2
     multiboot_uint8_t framebuffer_type;
     union {
@@ -225,11 +225,11 @@ struct multiboot_mmap_entry {
     multiboot_uint32_t size;
     multiboot_uint64_t addr;
     multiboot_uint64_t len;
-#define MULTIBOOT_MEMORY_AVAILABLE 1
-#define MULTIBOOT_MEMORY_RESERVED 2
+#define MULTIBOOT_MEMORY_AVAILABLE        1
+#define MULTIBOOT_MEMORY_RESERVED         2
 #define MULTIBOOT_MEMORY_ACPI_RECLAIMABLE 3
-#define MULTIBOOT_MEMORY_NVS 4
-#define MULTIBOOT_MEMORY_BADRAM 5
+#define MULTIBOOT_MEMORY_NVS              4
+#define MULTIBOOT_MEMORY_BADRAM           5
     multiboot_uint32_t type;
 } __attribute__((packed));
 typedef struct multiboot_mmap_entry multiboot_memory_map_t;

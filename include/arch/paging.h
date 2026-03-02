@@ -4,13 +4,13 @@
 #include <misc/types.h>
 
 #define TABLE_PRESENT (1 << 0)
-#define TABLE_RW (1 << 1)
-#define TABLE_USR (1 << 2)
+#define TABLE_RW      (1 << 1)
+#define TABLE_USR     (1 << 2)
 
 #define PAGE_PRESENT (1 << 0)
-#define PAGE_RW (1 << 1)
-#define PAGE_USR (1 << 2)
-#define PAGE_DIRTY (1 << 5)
+#define PAGE_RW      (1 << 1)
+#define PAGE_USR     (1 << 2)
+#define PAGE_DIRTY   (1 << 5)
 
 typedef void pagedir_t;
 

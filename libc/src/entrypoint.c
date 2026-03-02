@@ -57,3 +57,21 @@ void _start()
     signal_handler(&_signal, SIGKILL);
     exit(main(argc, argv));
 }
+
+const char *get_name(void)
+{
+    return get_argv()[0] ? get_argv()[0] : "undefined";
+}
+
+const char **get_argv(void)
+{
+    return (const char**)0x1900000;
+}
+
+int get_argc(void)
+{
+    int argc = 0;
+    char **argv = (char**)0x1900000;
+    while (argv[argc] != NULL) argc++;
+    return argc;
+}

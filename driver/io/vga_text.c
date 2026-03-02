@@ -10,10 +10,10 @@
 #include <arch/x86/arch.h>
 #include <misc/string.h>
 
-#define VGA_BASE 0xb8000
-#define VGA_WIDTH 80
+#define VGA_BASE   0xb8000
+#define VGA_WIDTH  80
 #define VGA_HEIGHT 25
-#define VGA_SIZE (VGA_WIDTH * VGA_HEIGHT * 2)
+#define VGA_SIZE   (VGA_WIDTH * VGA_HEIGHT * 2)
 
 #define DEF_COLOR 0x07
 

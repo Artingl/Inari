@@ -7,10 +7,10 @@
 #define DEV_NAME_SIZE 32
 
 #define DEV_GRP_BLOCK 0
-#define DEV_GRP_CHAR 1
+#define DEV_GRP_CHAR  1
 
-#define DRVID(dev) (((dev) >> 16) & 0xFFFF)
-#define DEVID(dev) ((dev) & 0xFFFF)
+#define DRVID(dev)         (((dev) >> 16) & 0xFFFF)
+#define DEVID(dev)         ((dev) & 0xFFFF)
 #define MKDEV(driver, dev) (((driver) << 16) | (dev))
 
 typedef unsigned int dev_t;

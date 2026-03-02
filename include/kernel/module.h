@@ -4,7 +4,7 @@
 #include "kernel/event.h"
 
 #define MODULE_FLAG_LAZY_LOAD (1 << 0)
-#define MODULE_FLAG_BUILTIN (1 << 1)
+#define MODULE_FLAG_BUILTIN   (1 << 1)
 #define MODULE_FLAG_IS_LOADED (1 << 2)
 
 typedef struct {

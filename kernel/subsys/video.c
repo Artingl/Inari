@@ -38,6 +38,20 @@ static int video_ioctl(struct device *chardev, unsigned long req, void *arg) {
         if (device->ops->blit && VMM_IS_PTR_USERSPACE(arg))
             return device->ops->blit(device, arg);
         break;
+    case VIDEO_IOCTL_DISABLE:
+        if (device->ops->disable) {
+            device->ops->disable(device);
+            return 0;
+        }
+        break;
+    case VIDEO_IOCTL_FILL_RECT:
+        if (device->ops->fill_rect && VMM_IS_PTR_USERSPACE(arg))
+            return device->ops->fill_rect(device, arg);
+        break;
+    case VIDEO_IOCTL_MAP:
+        if (device->ops->map_video && VMM_IS_PTR_USERSPACE(arg))
+            return device->ops->map_video(device, arg);
+        break;
     }
 
     return -ENOSYS;

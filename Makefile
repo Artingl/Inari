@@ -38,8 +38,9 @@ mkconfig:
 clean:
 	-rm -rf build userspace/binutils/*.exe userspace/binutils/*.o && \
 	make -C libc clean && \
-	make -C arch/${TARGET} clean && \
-	make -C libc clean
+	make -C userspace/binutils clean && \
+	make -C userspace/shell/ism clean && \
+	make -C arch/${TARGET} clean
 
 format: $(kernel_source) $(driver_source) $(headers)
 	clang-format -i $(kernel_source) $(driver_source) $(headers)
@@ -48,5 +49,5 @@ build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \
 	make -C libc build && \
 	make -C userspace/binutils build && \
-	make -C userspace/shell/ism build
+	make -C userspace/shell/ism build && \
 	cp arch/${TARGET}/kernel.elf build/kernel.elf

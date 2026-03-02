@@ -15,9 +15,9 @@
 #include <arch/paging.h>
 #include <arch/x86/cpu.h>
 
-#define VESA_GET_INFO 0x4F00
+#define VESA_GET_INFO      0x4F00
 #define VESA_GET_MODE_INFO 0x4F01
-#define VESA_SET_MODE 0x4F02
+#define VESA_SET_MODE      0x4F02
 
 #define EDID_GET_DATA 0x4f15
 
@@ -344,6 +344,22 @@ static int video_mode_switch(struct video_device *device, struct video_mode_info
     return 0;
 }
 
+int vesa_map_video(struct video_device *device, struct video_map_info *mmap) {
+    if (!vesa_initialized)
+        return -ENOSYS;
+    if (!mmap)
+        return -EINVAL;
+    pagedir_t *dir = arch_get_pagedir();
+    void *vmem;
+    if ((vmem = vmm_alloc_vmem_user(dir, (vesa_block.total_memory * 0x10000) >> 12)) == NULL)
+        return -ENOMEM;
+    mmap->size = vesa_block.total_memory * 0x10000;
+    mmap->base = (uint8_t*)arch_map_page(
+        dir, vmem, (void*)current_mode_info.lfb_ptr,
+        mmap->size, PAGE_USR | PAGE_PRESENT | PAGE_RW);
+    return 0;
+}
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 static int vesa_blit(struct video_device *device, struct video_blit *blit_info) {
@@ -358,24 +374,66 @@ static int vesa_blit(struct video_device *device, struct video_blit *blit_info) 
 
     if (!blit_info->buffer || !current_mode_base)
         goto end;
-    if (blit_info->format != VIDEO_R8G8B8_FORMAT)
+    if (video_format_bpp[blit_info->format] == 0)
         goto end;
-    size_t x, y;
+    int32_t x, y;
+    size_t blit_bpp = video_format_bpp[blit_info->format] >> 3;
+    uint8_t r, g, b;
     uintptr_t size = vesa_block.total_memory * 0x10000, off, buf_off = 0,
-              // 3 in the end because VESA_BLIT_R8G8B8_FORMAT
-        buf_size = blit_info->width * blit_info->height * 3;
+        buf_size = blit_info->width * blit_info->height * blit_bpp;
 
     for (y = blit_info->y; y < blit_info->height + blit_info->y; y++)
         for (x = blit_info->x; x < blit_info->width + blit_info->x; x++) {
-            if (y >= current_mode_info.v_res || x >= current_mode_info.h_res)
+            if (y >= current_mode_info.v_res || x >= current_mode_info.h_res || x < 0 || y < 0)
                 continue;
             off = y * current_mode_info.h_res + x;
-            buf_off = (y - blit_info->y) * 3 * blit_info->width + (x - blit_info->x) * 3;
+            buf_off = (y - blit_info->y) * blit_bpp * blit_info->width + (x - blit_info->x) * blit_bpp;
             if (off >= size || buf_off + 2 >= buf_size)
                 continue;
-            current_mode_base[off] =
-                (((((0xff << 8) | blit_info->buffer[buf_off + 1]) << 8) | blit_info->buffer[buf_off + 2]) << 8) |
-                blit_info->buffer[buf_off + 3];
+            r = blit_info->buffer[buf_off + 0];
+            g = blit_info->buffer[buf_off + (blit_bpp > 1 ? 1 : 0)];
+            b = blit_info->buffer[buf_off + (blit_bpp > 2 ? 2 : 0)];
+
+            /* TODO: account for video mode bpp */
+            current_mode_base[off] = (((((0xff << 8) | r) << 8) | g) << 8) | b;
+        }
+
+    res = 0;
+end:
+    spin_unlock_irqrestore(&vesa_lock, flags);
+    return res;
+}
+
+static int vesa_fill_rect(struct video_device *device, struct video_fill_rect *rect) {
+    if (!vesa_initialized)
+        return -ENOSYS;
+    if (!rect || !device)
+        return -EINVAL;
+
+    int res = -EINVAL;
+    uint32_t flags;
+    spin_lock_irqsave(&vesa_lock, flags);
+
+    if (!current_mode_base || video_format_bpp[rect->format] == 0)
+        goto end;
+    int32_t x, y;
+    uint8_t r, g, b;
+    size_t rect_bpp = video_format_bpp[rect->format] >> 3;
+    uintptr_t size = vesa_block.total_memory * 0x10000, off;
+
+    for (y = rect->y; y < rect->height + rect->y; y++)
+        for (x = rect->x; x < rect->width + rect->x; x++) {
+            if (y >= current_mode_info.v_res || x >= current_mode_info.h_res || x < 0 || y < 0)
+                continue;
+            off = y * current_mode_info.h_res + x;
+            if (off >= size)
+                continue;
+            r = rect_bpp > 2 ? rect->color >> 16 : (uint8_t)rect->color;
+            g = rect_bpp > 2 ? (rect->color >> 8) & 0xff : (uint8_t)rect->color;
+            b = rect_bpp > 2 ? rect->color & 0xff : (uint8_t)rect->color;
+
+            /* TODO: account for video mode bpp */
+            current_mode_base[off] = (((((0xff << 8) | r) << 8) | g) << 8) | b;
         }
 
     res = 0;
@@ -477,7 +535,9 @@ struct video_ops ops = {.mode_info = &video_mode_info,
                         .mode_find_next = &video_mode_find_next,
                         .mode_switch = &video_mode_switch,
                         .blit = &vesa_blit,
-                        .disable = &vesa_disable};
+                        .disable = &vesa_disable,
+                        .fill_rect = &vesa_fill_rect,
+                        .map_video = &vesa_map_video};
 
 module_t vesa_module = {
     .probe = vesa_probe,

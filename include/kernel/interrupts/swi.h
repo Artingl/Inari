@@ -5,7 +5,7 @@
 #include <misc/types.h>
 
 #define SWI_RESCHEDULE 0x2000
-#define SWI_SYSCALL 0x2080
+#define SWI_SYSCALL    0x2080
 
 #define SWI_HANDLED 1
 

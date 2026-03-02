@@ -5,7 +5,7 @@
 
 #include <arch/paging.h>
 
-#define PE_MAGIC 0x00004550
+#define PE_MAGIC   0x00004550
 #define PE32_MAGIC 0x010b
 
 struct pe_header {

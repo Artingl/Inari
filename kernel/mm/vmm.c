@@ -112,6 +112,58 @@ void *vmm_alloc_vmem_kern(size_t npages) {
     return (void *)block_vbase;
 }
 
+void *vmm_alloc_vmem_user(pagedir_t *target_dir, size_t npages) {
+    struct vmm_pool_entry *entry = get_pool_entry(target_dir);
+    if (!entry)
+        return NULL;
+
+    uintptr_t mem = (uintptr_t)&kern_phys_end + PAGE_SIZE;
+    if (mem < 0x1000000) {
+        mem = 0x1000000;
+    }
+
+    struct vmm_page *page;
+    size_t block_vbase = 0, block_size = 0, i;
+
+    if (npages == 0)
+        return NULL;
+
+    /* Find free page in the pool */
+    for (; mem < VIRTUAL_ADDR - PAGE_SIZE; mem += PAGE_SIZE) {
+        page = &entry->pages_pool[(mem - entry->pool_offset) >> 12];
+        if (!(page->flags & VMM_PAGE_AVAILABLE)) {
+            block_size = 0;
+            continue;
+        }
+
+        if (block_size == 0)
+            block_vbase = mem;
+
+        block_size++;
+        if (block_size >= npages)
+            break;
+    }
+
+    if (block_size < npages) {
+        panic("vmm: no available contiguous blocks were found (npages = %d).", npages);
+        return NULL;
+    }
+
+    /* Flag all blocks as used */
+    for (i = 0; i < block_size; i++) {
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_USED;
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_NO_PHYS; // tell the
+                                                                                                     // deallocator
+                                                                                                     // later that this
+                                                                                                     // page is not
+                                                                                                     // physically
+                                                                                                     // allocated
+        entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_AVAILABLE);
+    }
+
+    return (void *)block_vbase;
+}
+
 static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t from_mem, uintptr_t to_mem,
                          uint32_t flags) {
     if (!entry || from_mem < entry->pool_offset)

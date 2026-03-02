@@ -7,18 +7,18 @@
 #include <kernel/proc/proc.h>
 #include <kernel/sys/block.h>
 
-#define VFS_READ 0x01
-#define VFS_WRITE 0x02
+#define VFS_READ          0x01
+#define VFS_WRITE         0x02
 #define VFS_OPEN_EXISTING 0x00
-#define VFS_CREATE_NEW 0x04
+#define VFS_CREATE_NEW    0x04
 #define VFS_CREATE_ALWAYS 0x08
-#define VFS_OPEN_ALWAYS 0x10
-#define VFS_OPEN_APPEND 0x30
+#define VFS_OPEN_ALWAYS   0x10
+#define VFS_OPEN_APPEND   0x30
 
-#define VFS_STAT_FILE (1 << 0)
-#define VFS_STAT_DIR (1 << 1)
+#define VFS_STAT_FILE  (1 << 0)
+#define VFS_STAT_DIR   (1 << 1)
 #define VFS_STAT_BLOCK (1 << 2)
-#define VFS_STAT_CHAR (1 << 3)
+#define VFS_STAT_CHAR  (1 << 3)
 
 #define VFS_PATH_SIZE 256
 

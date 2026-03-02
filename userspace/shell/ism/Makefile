@@ -12,7 +12,7 @@ $(ism_objects): build/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	-rm -rf build ../ism.exe
+	-rm -rf ../ism.exe build
 
 build: $(ism_objects)
 	$(LD) --entry=__start -no-pie -nostdlib -o ../ism.exe -m i386pe $(shell find build/ -name *.o) -L../../../libc -lc --image-base 0x020000000

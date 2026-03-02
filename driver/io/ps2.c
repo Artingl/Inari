@@ -16,14 +16,14 @@
 #include <arch/x86/arch.h>
 #include <misc/string.h>
 
-#define PS2_IRQ1 1
+#define PS2_IRQ1  1
 #define PS2_IRQ12 12
 
-#define PS2_TYPE_UNKNOWN -1
-#define PS2_TYPE_MOUSE_STD 0
+#define PS2_TYPE_UNKNOWN     -1
+#define PS2_TYPE_MOUSE_STD   0
 #define PS2_TYPE_MOUSE_WHEEL 1
-#define PS2_TYPE_MOUSE_5BTN 2
-#define PS2_TYPE_KBD_STD 3
+#define PS2_TYPE_MOUSE_5BTN  2
+#define PS2_TYPE_KBD_STD     3
 #define PS2_TYPE_KBD_ANCIENT 4
 
 static int ps2_is_dual = 0;

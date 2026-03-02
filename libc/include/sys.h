@@ -85,6 +85,10 @@ int uname(struct utsname *buf);
 // int shmem_alloc(pid_t pid, uintptr_t *base, size_t size);  // allocate shared mem between current process and pid process
 // int shmem_free(uintptr_t *base, size_t size);
 
+const char *get_name(void);
+const char **get_argv(void);
+int get_argc(void);
+
 int syscall(
     uint32_t id,
     uint32_t param0,

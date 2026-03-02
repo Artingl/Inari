@@ -13,7 +13,7 @@
 #define MIN(v0, v1) ((v0) > (v1) ? (v1) : (v0))
 #define MAX(v0, v1) ((v0) > (v1) ? (v0) : (v1))
 
-#define PAGE_SIZE 0x1000        // Size of a single page in memory
+#define PAGE_SIZE    0x1000     // Size of a single page in memory
 #define VIRTUAL_ADDR 0xC0000000 // The physical memory address where kernel resides
 
 #define _lo_data __attribute__((used, section("._lo_kern_data"), aligned(PAGE_SIZE)))

@@ -25,7 +25,7 @@
 #define COM7 0x5E8
 #define COM8 0x4E8
 
-#define SERIAL_IRQ 0x4
+#define SERIAL_IRQ              0x4
 #define is_transmit_empty(port) (x86_inb(port + 5) & 0x20)
 
 extern int console_is_early;

@@ -10,7 +10,7 @@ struct ring_bbuf {
     int maxlen;
 };
 
-#define RING_HEAD_INIT(buf, size) ((struct ring_bbuf){.buffer = (uint8_t *)buf, .maxlen = size, .head = 0, .tail = 0})
+#define RING_HEAD_INIT(buf, size)  ((struct ring_bbuf){.buffer = (uint8_t *)buf, .maxlen = size, .head = 0, .tail = 0})
 #define RING_HEAD(name, buf, size) struct ring_bbuf name = RING_HEAD_INIT(buf, size)
 
 static inline void ring_bbuf_init(struct ring_bbuf *c, uint8_t *buf, int size) {

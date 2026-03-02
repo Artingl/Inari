@@ -1,5 +1,5 @@
-#ifndef _INARI_MISC_LIST_H
-#define _INARI_MISC_LIST_H
+#ifndef _INARI_LIST_H
+#define _INARI_LIST_H
 
 /* intrusive doubly linked list node */
 struct list_head {

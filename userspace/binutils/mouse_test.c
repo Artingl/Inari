@@ -11,28 +11,27 @@
 #define MOUSE_WIDTH  16
 #define MOUSE_HEIGHT 16
 
-#define T 0 // Transparent
-#define B 1 // Black (Outline)
-#define W 2 // White (Fill)
+#define T 0
+#define B 1
+#define W 2
 
-// 16x16 indexed color mouse cursor bitmap
 const uint8_t cursor_color_bitmap[16][16] = {
-    { B, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T }, // Row 0 (Tip)
-    { B, B, T, T, T, T, T, T, T, T, T, T, T, T, T, T }, // Row 1
-    { B, W, B, T, T, T, T, T, T, T, T, T, T, T, T, T }, // Row 2
-    { B, W, W, B, T, T, T, T, T, T, T, T, T, T, T, T }, // Row 3
-    { B, W, W, W, B, T, T, T, T, T, T, T, T, T, T, T }, // Row 4
-    { B, W, W, W, W, B, T, T, T, T, T, T, T, T, T, T }, // Row 5
-    { B, W, W, W, W, W, B, T, T, T, T, T, T, T, T, T }, // Row 6
-    { B, W, W, W, W, W, W, B, T, T, T, T, T, T, T, T }, // Row 7
-    { B, W, W, W, W, W, W, W, B, T, T, T, T, T, T, T }, // Row 8
-    { B, W, W, W, W, W, W, W, W, B, T, T, T, T, T, T }, // Row 9
-    { B, W, W, W, W, W, B, B, B, B, T, T, T, T, T, T }, // Row 10 (Flat bottom)
-    { B, W, W, B, W, W, B, T, T, T, T, T, T, T, T, T }, // Row 11 (Tail starts)
-    { B, W, B, T, B, W, W, B, T, T, T, T, T, T, T, T }, // Row 12
-    { B, B, T, T, B, W, W, B, T, T, T, T, T, T, T, T }, // Row 13
-    { T, T, T, T, T, B, W, W, B, T, T, T, T, T, T, T }, // Row 14
-    { T, T, T, T, T, T, B, B, T, T, T, T, T, T, T, T }  // Row 15 (End of tail)
+    { B, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T },
+    { B, B, T, T, T, T, T, T, T, T, T, T, T, T, T, T },
+    { B, W, B, T, T, T, T, T, T, T, T, T, T, T, T, T },
+    { B, W, W, B, T, T, T, T, T, T, T, T, T, T, T, T },
+    { B, W, W, W, B, T, T, T, T, T, T, T, T, T, T, T },
+    { B, W, W, W, W, B, T, T, T, T, T, T, T, T, T, T },
+    { B, W, W, W, W, W, B, T, T, T, T, T, T, T, T, T },
+    { B, W, W, W, W, W, W, B, T, T, T, T, T, T, T, T },
+    { B, W, W, W, W, W, W, W, B, T, T, T, T, T, T, T },
+    { B, W, W, W, W, W, W, W, W, B, T, T, T, T, T, T },
+    { B, W, W, W, W, W, B, B, B, B, T, T, T, T, T, T },
+    { B, W, W, B, W, W, B, T, T, T, T, T, T, T, T, T },
+    { B, W, B, T, B, W, W, B, T, T, T, T, T, T, T, T },
+    { B, B, T, T, B, W, W, B, T, T, T, T, T, T, T, T },
+    { T, T, T, T, T, B, W, W, B, T, T, T, T, T, T, T },
+    { T, T, T, T, T, T, B, B, T, T, T, T, T, T, T, T }
 };
 
 int main(int argc, char *argv[])
