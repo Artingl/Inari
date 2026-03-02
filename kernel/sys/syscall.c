@@ -42,6 +42,8 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
     case SYSCALL_DEBUG:
         kprintf("pmm: usage: %u MB (%u); total: %u MB (%u)", (pmm_usage() * 0x1000) / 1024 / 1024, pmm_usage(),
                 (pmm_total() * 0x1000) / 1024 / 1024, pmm_total());
+
+        panic("test");
         break;
 
     case SYSCALL_OPEN:
@@ -300,6 +302,8 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         res = -EINVAL;
         break;
     }
+
+    sched_yield();
 
     return res;
 }

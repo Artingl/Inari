@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    ism_window_create(NULL, ISM_WINDOW_ROOT, "Window 1", ISM_WINDOW_FLAG_FRAME | ISM_WINDOW_FLAG_BORDER, 0, 0, 400, 300);
+    ism_window_create(NULL, ISM_WINDOW_ROOT, "Window 1", ISM_WINDOW_FLAG_FRAME | ISM_WINDOW_FLAG_BORDER, 40, 40, 400, 300);
     ism_window_create(NULL, ISM_WINDOW_ROOT, "Window 2", ISM_WINDOW_FLAG_BORDER, 500, 40, 400, 300);
 
     /* Run main ism loop */

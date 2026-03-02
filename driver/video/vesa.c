@@ -9,6 +9,7 @@
 #include <kernel/subsys/video.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sys/device.h>
+#include <kernel/timer.h>
 
 #include <misc/string.h>
 
@@ -239,15 +240,15 @@ static int video_mode_find_next(struct video_device *device, struct video_mode_i
     uint32_t default_w = 0, default_h = 0;
     size_t i;
 
-    int found = 0,
-        // If mode values are 0, return any first found mode
-        found_mode = mode->width == 0 || mode->height == 0 || mode->bpp == 0 || mode->mode_id == 0;
-
     if (!vesa_initialized)
         return -ENOSYS;
     if (!mode)
         return -EINVAL;
 
+    int found = 0,
+        // If mode values are 0, return any first found mode
+        found_mode = mode->width == 0 || mode->height == 0 || mode->bpp == 0 || mode->mode_id == 0;
+    
     /* Try tp fetch display info with edid */
     r.ax = EDID_GET_DATA;
     r.bx = 0x0001;
@@ -479,29 +480,32 @@ static void vesa_disable(struct video_device *device) {
     if (!vesa_initialized)
         return;
     struct x86_regs16 r;
-    struct vesa_mode_info *info = &lo_mode_info;
-    uint16_t *modes;
-    size_t i;
+    // struct vesa_mode_info *info = &lo_mode_info;
+    // uint16_t *modes;
+    // size_t i;
 
     /* Switch back to 80x25 mode */
-    modes = (uint16_t *)REAL_PTR(vesa_block.video_mode_ptr);
-    for (i = 0; modes[i] != 0xFFFF; i++) {
-        r.ax = VESA_GET_MODE_INFO;
-        r.cx = modes[i];
-        r.es = SEG(info);
-        r.di = OFF(info);
-        v86_bios(0x10, &r);
+    r.ax = 0x0003;//VESA_SET_MODE;
+    // r.bx = modes[i];
+    v86_bios(0x10, &r);
+    // modes = (uint16_t *)REAL_PTR(vesa_block.video_mode_ptr);
+    // for (i = 0; modes[i] != 0xFFFF; i++) {
+    //     r.ax = VESA_GET_MODE_INFO;
+    //     r.cx = modes[i];
+    //     r.es = SEG(info);
+    //     r.di = OFF(info);
+    //     v86_bios(0x10, &r);
 
-        if (r.ax != 0x4f)
-            continue;
+    //     if (r.ax != 0x4f)
+    //         continue;
 
-        if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
-            r.ax = VESA_SET_MODE;
-            r.bx = modes[i];
-            v86_bios(0x10, &r);
-            break;
-        }
-    }
+    //     if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
+    //         r.ax = VESA_SET_MODE;
+    //         r.bx = modes[i];
+    //         v86_bios(0x10, &r);
+    //         break;
+    //     }
+    // }
 }
 
 static void vesa_cleanup() {

@@ -43,7 +43,6 @@ static struct ism_window root_window;
 static uint8_t *video_buffer = NULL;
 static uint8_t *dirty_regions = NULL;
 static struct ism_video_map video_map;
-static struct ism_window *held_window = NULL;
 static int32_t video_width, video_height;
 static uint8_t cursor_style = ISM_CURSOR_NORMAL;
 
@@ -360,34 +359,33 @@ static void foreach_render_window(struct ism_window *window) {
 
 int ism_window_update(void) {
     cursor_style = ISM_CURSOR_NORMAL;
+    static struct ism_window *held_window = NULL;
     static int last_mouse_x = -1, last_mouse_y = -1, prev_mouse_state = -1;
-    struct ism_mouse mouse;
+    struct ism_mouse mouse = {0};
     if (input_read(&mouse, NULL) != 0)
         return 0;
     struct ism_window *window = get_window_position(mouse.pos_x, mouse.pos_y);
     
+    if (prev_mouse_state != mouse.buttons[MOUSE_BTN1] && window) {
+        if (mouse.buttons[MOUSE_BTN1] && !held_window && (mouse.pos_y - window->y - 3) < WINDOW_FRAME_HEIGHT)
+            held_window = window;
+        else if (!mouse.buttons[MOUSE_BTN1])
+            held_window = NULL;
+    }
+    
     /* Check if any new mouse events occurred */
     if (mouse.pos_x != last_mouse_x || mouse.pos_y != last_mouse_y) {
-
-        if (mouse.buttons[MOUSE_BTN1] && held_window)
-            window = held_window;
-        else {
-            held_window = NULL;
-        }
-
-        update_window(window);
-        
-        /* Move window using mouse */
-        if (window && mouse.buttons[MOUSE_BTN1] && ((mouse.pos_y - window->y) < WINDOW_FRAME_HEIGHT || held_window)) {
+        /* Drag window using mouse */
+        if (held_window) {
             /* Mark the previous window position region for redraw (With slight offset to cover window frame) */
-            mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16, window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
+            mark_region_range(held_window->x - 8, held_window->y - 8 - WINDOW_FRAME_HEIGHT, held_window->width + 16, held_window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
 
-            window->x += mouse.pos_x - last_mouse_x;
-            window->y += mouse.pos_y - last_mouse_y;
-            held_window = window;
+            held_window->x += mouse.pos_x - last_mouse_x;
+            held_window->y += mouse.pos_y - last_mouse_y;
             
+            update_window(held_window);
             move_front_window(held_window);
-        }
+        }   
 
         last_mouse_x = mouse.pos_x;
         last_mouse_y = mouse.pos_y;
@@ -421,9 +419,7 @@ int ism_window_update(void) {
             render_window(window);
     }
 
-    if (prev_mouse_state != mouse.buttons[MOUSE_BTN1])
-        prev_mouse_state = mouse.buttons[MOUSE_BTN1];
-
+    prev_mouse_state = mouse.buttons[MOUSE_BTN1];
     return 0;
 }
 

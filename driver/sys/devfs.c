@@ -220,7 +220,7 @@ static int devfs_read(struct vfs_mount_point *mount, vfs_handle_t handle, void *
             return -ENOSYS;
         size_t block = len / bdev->group->block_size;
         return ((struct block_ops *)bdev->ops)->read_blocks(bdev, 0, buf, block <= 0 ? 1 : block);
-    } else {
+    } else if (chardev) {
         if (!((struct char_ops *)chardev->ops)->read)
             return -ENOSYS;
         return ((struct char_ops *)chardev->ops)->read(chardev, (uint8_t *)buf, len);
@@ -246,7 +246,7 @@ static int devfs_write(struct vfs_mount_point *mount, vfs_handle_t handle, const
         if (!((struct block_ops *)bdev->ops)->write_blocks)
             return -ENOSYS;
         return ((struct block_ops *)bdev->ops)->write_blocks(bdev, sz, buf, 0);
-    } else {
+    } else if (chardev) {
         if (!((struct char_ops *)chardev->ops)->write)
             return -ENOSYS;
         return ((struct char_ops *)chardev->ops)->write(chardev, (const uint8_t *)buf, sz);
@@ -349,7 +349,7 @@ static int devfs_ioctl(struct vfs_mount_point *mount, vfs_handle_t handle, unsig
         if (!((struct block_ops *)bdev->ops)->ioctl)
             return -ENOSYS;
         return ((struct block_ops *)bdev->ops)->ioctl(bdev, req, arg);
-    } else {
+    } else if (chardev) {
         if (!((struct char_ops *)chardev->ops)->ioctl)
             return -ENOSYS;
         return ((struct char_ops *)chardev->ops)->ioctl(chardev, req, arg);

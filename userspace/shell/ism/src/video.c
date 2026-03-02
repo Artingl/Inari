@@ -64,7 +64,7 @@ static struct video_map_info video_map;
 int ism_video_init(const char *device)
 {
     int res;
-    struct video_mode_info info = {0}, preferred_mode;
+    struct video_mode_info info = {0}, preferred_mode = {0};
     if (video_handle || !device)  return -1;
 
     /* Try to open the video device */
@@ -76,7 +76,7 @@ int ism_video_init(const char *device)
     /* Try to set the preferred display resolution */
     while (ioctl(video_handle, VIDEO_IOCTL_MODE_FIND_NEXT, &info) > 0) {
         /* Save any first mode if info struct is empty */
-        if (info.width == 0) {
+        if (preferred_mode.width == 0) {
             memcpy((void*)&preferred_mode, (void*)&info, sizeof(struct video_mode_info));
         }
 
