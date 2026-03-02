@@ -44,6 +44,9 @@ struct ism_window {
     struct ism_buffer buffer;
     struct ism_window *parent;
 
+    struct ism_buffer name_buffer;
+    uint8_t has_name_changed;   // used to redraw the buffer with name text
+
     struct list_head children;
     struct list_head list;
 };

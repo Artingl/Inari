@@ -10,6 +10,9 @@
 #include "video.h"
 #include "icons.h"
 
+#define SSFN_IMPLEMENTATION
+#include "ssfn.h"
+
 #define WINDOW_FRAME_HEIGHT 24
 
 #define draw_bold_frame(buffer, x, y, width, height, pressed) do { \
@@ -43,6 +46,11 @@ static struct ism_video_map video_map;
 static struct ism_window *held_window = NULL;
 static int32_t video_width, video_height;
 static uint8_t cursor_style = ISM_CURSOR_NORMAL;
+
+/* TODO: move to something like font.c */
+static ssfn_t font_ctx = { 0 };
+static uint8_t *font_buf = NULL;
+static uint32_t font_size;
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
@@ -83,10 +91,29 @@ static inline int blit_icon(struct ism_buffer buffer, uint8_t *buf, int32_t x_or
             if (off >= video_map.size || buf_off >= buf_size)
                 continue;
             c = buf[buf_off];
-            if (c == T)
+            if (c == T_CLR)
                 continue;
 
             ((uint32_t*)buffer.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
+        }
+
+    return 0;
+}
+
+static inline int blit_buffer(struct ism_buffer buffer, struct ism_buffer src, int32_t x_orig, int32_t y_orig) {
+    int32_t x, y;
+    uintptr_t off, buf_off;
+
+    for (y = y_orig; y < src.height + y_orig; y++)
+        for (x = x_orig; x < src.width + x_orig; x++) {
+            if (y >= buffer.height || x >= buffer.width || x < 0 || y < 0)
+                continue;
+            off = y * buffer.width + x;
+            buf_off = (y - y_orig) * src.width + (x - x_orig);
+            if (off >= video_map.size || buf_off >= src.size)
+                continue;
+
+            ((uint32_t*)buffer.base)[off] = ((uint32_t*)src.base)[buf_off];
         }
 
     return 0;
@@ -252,6 +279,48 @@ static int copy_window_buffer(struct ism_window *window) {
             draw_bold_frame(vbuf, window->x + 4, window->y + 1, 16, 16, window->controls_state[0]);
             draw_bold_frame(vbuf, window->x + 28, window->y + 1, 16, 16, window->controls_state[1]);
             draw_bold_frame(vbuf, window->x + 52, window->y + 1, 16, 16, window->controls_state[2]);
+
+            /* Redraw name only if required */
+            if (window->has_name_changed) {
+                if (window->name_buffer.base)
+                    free(window->name_buffer.base);
+                window->has_name_changed = 0;
+                ssfn_select(&font_ctx,
+                    SSFN_FAMILY_SERIF, NULL,
+                    SSFN_STYLE_REGULAR,
+                    16
+                );
+
+                int width, height, left, top;
+                ssfn_bbox(&font_ctx, window->name, &width, &height, &left, &top);
+                window->name_buffer.size = width * height * 4;
+                window->name_buffer.width = width;
+                window->name_buffer.height = height;
+                window->name_buffer.base = malloc(window->name_buffer.size);
+                fill_rect(window->name_buffer, 0xAA, 0, 0, window->name_buffer.width, window->name_buffer.height, 1);
+                
+                ssfn_buf_t buf = {
+                    .ptr = window->name_buffer.base,
+                    .w = window->name_buffer.width,
+                    .h = window->name_buffer.height,
+                    .p = window->name_buffer.width * 4,
+                    .x = 0,
+                    .y = height - 4,
+                    .fg = 0xFF000000
+                };
+
+                char *ptr = window->name;
+                while (*ptr) {
+                    int res = ssfn_render(&font_ctx, &buf, ptr);
+                    ptr += res;
+                }
+            }
+
+            /* Draw buffered name */
+            blit_buffer(
+                vbuf, window->name_buffer,
+                window->x + (window->width >> 1) - (window->name_buffer.width >> 1),
+                window->y);
         }
     }
 
@@ -408,7 +477,7 @@ int ism_window_render(void) {
                     /* Draw mouse */
                     if (c_y >= last_mouse_y && c_y < last_mouse_y + MOUSE_HEIGHT && c_x >= last_mouse_x && c_x < last_mouse_x + MOUSE_WIDTH) {
                         c = cursor[(c_y - last_mouse_y) * MOUSE_WIDTH + (c_x - last_mouse_x)];
-                        if (c != T) {
+                        if (c != T_CLR) {
                             ((uint32_t*)video_map.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
                             continue;
                         }
@@ -439,6 +508,32 @@ int ism_window_init(void) {
         return -1;
     }
 
+    /* Load font to use for window title rendering (and supposedly other stuff in future) */
+    handle_t font_handle;
+    if (open(&font_handle, "/system/fonts/FreeSans.sfn", READ) != 0 ) {
+        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+        return -1;
+    }
+
+    if (size(font_handle, &font_size) != 0) {
+        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+        return -1;
+    }
+
+    if ((font_buf = malloc(font_size)) == NULL) {
+        printf("%s: Unable to allocate memory.\n", get_name());
+        return -1;
+    }
+
+    if (read(font_handle, font_buf, font_size, NULL) != 0) {
+        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+        return -1;
+    }
+    close(font_handle);
+
+    memset(&font_ctx, 0, sizeof(ssfn_t));
+    ssfn_load(&font_ctx, (ssfn_font_t*)font_buf);
+
     /* Mark all regions as dirty at first */
     memset(dirty_regions, 1, (video_width >> REGION_SIZE_SHIFT) * (video_height >> REGION_SIZE_SHIFT));
 
@@ -455,15 +550,20 @@ int ism_window_init(void) {
     root_window.bg_color = ISM_WINDOW_ROOT_BGCOLOR;
     root_window.buffer.size = root_window.width * root_window.height * 4;
     root_window.buffer.base = malloc(root_window.buffer.size);
+    root_window.has_name_changed = 1;
+    root_window.name_buffer.base = 0;
     render_window(&root_window);
     return 0;
 }
 
 int ism_window_cleanup(void) {
     if (video_buffer) free(video_buffer);
+    if (font_buf) free(font_buf);
     if (dirty_regions) free(dirty_regions);
     dirty_regions = NULL;
     video_buffer = NULL;
+    font_buf = NULL;
+    ssfn_free(&font_ctx);
     return 0;
 }
 
@@ -487,6 +587,8 @@ int ism_window_create(wind_t *id, wind_t parent, const char *name, uint32_t flag
     new_window->parent = parent_window;
     new_window->buffer.size = new_window->width * new_window->height * 4;
     new_window->buffer.base = malloc(new_window->buffer.size);
+    new_window->has_name_changed = 1;
+    new_window->name_buffer.base = 0;
     list_add(&new_window->list, &parent_window->children);
     if (id) *id = new_window->window_id;
     render_window(new_window);
