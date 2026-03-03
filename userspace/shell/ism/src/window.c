@@ -37,7 +37,7 @@
 static wind_t last_frid = 1;
 static struct ism_window root_window;
 
-#define REGION_SIZE_SHIFT 7
+#define REGION_SIZE_SHIFT 4
 #define REGION_SIZE       (2<<(REGION_SIZE_SHIFT-1))
 
 static uint8_t *video_buffer = NULL;
@@ -64,7 +64,7 @@ static inline int fill_rect(struct ism_buffer buffer, uint32_t color, int32_t x_
             if (y >= buffer.height || x >= buffer.width || x < 0 || y < 0)
                 continue;
             off = y * buffer.width + x;
-            if (off >= buffer.size)
+            if ((off << 2) >= buffer.size)
                 continue;
             r = px_len > 2 ? color >> 16 : (uint8_t)color;
             g = px_len > 2 ? (color >> 8) & 0xff : (uint8_t)color;
@@ -87,7 +87,7 @@ static inline int blit_icon(struct ism_buffer buffer, uint8_t *buf, int32_t x_or
                 continue;
             off = y * buffer.width + x;
             buf_off = (y - y_orig) * width + (x - x_orig);
-            if (off >= video_map.size || buf_off >= buf_size)
+            if ((off << 2) >= video_map.size || buf_off >= buf_size)
                 continue;
             c = buf[buf_off];
             if (c == T_CLR)
@@ -109,7 +109,7 @@ static inline int blit_buffer(struct ism_buffer buffer, struct ism_buffer src, i
                 continue;
             off = y * buffer.width + x;
             buf_off = (y - y_orig) * src.width + (x - x_orig);
-            if (off >= video_map.size || buf_off >= src.size)
+            if ((off << 2) >= video_map.size || (buf_off << 2) >= src.size)
                 continue;
 
             ((uint32_t*)buffer.base)[off] = ((uint32_t*)src.base)[buf_off];
@@ -192,7 +192,7 @@ static struct ism_window *get_window(wind_t id) {
 static int copy_window_buffer(struct ism_window *window) {
     int res = 0;
     
-    int32_t w_cols = (video_width + REGION_SIZE - 1) >> REGION_SIZE_SHIFT;
+    int32_t w_cols = video_width >> REGION_SIZE_SHIFT;
     
     int32_t win_x_start = window->x;
     int32_t win_y_start = window->y;
@@ -209,12 +209,11 @@ static int copy_window_buffer(struct ism_window *window) {
 
     int32_t start_bx = win_x_start >> REGION_SIZE_SHIFT;
     int32_t start_by = win_y_start >> REGION_SIZE_SHIFT;
-    int32_t end_bx = (win_x_end - 1) >> REGION_SIZE_SHIFT;
-    int32_t end_by = (win_y_end - 1) >> REGION_SIZE_SHIFT;
+    int32_t end_bx = win_x_end >> REGION_SIZE_SHIFT;
+    int32_t end_by = win_y_end >> REGION_SIZE_SHIFT;
 
     for (int32_t by = start_by; by <= end_by; by++) {
         for (int32_t bx = start_bx; bx <= end_bx; bx++) {
-            
             if (!dirty_regions[by * w_cols + bx])
                 continue;
 
@@ -458,8 +457,8 @@ int ism_window_render(void) {
     }
 
     /* Update screen buffer */
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
+    for (y = 0; y <= h; y++)
+        for (x = 0; x <= w; x++) {
             if (!dirty_regions[y * w + x])
                 continue;
             dirty_regions[y * w + x] = 0;
@@ -468,7 +467,7 @@ int ism_window_render(void) {
                     c_y = ((y << REGION_SIZE_SHIFT) + r_y);
                     c_x = ((x << REGION_SIZE_SHIFT) + r_x);
                     off = c_y * video_width + c_x;
-                    if (off >= video_map.size)
+                    if ((off << 2) >= video_map.size)
                         continue;
                     /* Draw mouse */
                     if (c_y >= last_mouse_y && c_y < last_mouse_y + MOUSE_HEIGHT && c_x >= last_mouse_x && c_x < last_mouse_x + MOUSE_WIDTH) {
@@ -494,7 +493,7 @@ int ism_window_init(void) {
     if (ism_video_map(&video_map) != 0)
         return -1;
 
-    if ((dirty_regions = malloc((video_width >> REGION_SIZE_SHIFT) * (video_height >> REGION_SIZE_SHIFT))) == NULL) {
+    if ((dirty_regions = malloc(((video_width >> REGION_SIZE_SHIFT) + 1) * ((video_height >> REGION_SIZE_SHIFT) + 1))) == NULL) {
         printf("%s: Unable to allocate memory.\n", get_name());
         return -1;
     }
