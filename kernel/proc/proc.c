@@ -5,6 +5,7 @@
 #include <kernel/mm/vmm.h>
 #include <kernel/proc/pe.h>
 #include <kernel/proc/proc.h>
+#include <kernel/proc/ipc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/signals.h>
 #include <kernel/sync/spinlock.h>
@@ -96,6 +97,8 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
     uint32_t flags;
     spin_lock_irqsave(&lock, flags);
 
+    ipc_announce_death(proc, th->tid);
+
     for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++) {
         if (proc->threads[i] == th->tid)
             proc->threads[i] = 0;
@@ -122,6 +125,7 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
             }
         }
 
+        ipc_cleanup(proc);
         list_del(&proc->list);
 
         spin_unlock_irqrestore(&lock, flags);
@@ -235,6 +239,17 @@ int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor) {
     return 0;
 }
 
+int proc_get_process(pid_t pid, struct process **proc) {
+    int res = 0;
+    uint32_t flags;
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(proc, pid)) != 0)
+        goto end;
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    return res;
+}
+
 int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo) {
     int res = 0;
     uint32_t flags;
@@ -247,7 +262,7 @@ int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo) {
         goto end;
     proc->signal_handler[signo] = handler;
 end:
-    spin_unlock_irqrestore(&lock, flags);
+spin_unlock_irqrestore(&lock, flags);
     return res;
 }
 

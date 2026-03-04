@@ -12,9 +12,9 @@ struct block {
     int large; // 1 if this block spans multiple pages
 };
 
-extern int kmalloc_init(void);
+int kmalloc_init(void);
 
-extern void *kmalloc(size_t size);
-extern void kfree(void *ptr);
+void *kmalloc(size_t size);
+void kfree(void *ptr);
 
 #endif

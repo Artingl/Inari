@@ -170,6 +170,7 @@ static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t 
         return (void *)NULL;
 
     struct vmm_page *page;
+    pagedir_t *prev = arch_get_pagedir();
     /* TODO: try to allocate physical memory in chunks, not contiguous */
     void *pbase = pmm_alloc_pages(npages);
     size_t block_vbase = 0, block_size = 0, i;
@@ -177,6 +178,7 @@ static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t 
     if (npages == 0 || !pbase)
         return NULL;
 
+    arch_switch_pagedir(entry->pagedir);
     /* Find free page in the pool */
     for (; from_mem < to_mem; from_mem += PAGE_SIZE) {
         page = &entry->pages_pool[(from_mem - entry->pool_offset) >> 12];
@@ -194,18 +196,25 @@ static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t 
     }
 
     if (block_size < npages) {
+        arch_switch_pagedir(prev);
         panic("vmm: no available contiguous blocks were found (npages = %d).", npages);
         return NULL;
     }
 
     /* Flag all blocks as used */
-    for (i = 0; i < block_size; i++) {
+    for (i = 0; i <= block_size; i++) {
         entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags |= VMM_PAGE_USED;
         entry->pages_pool[((block_vbase - entry->pool_offset) >> 12) + i].flags &= ~(VMM_PAGE_AVAILABLE);
     }
 
     /* Map all the physical memory to virtual memory and return new vbase */
-    return arch_map_page(entry->pagedir, (void *)block_vbase, pbase, npages * PAGE_SIZE, flags);
+    arch_map_page(entry->pagedir, (void*)block_vbase, pbase, npages * PAGE_SIZE, flags);
+
+    /* Cleanup the memory to avoid leaking stuff */
+    memset((void*)block_vbase, 0, npages * PAGE_SIZE);
+
+    arch_switch_pagedir(prev);
+    return (void*)block_vbase;
 }
 
 void *vmm_alloc_user(pagedir_t *target_dir, size_t npages) {
@@ -218,17 +227,7 @@ void *vmm_alloc_user(pagedir_t *target_dir, size_t npages) {
         start_addr = 0x1000000;
     }
 
-    void *vbase = alloc_range(entry, npages, start_addr, VIRTUAL_ADDR - PAGE_SIZE, PAGE_PRESENT | PAGE_RW | PAGE_USR);
-    if (!vbase)
-        return NULL;
-
-    /* Cleanup the memory to avoid leaking stuff to userspace */
-    pagedir_t *prev_dir = arch_get_pagedir();
-    arch_switch_pagedir(target_dir);
-    memset(vbase, 0, npages * PAGE_SIZE);
-    arch_switch_pagedir(prev_dir);
-
-    return vbase;
+    return alloc_range(entry, npages, start_addr, VIRTUAL_ADDR - PAGE_SIZE, PAGE_PRESENT | PAGE_RW | PAGE_USR);
 }
 
 void *vmm_alloc_kernel(size_t npages) {

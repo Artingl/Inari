@@ -69,7 +69,7 @@ void arch_switch_pagedir(pagedir_t *directory)
 {
     if (!directory || directory == x86_current_dir)
         return;
-    
+
     __asm__ volatile("mov %0, %%cr3" ::"r"(arch_virt_to_phys((pagedir_t*)x86_current_dir, (void*)directory)));
     x86_current_dir = (struct x86_paging_directory*)directory;
 }
@@ -79,7 +79,7 @@ pagedir_t *arch_fork_pagedir(void)
     size_t i;
     struct x86_paging_directory_usr *new_dir = (struct x86_paging_directory_usr*)vmm_alloc_kernel((sizeof(struct x86_paging_directory_usr) >> 12) + 1);
     memset((void*)new_dir, 0, sizeof(struct x86_paging_directory_usr));
-    
+
     /* TODO: Dynamic allocation */
     for (i = 0; i < 1024; i++)
     {
@@ -106,7 +106,7 @@ void arch_free_pagedir(pagedir_t *directory)
 {
     if (!directory)
         return;
-    
+
     /* Cleanup all allocated resources, vmm will do it for us */
     vmm_cleanup_directory(directory);
 

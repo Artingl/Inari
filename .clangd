@@ -1,0 +1,27 @@
+CompileFlags:
+  Add:
+    - -xc
+    - --target=i686-pc-none-elf
+    - -ffreestanding
+    - -fno-stack-protector
+    - -nostdlib
+    - -Werror
+    - -Wall
+    - -Wextra
+    - -Wno-unused-parameter
+    - -Wno-pointer-to-int-cast
+    - -Wno-unknown-pragmas
+    - -Wno-address-of-packed-member
+    - -Wno-int-to-pointer-cast
+    - -Wno-switch
+    - -std=gnu99
+    - -fno-pie
+    - -include
+    - /Users/artingl/stuff/workspace/local/inari/build/config.h
+    - -I/Users/artingl/stuff/workspace/local/inari/include
+---
+If:
+  PathMatch: userspace/.*
+CompileFlags:
+  Add:
+    - -I/Users/artingl/stuff/workspace/local/inari/userspace/libc/include

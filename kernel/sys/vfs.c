@@ -12,6 +12,9 @@
 #include <misc/list.h>
 #include <misc/string.h>
 
+/* TODO: handles allocated by processes (vfs_open function) can be closed (vfs_close function) by other processes that
+ * doesn't have access to it */
+
 static spinlock_t vfs_lock = {0};
 
 static LIST_HEAD(vfs_layers);

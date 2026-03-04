@@ -9,11 +9,12 @@ void ipc_handler() {
 
     do {
         int fetch = ipc_fetch_next(&source, &message, &data, &data_size);
+        /* TODO: data is not properly mapped */
         if (fetch == 0) {
-            printf("init: received ipc message %u, at 0x%x with size %llu\n", message, data, data_size);
+            printf("init: received ipc message %u from pid %llu, at 0x%x with size %llu; data contents: %s\n", message, source, data, data_size, (char*)data);
         }
 
-        ipc_reply(0);
+        ipc_reply(69);
     } while(1);
 }
 
@@ -33,6 +34,6 @@ int main(int argc, char const *argv[])
         printf("%s: ISM died! Attempting restart in 2 seconds.\n", get_name());
         usleep(2000000);
     } while (1);
-    
+
     return 0;
 }

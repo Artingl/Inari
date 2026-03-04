@@ -313,44 +313,44 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
-        res = ipc_create((const char *)param0, (thread_entrypoint_t)param1);
+        res = ipc_create(proc, (const char *)param0, (thread_entrypoint_t)param1);
         break;
     case SYSCALL_IPC_FREE:
         if (!VMM_IS_PTR_USERSPACE(param0)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_free((const char *)param0);
+        res = ipc_free(proc, (const char *)param0);
         break;
     case SYSCALL_IPC_FETCH_NEXT:
         if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_fetch_next((pid_t*)param0, (uint32_t *)param1, (void **)param2, (size_t *)param3);
+        res = ipc_fetch_next(proc, th, (pid_t*)param0, (uint32_t *)param1, (void **)param2, (size_t *)param3);
         break;
     case SYSCALL_IPC_REPLY:
-        res = ipc_reply((int)param0);
+        res = ipc_reply(proc, th, (int)param0);
         break;
     case SYSCALL_IPC_OPEN:
         if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_open((const char *)param0, (ipc_handle_t *)param1);
+        res = ipc_open(proc, (const char *)param0, (ipc_handle_t *)param1);
         break;
     case SYSCALL_IPC_CLOSE:
-        res = ipc_close((ipc_handle_t)param0);
+        res = ipc_close(proc, (ipc_handle_t)param0);
         break;
     case SYSCALL_IPC_SEND:
         if (!VMM_IS_PTR_USERSPACE(param2)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_send((ipc_handle_t)param0, (uint32_t)param1, (void *)param2, (size_t)param3);
+        res = ipc_send(proc, (ipc_handle_t)param0, (uint32_t)param1, (void *)param2, (size_t)param3);
         break;
     case SYSCALL_IPC_WAIT:
-        res = ipc_wait((ipc_handle_t)param0, (uint8_t)param1);
+        res = ipc_wait(proc, (ipc_handle_t)param0, (uint8_t)param1);
         break;
 
     default:

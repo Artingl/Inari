@@ -1,1 +1,1 @@
--ffreestanding -fno-asynchronous-unwind-tables -fno-stack-protector -nostdlib -Werror -Wall -Wextra -Wno-unused-parameter -Wno-pointer-to-int-cast -Wno-address-of-packed-member -Wno-int-to-pointer-cast -Wno-switch -std=gnu99 -g -fno-pie
+-ffreestanding -fno-stack-protector -nostdlib -Werror -Wall -Wextra -Wno-unused-parameter -Wno-pointer-to-int-cast -Wno-address-of-packed-member -Wno-int-to-pointer-cast -Wno-switch -std=gnu99 -g -fno-pie

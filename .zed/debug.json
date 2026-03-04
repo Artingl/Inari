@@ -1,0 +1,24 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Kernel Debug",
+    "request": "attach",
+    "adapter": "GDB",
+    "program": "$ZED_WORKTREE_ROOT/build/kernel.elf",
+    "target": "127.0.0.1:1234",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "setupCommands": [
+      {
+        "text": "set arch i386:intel",
+        "description": "Force i686 architecture",
+      },
+      {
+        "text": "set substitute-path /media/psf/Home/stuff/workspace/local/inari/ $ZED_WORKTREE_ROOT",
+        "description": "Map remote build paths to local workspace",
+      },
+    ],
+  },
+]

@@ -49,6 +49,7 @@ int proc_init();
 int exit(pid_t pid, int exit_code);
 int execp(pid_t *pid, const char *path);
 int execpv(pid_t *pid, const char *path, int argc, char **argv);
+int proc_get_process(pid_t pid, struct process **proc);
 int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo);
 int proc_signal(pid_t pid, uint32_t signo);
 int proc_ls(int idx, char *name, pid_t *pid, double *usg);

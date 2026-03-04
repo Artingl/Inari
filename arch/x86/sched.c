@@ -54,16 +54,16 @@ int arch_sched_load(struct thread *task)
     kernel_pagedir = arch_get_kernel_pagedir();
     is_kernel_pagedir = task->vmem == kernel_pagedir;
     regs = (struct x86_regs32 *)frame->registers.base;
-    
+
     /* If the stack pointer is not initialized, that's the first time this task is scheduled */
     if (!task->kernel_stack_pointer)
     {
-        task->kernel_stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE >> 12) + 1);
+        task->kernel_stack_pointer = vmm_alloc_kernel((CONFIG_STACK_SIZE_KRN >> 12) + 1);
         if (task->kernel_stack_pointer == NULL)
             panic("sched: OOM when allocating kernel stack.");
 
-        esp = (uint32_t)task->kernel_stack_pointer + (uint32_t)CONFIG_STACK_SIZE;
-        
+        esp = (uint32_t)task->kernel_stack_pointer + (uint32_t)CONFIG_STACK_SIZE_KRN;
+
         /* Stack for kernel and userspace tasks is different */
         if (is_kernel_pagedir)
         {
@@ -128,7 +128,7 @@ int arch_sched_load(struct thread *task)
     regs->task_esp = (uint32_t)task->saved_stack;
 
     extern struct tss_entry_struct tss_entry;
-    tss_entry.esp0 = (uint32_t)task->kernel_stack_pointer + CONFIG_STACK_SIZE;
+    tss_entry.esp0 = (uint32_t)task->kernel_stack_pointer + CONFIG_STACK_SIZE_KRN;
 
     spin_unlock_irqrestore(&x86_sched_lock, flags);
     return 0;

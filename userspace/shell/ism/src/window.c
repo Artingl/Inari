@@ -4,7 +4,6 @@
 #include <lib.h>
 #include <string.h>
 
-#include "core.h"
 #include "window.h"
 #include "input.h"
 #include "video.h"
@@ -191,9 +190,9 @@ static struct ism_window *get_window(wind_t id) {
 
 static int copy_window_buffer(struct ism_window *window) {
     int res = 0;
-    
+
     int32_t w_cols = video_width >> REGION_SIZE_SHIFT;
-    
+
     int32_t win_x_start = window->x;
     int32_t win_y_start = window->y;
     int32_t win_x_end = window->x + window->width;
@@ -205,7 +204,7 @@ static int copy_window_buffer(struct ism_window *window) {
     if (win_y_end > video_height) win_y_end = video_height;
 
     if (win_x_start >= win_x_end || win_y_start >= win_y_end)
-        return 0; 
+        return 0;
 
     int32_t start_bx = win_x_start >> REGION_SIZE_SHIFT;
     int32_t start_by = win_y_start >> REGION_SIZE_SHIFT;
@@ -229,13 +228,13 @@ static int copy_window_buffer(struct ism_window *window) {
 
             for (int32_t sy = draw_y_start; sy < draw_y_end; sy++) {
                 int32_t wy = sy - window->y;
-                
+
                 for (int32_t sx = draw_x_start; sx < draw_x_end; sx++) {
                     int32_t wx = sx - window->x;
-                    
+
                     uintptr_t screen_off = sy * video_width + sx;
                     uintptr_t win_off = wy * window->width + wx;
-                    
+
                     ((uint32_t*)video_buffer)[screen_off] = ((uint32_t*)window->buffer.base)[win_off];
                     res = 1;
                 }
@@ -273,7 +272,7 @@ static int copy_window_buffer(struct ism_window *window) {
         if (window->flags & ISM_WINDOW_FLAG_FRAME) {
             fill_rect(vbuf, 0xAA, window->x, window->y - 3, window->width + 1, WINDOW_FRAME_HEIGHT, 1);
             fill_rect(vbuf, 0x55, window->x, window->y + WINDOW_FRAME_HEIGHT - 3, window->width + 1, 1, 1);
-            
+
             draw_bold_frame(vbuf, window->x + 4, window->y + 1, 16, 16, window->controls_state[0]);
             draw_bold_frame(vbuf, window->x + 28, window->y + 1, 16, 16, window->controls_state[1]);
             draw_bold_frame(vbuf, window->x + 52, window->y + 1, 16, 16, window->controls_state[2]);
@@ -296,7 +295,7 @@ static int copy_window_buffer(struct ism_window *window) {
                 window->name_buffer.height = height;
                 window->name_buffer.base = malloc(window->name_buffer.size);
                 fill_rect(window->name_buffer, 0xAA, 0, 0, window->name_buffer.width, window->name_buffer.height, 1);
-                
+
                 ssfn_buf_t buf = {
                     .ptr = window->name_buffer.base,
                     .w = window->name_buffer.width,
@@ -364,14 +363,14 @@ int ism_window_update(void) {
     if (input_read(&mouse, NULL) != 0)
         return 0;
     struct ism_window *window = get_window_position(mouse.pos_x, mouse.pos_y);
-    
+
     if (prev_mouse_state != mouse.buttons[MOUSE_BTN1] && window) {
         if (mouse.buttons[MOUSE_BTN1] && !held_window && (mouse.pos_y - window->y - 3) < WINDOW_FRAME_HEIGHT)
             held_window = window;
         else if (!mouse.buttons[MOUSE_BTN1])
             held_window = NULL;
     }
-    
+
     /* Check if any new mouse events occurred */
     if (mouse.pos_x != last_mouse_x || mouse.pos_y != last_mouse_y) {
         /* Drag window using mouse */
@@ -381,10 +380,10 @@ int ism_window_update(void) {
 
             held_window->x += mouse.pos_x - last_mouse_x;
             held_window->y += mouse.pos_y - last_mouse_y;
-            
+
             update_window(held_window);
             move_front_window(held_window);
-        }   
+        }
 
         last_mouse_x = mouse.pos_x;
         last_mouse_y = mouse.pos_y;
@@ -401,6 +400,20 @@ int ism_window_update(void) {
             if (window->controls_state[0] || (mouse.pos_x >= window->x && mouse.pos_x < window->x + 16)) {
                 cursor_style = ISM_CURSOR_HAND;
                 window->controls_state[0] = mouse.buttons[MOUSE_BTN1];
+                if (window->controls_state[0] && prev_mouse_state != mouse.buttons[MOUSE_BTN1]) {
+                    char result[16] = "hello!";
+                    handle_t ipc;
+                    if (ipc_open("init.handler", &ipc) != 0)
+                        printf("Unable to open IPC\n");
+                    else {
+                        printf("waiting...\n");
+                        int a = ipc_send(ipc, 0x10, result, 16);
+                        printf("send result: %d\n", a);
+                        printf("received! %d\n", ipc_wait(ipc, 1));
+                    }
+                    int b = ipc_close(ipc);
+                    printf("close result: %d\n", b);
+                }
             }
             /* Maximize button */
             else if (window->controls_state[1] || (mouse.pos_x >= window->x + 24 && mouse.pos_x < window->x + 40)) {
@@ -505,13 +518,13 @@ int ism_window_init(void) {
 
     /* Load font to use for window title rendering (and supposedly other stuff in future) */
     handle_t font_handle;
-    if (open(&font_handle, "/system/fonts/FreeSans.sfn", READ) != 0 ) {
-        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+    if (open(&font_handle, "/system/fonts/freesans.sfn", READ) != 0 ) {
+        printf("%s: Unable to load font: /system/fonts/freesans.sfn\n", get_name());
         return -1;
     }
 
     if (size(font_handle, &font_size) != 0) {
-        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+        printf("%s: Unable to load font: /system/fonts/freesans.sfn\n", get_name());
         return -1;
     }
 
@@ -521,7 +534,7 @@ int ism_window_init(void) {
     }
 
     if (read(font_handle, font_buf, font_size, NULL) != 0) {
-        printf("%s: Unable to load font: /system/fonts/FreeSans.sfn\n", get_name());
+        printf("%s: Unable to load font: /system/fonts/freesans.sfn\n", get_name());
         return -1;
     }
     close(font_handle);
