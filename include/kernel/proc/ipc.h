@@ -16,8 +16,9 @@ typedef int64_t ipc_handle_t;
 int ipc_create(struct process *proc, const char *name, thread_entrypoint_t handler);
 int ipc_free(struct process *proc, const char *name);
 /* Used by IPC handler thread to read message data. The data buffer is directly mapped to the memory
-   from caller process, allowing to send result to the caller using exactly the same memory */
-int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, uint32_t *message, void **data, size_t *data_sz);
+   from caller process, allowing to send result to the caller using exactly the same memory.
+   A message ID 0xFFFFFFFF can be sent, which means connection with handle at `source` PID is being closed. */
+int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, ipc_handle_t *ipc, uint32_t *message, void **data, size_t *data_sz);
 /* Called by the IPC handler when it finishes processing the shared memory.
    This unmaps the memory from the handler's virtual space and wakes the sender. */
 int ipc_reply(struct process *proc, struct thread *th, int status);

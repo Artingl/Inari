@@ -25,3 +25,4 @@ If:
 CompileFlags:
   Add:
     - -I/Users/artingl/stuff/workspace/local/inari/userspace/libc/include
+    - -I/Users/artingl/stuff/workspace/local/inari/userspace/shell/ism/include

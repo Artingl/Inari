@@ -49,18 +49,21 @@ int main(int argc, char *argv[])
         printf("%s: Window init failed.\n", get_name());
         return -1;
     }
+    if (ism_init_ipc() != 0) {
+        printf("%s: IPC init failed.\n", get_name());
+        return -1;
+    }
 
-    ism_window_create(NULL, ISM_WINDOW_ROOT, "Window 1", ISM_WINDOW_FLAG_FRAME | ISM_WINDOW_FLAG_BORDER, 40, 40, 400, 300);
-    ism_window_create(NULL, ISM_WINDOW_ROOT, "Window 2", ISM_WINDOW_FLAG_BORDER, 500, 40, 400, 300);
+    ism_window_create(0, NULL, ISM_WINDOW_ROOT, "Test", ISM_WINDOW_FLAG_BORDER, 500, 40, 400, 300);
 
     /* Run main ism loop */
     do {
-        fetch_ipc_events();
         ism_window_update();
         ism_window_render();
         ism_video_flush();
     } while(is_running());
 
+    ism_ipc_cleanup();
     ism_window_cleanup();
     input_cleanup();
     ism_video_cleanup();

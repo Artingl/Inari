@@ -1,43 +1,48 @@
+#include <errno.h>
 #include <io.h>
-#include <sys.h>
-#include <list.h>
 #include <lib.h>
+#include <list.h>
 #include <string.h>
+#include <sys.h>
 
-#include "window.h"
+#include "icons.h"
 #include "input.h"
 #include "video.h"
-#include "icons.h"
+#include "window.h"
+#include <ism.h>
 
 #define SSFN_IMPLEMENTATION
 #include "ssfn.h"
 
 #define WINDOW_FRAME_HEIGHT 24
 
-#define draw_bold_frame(buffer, x, y, width, height, pressed) do { \
-        uint8_t tl_out = (pressed) ? 0x00 : 0xFF; \
-        uint8_t tl_in  = (pressed) ? 0x55 : 0xAA; \
-        uint8_t br_in  = (pressed) ? 0xAA : 0x55; \
-        uint8_t br_out = (pressed) ? 0xFF : 0x00; \
-        fill_rect(buffer, tl_out, x, y, width, 1, 1); \
-        fill_rect(buffer, tl_out, x, y, 1, height, 1); \
-        fill_rect(buffer, tl_in, x + 1, y + 1, width - 2, 1, 1); \
-        fill_rect(buffer, tl_in, x + 1, y + 1, 1, height - 2, 1); \
-        fill_rect(buffer, br_in, x + 1, y + height - 2, width - 2, 1, 1); \
-        fill_rect(buffer, br_in, x + width - 2, y + 1, 1, height - 2, 1); \
-        fill_rect(buffer, br_out, x, y + height - 1, width, 1, 1); \
-        fill_rect(buffer, br_out, x + width - 1, y, 1, height, 1); \
-        fill_rect(buffer, 0xAA, x + 2, y + 2, width - 4, height - 4, 1); } while (0)
+#define draw_bold_frame(buffer, x, y, width, height, pressed)                                                          \
+    do {                                                                                                               \
+        uint8_t tl_out = (pressed) ? 0x00 : 0xFF;                                                                      \
+        uint8_t tl_in = (pressed) ? 0x55 : 0xAA;                                                                       \
+        uint8_t br_in = (pressed) ? 0xAA : 0x55;                                                                       \
+        uint8_t br_out = (pressed) ? 0xFF : 0x00;                                                                      \
+        fill_rect(buffer, tl_out, x, y, width, 1, 1);                                                                  \
+        fill_rect(buffer, tl_out, x, y, 1, height, 1);                                                                 \
+        fill_rect(buffer, tl_in, x + 1, y + 1, width - 2, 1, 1);                                                       \
+        fill_rect(buffer, tl_in, x + 1, y + 1, 1, height - 2, 1);                                                      \
+        fill_rect(buffer, br_in, x + 1, y + height - 2, width - 2, 1, 1);                                              \
+        fill_rect(buffer, br_in, x + width - 2, y + 1, 1, height - 2, 1);                                              \
+        fill_rect(buffer, br_out, x, y + height - 1, width, 1, 1);                                                     \
+        fill_rect(buffer, br_out, x + width - 1, y, 1, height, 1);                                                     \
+        fill_rect(buffer, 0xAA, x + 2, y + 2, width - 4, height - 4, 1);                                               \
+    } while (0)
 
-#define collides_element(x, y, element) ( (int32_t)x >= (int32_t)(element)->x && (int32_t)y >= (int32_t)(element)->y && \
-                                          (int32_t)x < (int32_t)(element)->x + (int32_t)(element)->width && \
-                                          (int32_t)y < (int32_t)(element)->y + (int32_t)(element)->height )
+#define collides_element(x, y, element)                                                                                \
+    ((int32_t)x >= (int32_t)(element)->x && (int32_t)y >= (int32_t)(element)->y &&                                     \
+     (int32_t)x < (int32_t)(element)->x + (int32_t)(element)->width &&                                                 \
+     (int32_t)y < (int32_t)(element)->y + (int32_t)(element)->height)
 
 static wind_t last_frid = 1;
 static struct ism_window root_window;
 
 #define REGION_SIZE_SHIFT 4
-#define REGION_SIZE       (2<<(REGION_SIZE_SHIFT-1))
+#define REGION_SIZE       (2 << (REGION_SIZE_SHIFT - 1))
 
 static uint8_t *video_buffer = NULL;
 static uint8_t *dirty_regions = NULL;
@@ -46,14 +51,15 @@ static int32_t video_width, video_height;
 static uint8_t cursor_style = ISM_CURSOR_NORMAL;
 
 /* TODO: move to something like font.c */
-static ssfn_t font_ctx = { 0 };
+static ssfn_t font_ctx = {0};
 static uint8_t *font_buf = NULL;
 static uint32_t font_size;
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 
-static inline int fill_rect(struct ism_buffer buffer, uint32_t color, int32_t x_orig, int32_t y_orig, int32_t width, int32_t height, uint32_t px_len) {
+static inline int fill_rect(struct ism_buffer buffer, uint32_t color, int32_t x_orig, int32_t y_orig, int32_t width,
+                            int32_t height, uint32_t px_len) {
     int32_t x, y;
     uint8_t r, g, b;
     uintptr_t off;
@@ -69,13 +75,14 @@ static inline int fill_rect(struct ism_buffer buffer, uint32_t color, int32_t x_
             g = px_len > 2 ? (color >> 8) & 0xff : (uint8_t)color;
             b = px_len > 2 ? color & 0xff : (uint8_t)color;
 
-            ((uint32_t*)buffer.base)[off] = (((((0xff << 8) | r) << 8) | g) << 8) | b;
+            ((uint32_t *)buffer.base)[off] = (((((0xff << 8) | r) << 8) | g) << 8) | b;
         }
 
     return 0;
 }
 
-static inline int blit_icon(struct ism_buffer buffer, uint8_t *buf, int32_t x_orig, int32_t y_orig, int32_t width, int32_t height) {
+static inline int blit_icon(struct ism_buffer buffer, uint8_t *buf, int32_t x_orig, int32_t y_orig, int32_t width,
+                            int32_t height) {
     int32_t x, y;
     uint8_t c;
     uintptr_t off, buf_off = 0, buf_size = width * height;
@@ -92,7 +99,7 @@ static inline int blit_icon(struct ism_buffer buffer, uint8_t *buf, int32_t x_or
             if (c == T_CLR)
                 continue;
 
-            ((uint32_t*)buffer.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
+            ((uint32_t *)buffer.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
         }
 
     return 0;
@@ -111,7 +118,7 @@ static inline int blit_buffer(struct ism_buffer buffer, struct ism_buffer src, i
             if ((off << 2) >= video_map.size || (buf_off << 2) >= src.size)
                 continue;
 
-            ((uint32_t*)buffer.base)[off] = ((uint32_t*)src.base)[buf_off];
+            ((uint32_t *)buffer.base)[off] = ((uint32_t *)src.base)[buf_off];
         }
 
     return 0;
@@ -157,14 +164,35 @@ static inline uint8_t is_region_dirty(int32_t x, int32_t y) {
 }
 
 static struct ism_window *foreach_children(wind_t id, struct ism_window *window) {
-    if (!window) return NULL;
-    if (window->window_id == id)  return window;
+    if (!window)
+        return NULL;
+    if (window->window_id == id)
+        return window;
     struct list_head *pos;
     struct ism_window *entry, *found;
     list_for_each(pos, &window->children) {
         entry = list_entry(pos, struct ism_window, list);
-        if (entry->window_id == id)  return entry;
+        if (entry->window_id == id)
+            return entry;
         if ((found = foreach_children(id, entry)) != NULL)
+            return found;
+    }
+
+    return NULL;
+}
+
+static struct ism_window *foreach_children_pid(pid_t pid, struct ism_window *window) {
+    if (!window)
+        return NULL;
+    if (window->owner == pid)
+        return window;
+    struct list_head *pos;
+    struct ism_window *entry, *found;
+    list_for_each(pos, &window->children) {
+        entry = list_entry(pos, struct ism_window, list);
+        if (entry->owner == pid)
+            return entry;
+        if ((found = foreach_children_pid(pid, entry)) != NULL)
             return found;
     }
 
@@ -178,15 +206,16 @@ static struct ism_window *get_window_position(int x, int y) {
     struct ism_window *entry;
     list_for_each_prev(pos, &root_window.children) {
         entry = list_entry(pos, struct ism_window, list);
-        if (collides_element(x, y, entry))  return entry;
+        if (collides_element(x, y, entry))
+            return entry;
     }
 
     return NULL;
 }
 
-static struct ism_window *get_window(wind_t id) {
-    return foreach_children(id, &root_window);
-}
+static struct ism_window *get_window(wind_t id) { return foreach_children(id, &root_window); }
+
+static struct ism_window *get_window_pid(pid_t pid) { return foreach_children_pid(pid, &root_window); }
 
 static int copy_window_buffer(struct ism_window *window) {
     int res = 0;
@@ -198,10 +227,14 @@ static int copy_window_buffer(struct ism_window *window) {
     int32_t win_x_end = window->x + window->width;
     int32_t win_y_end = window->y + window->height;
 
-    if (win_x_start < 0) win_x_start = 0;
-    if (win_y_start < 0) win_y_start = 0;
-    if (win_x_end > video_width) win_x_end = video_width;
-    if (win_y_end > video_height) win_y_end = video_height;
+    if (win_x_start < 0)
+        win_x_start = 0;
+    if (win_y_start < 0)
+        win_y_start = 0;
+    if (win_x_end > video_width)
+        win_x_end = video_width;
+    if (win_y_end > video_height)
+        win_y_end = video_height;
 
     if (win_x_start >= win_x_end || win_y_start >= win_y_end)
         return 0;
@@ -235,7 +268,7 @@ static int copy_window_buffer(struct ism_window *window) {
                     uintptr_t screen_off = sy * video_width + sx;
                     uintptr_t win_off = wy * window->width + wx;
 
-                    ((uint32_t*)video_buffer)[screen_off] = ((uint32_t*)window->buffer.base)[win_off];
+                    ((uint32_t *)video_buffer)[screen_off] = ((uint32_t *)window->buffer.base)[win_off];
                     res = 1;
                 }
             }
@@ -245,28 +278,24 @@ static int copy_window_buffer(struct ism_window *window) {
     /* Draw window frame if successful draw above */
     if (res) {
         struct ism_buffer vbuf = {
-            .base = video_buffer,
-            .size = video_map.size,
-            .width = video_width,
-            .height = video_height
-        };
+            .base = video_buffer, .size = video_map.size, .width = video_width, .height = video_height};
 
         /* Draw frame and border around window */
         if (window->flags & ISM_WINDOW_FLAG_BORDER) {
-            fill_rect(vbuf, 0xAA, window->x - 4,                  window->y - 4, 4, window->height + 8, 1);
-            fill_rect(vbuf, 0xAA, window->x - 4,                  window->y - 4, window->width + 8, 4, 1);
-            fill_rect(vbuf, 0xAA, window->x + window->width,      window->y - 4, 4, window->height + 8, 1);
-            fill_rect(vbuf, 0xAA, window->x - 4,                  window->y + window->height, window->width + 8, 4, 1);
+            fill_rect(vbuf, 0xAA, window->x - 4, window->y - 4, 4, window->height + 8, 1);
+            fill_rect(vbuf, 0xAA, window->x - 4, window->y - 4, window->width + 8, 4, 1);
+            fill_rect(vbuf, 0xAA, window->x + window->width, window->y - 4, 4, window->height + 8, 1);
+            fill_rect(vbuf, 0xAA, window->x - 4, window->y + window->height, window->width + 8, 4, 1);
 
-            fill_rect(vbuf, 0x55, window->x,                      window->y, 1, window->height, 1);
-            fill_rect(vbuf, 0x55, window->x,                      window->y, window->width + 1, 1, 1);
-            fill_rect(vbuf, 0xFF, window->x + window->width,      window->y + 1, 1, window->height, 1);
-            fill_rect(vbuf, 0xFF, window->x,                      window->y + window->height, window->width + 1, 1, 1);
+            fill_rect(vbuf, 0x55, window->x, window->y, 1, window->height, 1);
+            fill_rect(vbuf, 0x55, window->x, window->y, window->width + 1, 1, 1);
+            fill_rect(vbuf, 0xFF, window->x + window->width, window->y + 1, 1, window->height, 1);
+            fill_rect(vbuf, 0xFF, window->x, window->y + window->height, window->width + 1, 1, 1);
 
-            fill_rect(vbuf, 0xFF, window->x - 4,                  window->y - 4, 1, window->height + 8, 1);
-            fill_rect(vbuf, 0xFF, window->x - 4,                  window->y - 4, window->width + 8, 1, 1);
-            fill_rect(vbuf, 0x00, window->x + window->width + 4,  window->y - 4, 1, window->height + 9, 1);
-            fill_rect(vbuf, 0x00, window->x - 4,                  window->y + window->height + 4, window->width + 9, 1, 1);
+            fill_rect(vbuf, 0xFF, window->x - 4, window->y - 4, 1, window->height + 8, 1);
+            fill_rect(vbuf, 0xFF, window->x - 4, window->y - 4, window->width + 8, 1, 1);
+            fill_rect(vbuf, 0x00, window->x + window->width + 4, window->y - 4, 1, window->height + 9, 1);
+            fill_rect(vbuf, 0x00, window->x - 4, window->y + window->height + 4, window->width + 9, 1, 1);
         }
 
         if (window->flags & ISM_WINDOW_FLAG_FRAME) {
@@ -282,11 +311,7 @@ static int copy_window_buffer(struct ism_window *window) {
                 if (window->name_buffer.base)
                     free(window->name_buffer.base);
                 window->has_name_changed = 0;
-                ssfn_select(&font_ctx,
-                    SSFN_FAMILY_SERIF, NULL,
-                    SSFN_STYLE_REGULAR,
-                    16
-                );
+                ssfn_select(&font_ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR, 16);
 
                 int width, height, left, top;
                 ssfn_bbox(&font_ctx, window->name, &width, &height, &left, &top);
@@ -296,15 +321,13 @@ static int copy_window_buffer(struct ism_window *window) {
                 window->name_buffer.base = malloc(window->name_buffer.size);
                 fill_rect(window->name_buffer, 0xAA, 0, 0, window->name_buffer.width, window->name_buffer.height, 1);
 
-                ssfn_buf_t buf = {
-                    .ptr = window->name_buffer.base,
-                    .w = window->name_buffer.width,
-                    .h = window->name_buffer.height,
-                    .p = window->name_buffer.width * 4,
-                    .x = 0,
-                    .y = height - 4,
-                    .fg = 0xFF000000
-                };
+                ssfn_buf_t buf = {.ptr = window->name_buffer.base,
+                                  .w = window->name_buffer.width,
+                                  .h = window->name_buffer.height,
+                                  .p = window->name_buffer.width * 4,
+                                  .x = 0,
+                                  .y = height - 4,
+                                  .fg = 0xFF000000};
 
                 char *ptr = window->name;
                 while (*ptr) {
@@ -314,30 +337,28 @@ static int copy_window_buffer(struct ism_window *window) {
             }
 
             /* Draw buffered name */
-            blit_buffer(
-                vbuf, window->name_buffer,
-                window->x + (window->width >> 1) - (window->name_buffer.width >> 1),
-                window->y);
+            blit_buffer(vbuf, window->name_buffer, window->x + (window->width >> 1) - (window->name_buffer.width >> 1),
+                        window->y);
         }
     }
 
     return res;
 }
 
-static void update_window(struct ism_window *window) {
-
-}
+static void update_window(struct ism_window *window) {}
 
 static void render_window(struct ism_window *window) {
     /* Draw window background and contents */
     fill_rect(window->buffer, window->bg_color, 0, 0, window->width, window->height, 3);
 
     /* Mark region to rerender (With slight offset to cover window frame) */
-    mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16, window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
+    mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16,
+                      window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
 }
 
 static void move_front_window(struct ism_window *window) {
-    if (!window || !window->parent) return;
+    if (!window || !window->parent)
+        return;
     if (list_move_to_end(&window->list, &window->parent->children) == 0) {
         render_window(window);
     }
@@ -376,7 +397,8 @@ int ism_window_update(void) {
         /* Drag window using mouse */
         if (held_window) {
             /* Mark the previous window position region for redraw (With slight offset to cover window frame) */
-            mark_region_range(held_window->x - 8, held_window->y - 8 - WINDOW_FRAME_HEIGHT, held_window->width + 16, held_window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
+            mark_region_range(held_window->x - 8, held_window->y - 8 - WINDOW_FRAME_HEIGHT, held_window->width + 16,
+                              held_window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
 
             held_window->x += mouse.pos_x - last_mouse_x;
             held_window->y += mouse.pos_y - last_mouse_y;
@@ -400,20 +422,6 @@ int ism_window_update(void) {
             if (window->controls_state[0] || (mouse.pos_x >= window->x && mouse.pos_x < window->x + 16)) {
                 cursor_style = ISM_CURSOR_HAND;
                 window->controls_state[0] = mouse.buttons[MOUSE_BTN1];
-                if (window->controls_state[0] && prev_mouse_state != mouse.buttons[MOUSE_BTN1]) {
-                    char result[16] __attribute__ ((aligned (0x1000))) = "hello!";
-                    handle_t ipc;
-                    if (ipc_open("init.handler", &ipc) != 0)
-                        printf("Unable to open IPC\n");
-                    else {
-                        printf("waiting...\n");
-                        int a = ipc_send(ipc, 0x10, result, 16);
-                        printf("send result: %d\n", a);
-                        printf("received! %d\n", ipc_wait(ipc, 1));
-                    }
-                    int b = ipc_close(ipc);
-                    printf("close result: %d\n", b);
-                }
             }
             /* Maximize button */
             else if (window->controls_state[1] || (mouse.pos_x >= window->x + 24 && mouse.pos_x < window->x + 40)) {
@@ -437,24 +445,23 @@ int ism_window_update(void) {
 
 int ism_window_render(void) {
     static int last_mouse_x = 0, last_mouse_y = 0;
-    uint8_t *cursor = (uint8_t*)cursor_normal;
+    uint8_t *cursor = (uint8_t *)cursor_normal;
     struct ism_mouse mouse;
     uintptr_t off;
     uint8_t c = 0;
     int32_t w = (video_width >> REGION_SIZE_SHIFT), h = (video_height >> REGION_SIZE_SHIFT);
     int32_t r_y, r_x, c_x, c_y, x, y;
 
-    switch (cursor_style)
-    {
-        case ISM_CURSOR_BEAM:
-            cursor = (uint8_t*)cursor_ibeam;
-            break;
-        case ISM_CURSOR_HOURGLASS:
-            cursor = (uint8_t*)cursor_hourglass;
-            break;
-        case ISM_CURSOR_HAND:
-            cursor = (uint8_t*)cursor_hand;
-            break;
+    switch (cursor_style) {
+    case ISM_CURSOR_BEAM:
+        cursor = (uint8_t *)cursor_ibeam;
+        break;
+    case ISM_CURSOR_HOURGLASS:
+        cursor = (uint8_t *)cursor_hourglass;
+        break;
+    case ISM_CURSOR_HAND:
+        cursor = (uint8_t *)cursor_hand;
+        break;
     }
 
     foreach_render_window(&root_window);
@@ -462,10 +469,12 @@ int ism_window_render(void) {
     /* Render mouse cursor */
     if (input_read(&mouse, NULL) == 0) {
         if (last_mouse_x != mouse.pos_x || last_mouse_y != mouse.pos_y) {
-            mark_region_range((int32_t)last_mouse_x - MOUSE_WIDTH, (int32_t)last_mouse_y - MOUSE_WIDTH, MOUSE_WIDTH * 2, MOUSE_HEIGHT * 2, 1);
+            mark_region_range((int32_t)last_mouse_x - MOUSE_WIDTH, (int32_t)last_mouse_y - MOUSE_WIDTH, MOUSE_WIDTH * 2,
+                              MOUSE_HEIGHT * 2, 1);
             last_mouse_x = (int)mouse.pos_x;
             last_mouse_y = (int)mouse.pos_y;
-            mark_region_range((int32_t)last_mouse_x - MOUSE_WIDTH, (int32_t)last_mouse_y - MOUSE_WIDTH, MOUSE_WIDTH * 2, MOUSE_HEIGHT * 2, 1);
+            mark_region_range((int32_t)last_mouse_x - MOUSE_WIDTH, (int32_t)last_mouse_y - MOUSE_WIDTH, MOUSE_WIDTH * 2,
+                              MOUSE_HEIGHT * 2, 1);
         }
     }
 
@@ -483,15 +492,16 @@ int ism_window_render(void) {
                     if ((off << 2) >= video_map.size)
                         continue;
                     /* Draw mouse */
-                    if (c_y >= last_mouse_y && c_y < last_mouse_y + MOUSE_HEIGHT && c_x >= last_mouse_x && c_x < last_mouse_x + MOUSE_WIDTH) {
+                    if (c_y >= last_mouse_y && c_y < last_mouse_y + MOUSE_HEIGHT && c_x >= last_mouse_x &&
+                        c_x < last_mouse_x + MOUSE_WIDTH) {
                         c = cursor[(c_y - last_mouse_y) * MOUSE_WIDTH + (c_x - last_mouse_x)];
                         if (c != T_CLR) {
-                            ((uint32_t*)video_map.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
+                            ((uint32_t *)video_map.base)[off] = (((((0xff << 8) | c) << 8) | c) << 8) | c;
                             continue;
                         }
                     }
 
-                    ((uint32_t*)video_map.base)[off] = ((uint32_t*)video_buffer)[off];
+                    ((uint32_t *)video_map.base)[off] = ((uint32_t *)video_buffer)[off];
                 }
         }
 
@@ -506,7 +516,8 @@ int ism_window_init(void) {
     if (ism_video_map(&video_map) != 0)
         return -1;
 
-    if ((dirty_regions = malloc(((video_width >> REGION_SIZE_SHIFT) + 1) * ((video_height >> REGION_SIZE_SHIFT) + 1))) == NULL) {
+    if ((dirty_regions =
+             malloc(((video_width >> REGION_SIZE_SHIFT) + 1) * ((video_height >> REGION_SIZE_SHIFT) + 1))) == NULL) {
         printf("%s: Unable to allocate memory.\n", get_name());
         return -1;
     }
@@ -518,7 +529,7 @@ int ism_window_init(void) {
 
     /* Load font to use for window title rendering (and supposedly other stuff in future) */
     handle_t font_handle;
-    if (open(&font_handle, "/system/fonts/freesans.sfn", READ) != 0 ) {
+    if (open(&font_handle, "/system/fonts/freesans.sfn", READ) != 0) {
         printf("%s: Unable to load font: /system/fonts/freesans.sfn\n", get_name());
         return -1;
     }
@@ -540,12 +551,12 @@ int ism_window_init(void) {
     close(font_handle);
 
     memset(&font_ctx, 0, sizeof(ssfn_t));
-    ssfn_load(&font_ctx, (ssfn_font_t*)font_buf);
+    ssfn_load(&font_ctx, (ssfn_font_t *)font_buf);
 
     /* Mark all regions as dirty at first */
     memset(dirty_regions, 1, (video_width >> REGION_SIZE_SHIFT) * (video_height >> REGION_SIZE_SHIFT));
 
-    memcpy((void*)root_window.name, "root\0", 5);
+    memcpy((void *)root_window.name, "root\0", 5);
     INIT_LIST_HEAD(&root_window.children);
     root_window.x = 0;
     root_window.y = 0;
@@ -560,14 +571,18 @@ int ism_window_init(void) {
     root_window.buffer.base = malloc(root_window.buffer.size);
     root_window.has_name_changed = 1;
     root_window.name_buffer.base = 0;
+    root_window.owner = 0;
     render_window(&root_window);
     return 0;
 }
 
 int ism_window_cleanup(void) {
-    if (video_buffer) free(video_buffer);
-    if (font_buf) free(font_buf);
-    if (dirty_regions) free(dirty_regions);
+    if (video_buffer)
+        free(video_buffer);
+    if (font_buf)
+        free(font_buf);
+    if (dirty_regions)
+        free(dirty_regions);
     dirty_regions = NULL;
     video_buffer = NULL;
     font_buf = NULL;
@@ -575,13 +590,16 @@ int ism_window_cleanup(void) {
     return 0;
 }
 
-int ism_window_create(wind_t *id, wind_t parent, const char *name, uint32_t flags, int32_t x, int32_t y, int32_t width, int32_t height) {
+int ism_window_create(pid_t owner, wind_t *id, wind_t parent, const char *name, uint32_t flags, int32_t x, int32_t y,
+                      int32_t width, int32_t height) {
     struct ism_window *parent_window = get_window(parent);
-    if (!parent_window)  return -1;
+    if (!parent_window)
+        return -1;
 
-    struct ism_window *new_window = (struct ism_window*)malloc(sizeof(struct ism_window));
+    struct ism_window *new_window = (struct ism_window *)malloc(sizeof(struct ism_window));
     INIT_LIST_HEAD(&new_window->children);
-    memcpy((void*)new_window->name, name, (strlen(name) + 1) > ISM_MAX_WINDOW_NAME_LN ? ISM_MAX_WINDOW_NAME_LN : strlen(name) + 1);
+    memcpy((void *)new_window->name, name,
+           (strlen(name) + 1) > ISM_MAX_WINDOW_NAME_LN ? ISM_MAX_WINDOW_NAME_LN : strlen(name) + 1);
     new_window->name[ISM_MAX_WINDOW_NAME_LN - 1] = 0;
     new_window->window_id = last_frid++;
     new_window->x = x;
@@ -594,23 +612,72 @@ int ism_window_create(wind_t *id, wind_t parent, const char *name, uint32_t flag
     new_window->flags = flags;
     new_window->parent = parent_window;
     new_window->buffer.size = new_window->width * new_window->height * 4;
+    new_window->owner = owner;
     new_window->buffer.base = malloc(new_window->buffer.size);
     new_window->has_name_changed = 1;
     new_window->name_buffer.base = 0;
     list_add(&new_window->list, &parent_window->children);
-    if (id) *id = new_window->window_id;
+    if (id)
+        *id = new_window->window_id;
     render_window(new_window);
     return 0;
 }
 
 int ism_window_destroy(wind_t id) {
-    if (id == ISM_WINDOW_ROOT)   return -1;
+    if (id == ISM_WINDOW_ROOT)
+        return -1;
     struct ism_window *window = get_window(id);
-    if (!window) return -1;
+    if (!window)
+        return -1;
+    /* Mark region to rerender, so we wont leave ghosts after destroying (With slight offset to cover window frame) */
+    mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16,
+                      window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
     list_del(&window->list);
     free(window->buffer.base);
     free(window);
 
     /* TODO: cleanup children too */
     return 0;
+}
+
+int ism_window_destroy_owner(pid_t owner) {
+    if (owner == 0)
+        return -1;
+    struct ism_window *window = get_window_pid(owner);
+    if (!window)
+        return -1;
+    /* Mark region to rerender, so we wont leave ghosts after destroying (With slight offset to cover window frame) */
+    mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16,
+                      window->height + 16 + WINDOW_FRAME_HEIGHT * 2, 1);
+    list_del(&window->list);
+    free(window->buffer.base);
+    free(window);
+
+    /* TODO: cleanup children too */
+    return 0;
+}
+
+int window_handle_event(pid_t source, uint32_t message, void *data, size_t data_sz) {
+    int res = -EINVAL;
+    wind_t wind;
+
+    struct ism_create_window *create_message = data;
+
+    switch (message) {
+    case ISM_IPC_CREATE_WINDOW:
+        if (data_sz != sizeof(struct ism_create_window))
+            goto err;
+        if ((res = ism_window_create(source, &wind, create_message->parent, create_message->name, create_message->flags,
+                                     create_message->x, create_message->y, create_message->width,
+                                     create_message->height)) != 0)
+            goto err;
+
+        return wind;
+    case 0xFFFFFFFF: /* Connection closed */
+        ism_window_destroy_owner(source);
+        return 0;
+    }
+
+err:
+    return res;
 }

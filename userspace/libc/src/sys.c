@@ -128,8 +128,8 @@ int ipc_create(const char *name, thread_entrypoint_t handler) {
 
 int ipc_free(const char *name) { return syscall(39, (uint32_t)name, 0, 0, 0, 0); }
 
-int ipc_fetch_next(pid_t *source, uint32_t *message, void **data, size_t *data_sz) {
-    return syscall(40, (uint32_t)source, (uint32_t)message, (uint32_t)data, (uint32_t)data_sz, 0);
+int ipc_fetch_next(pid_t *source, handle_t *ipc, uint32_t *message, void **data, size_t *data_sz) {
+    return syscall(40, (uint32_t)source, (uint32_t)ipc, (uint32_t)message, (uint32_t)data, (uint32_t)data_sz);
 }
 
 int ipc_reply(int status) { return syscall(41, (uint32_t)status, 0, 0, 0, 0); }

@@ -17,6 +17,8 @@
 #include <arch/paging.h>
 
 void arch_sched_sigreturn(struct thread *task);
+/* TODO: better pointer validation. Scenario: process calls `read`, passes userspace pointer to buffer, BUT the size
+ * exceeds userspace and leaks onto kernelspace. */
 
 int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *param3, void *param4) {
     size_t i;
@@ -323,11 +325,13 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         res = ipc_free(proc, (const char *)param0);
         break;
     case SYSCALL_IPC_FETCH_NEXT:
-        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3)) {
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) ||
+            !VMM_IS_PTR_USERSPACE(param3) || !VMM_IS_PTR_USERSPACE(param4)) {
             res = -EINVAL;
             break;
         }
-        res = ipc_fetch_next(proc, th, (pid_t*)param0, (uint32_t *)param1, (void **)param2, (size_t *)param3);
+        res = ipc_fetch_next(proc, th, (pid_t *)param0, (ipc_handle_t *)param1, (uint32_t *)param2, (void **)param3,
+                             (size_t *)param4);
         break;
     case SYSCALL_IPC_REPLY:
         res = ipc_reply(proc, th, (int)param0);

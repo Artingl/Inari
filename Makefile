@@ -40,6 +40,7 @@ clean:
 	make -C userspace/libc clean && \
 	make -C userspace/binutils clean && \
 	make -C userspace/shell/ism clean && \
+	make -C userspace/terminal clean && \
 	make -C arch/${TARGET} clean
 
 format: $(kernel_source) $(driver_source) $(headers)
@@ -50,4 +51,5 @@ build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C userspace/libc build && \
 	make -C userspace/binutils build && \
 	make -C userspace/shell/ism build && \
+	make -C userspace/terminal build && \
 	cp arch/${TARGET}/kernel.elf build/kernel.elf

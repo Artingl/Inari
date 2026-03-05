@@ -1,38 +1,31 @@
 #include <io.h>
 #include <sys.h>
 
-void ipc_handler() {
-    pid_t source;
-    uint32_t message;
-    void *data;
-    size_t data_size;
+static void ism_wait() {
+    int res = -1;
+    handle_t ipc;
+    /* Really dumb way to do so */
 
-    do {
-        int fetch = ipc_fetch_next(&source, &message, &data, &data_size);
-        if (fetch == 0) {
-            if (data) {
-                printf("init: received ipc message %u from pid %llu, at 0x%x with size %u; data contents: %s\n", message, source, data, data_size, (char*)data);
-            }
-            else
-                printf("init: received ipc message %u from pid %llu, at 0x%x with size %u\n", message, source, data, data_size);
-        }
+    printf("init: waiting for ISM.\n");
+    while((res = ipc_open("ism.window", &ipc)) != 0)
+        usleep(10000);
 
-        ipc_reply(69);
-    } while(1);
+    printf("init: ISM is alive.\n");
+    ipc_close(ipc);
 }
 
 int main(int argc, char const *argv[])
 {
-    ipc_create("init.handler", &ipc_handler);
-
-    pid_t pid;
+    pid_t ism_pid;
 
     do {
         /* Load video drivers */
         insmod("vesa");
 
-        if (execp(&pid, "/shell/ism.exe") == 0)
-            waitpid(pid);
+        execp(&ism_pid, "/shell/ism.exe");
+        ism_wait();
+        execp(NULL, "/programs/terminal.exe");
+        waitpid(ism_pid);
         rmmod("vesa");
         printf("%s: ISM died! Attempting restart in 2 seconds.\n", get_name());
         usleep(2000000);

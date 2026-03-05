@@ -15,6 +15,7 @@
 /* TODO: What if sender processes closes while IPC handles request? IPC process might get segfault because the memory is
  * no longer available (it gets mapped from the sender's process). Solution: update vmm/pmm, allow reference counters to
  * specific memory regions, so they are deallocated only when no references are available. */
+/* TODO2: FIFO */
 
 static spinlock_t lock = {0};
 
@@ -94,10 +95,26 @@ static struct ipc_handle *get_handle(ipc_handle_t handle) {
 }
 
 static int cleanup_handle(struct ipc_handle *handle) {
-
     list_del(&handle->list);
-    kfree(handle);
 
+    /* Broadcast to the endpoint that this handle is being cleaned up */
+    if (handle->endpoint) {
+        handle->message_id = 0;
+        while (handle->message_id < IPC_MSG_QUEUE && handle->endpoint->messages_queue[handle->message_id].occupied)
+            handle->message_id++;
+
+        /* Check if we haven't starved the IPC queue */
+        if (handle->message_id < IPC_MSG_QUEUE) {
+            handle->endpoint->messages_queue[handle->message_id].source = handle->owner;
+            handle->endpoint->messages_queue[handle->message_id].ipc = handle->handle;
+            handle->endpoint->messages_queue[handle->message_id].data = NULL;
+            handle->endpoint->messages_queue[handle->message_id].data_sz = 0;
+            handle->endpoint->messages_queue[handle->message_id].message = 0xFFFFFFFF;
+            handle->endpoint->messages_queue[handle->message_id].occupied = 1;
+        }
+    }
+
+    kfree(handle);
     return 0;
 }
 
@@ -192,12 +209,19 @@ void ipc_cleanup(struct process *proc) {
     spin_lock_irqsave(&lock, flags);
 
     struct list_head *pos, *n;
-    struct ipc_endpoint *entry;
+    struct ipc_endpoint *endpoint;
+    struct ipc_handle *handle;
 
     list_for_each_safe(pos, n, &ipc_endpoints) {
-        entry = list_entry(pos, struct ipc_endpoint, list);
-        if (entry->owner == proc->pid)
-            cleanup_endpoint(entry);
+        endpoint = list_entry(pos, struct ipc_endpoint, list);
+        if (endpoint->owner == proc->pid)
+            cleanup_endpoint(endpoint);
+    }
+
+    list_for_each_safe(pos, n, &ipc_handles) {
+        handle = list_entry(pos, struct ipc_handle, list);
+        if (handle->owner == proc->pid)
+            cleanup_handle(handle);
     }
 
     spin_unlock_irqrestore(&lock, flags);
@@ -221,7 +245,8 @@ void ipc_announce_death(struct process *proc, tid_t th) {
     spin_unlock_irqrestore(&lock, flags);
 }
 
-int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, uint32_t *message, void **data, size_t *data_sz) {
+int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, ipc_handle_t *ipc, uint32_t *message, void **data,
+                   size_t *data_sz) {
     int res = 0;
     uint32_t id = 0;
     uint32_t flags;
@@ -263,6 +288,8 @@ int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, uint3
         *data_sz = endpoint->messages_queue[id].data_sz;
     if (data)
         *data = endpoint->messages_queue[id].data;
+    if (ipc)
+        *ipc = endpoint->messages_queue[id].ipc;
     endpoint->current_message_id = id;
 end:
     spin_unlock_irqrestore(&lock, flags);
@@ -287,7 +314,7 @@ int ipc_reply(struct process *proc, struct thread *th, int status) {
     if (endpoint->current_message_id == -1 || endpoint->current_message_id >= IPC_MSG_QUEUE) {
         res = -IPCNONE;
         goto end;
-}
+    }
 
     if ((res = proc_get_process(endpoint->owner, &endpoint_proc)) != 0)
         goto end;
@@ -296,7 +323,7 @@ int ipc_reply(struct process *proc, struct thread *th, int status) {
     if (endpoint->messages_queue[endpoint->current_message_id].data) {
         void *data = endpoint->messages_queue[endpoint->current_message_id].data;
         size_t sz = endpoint->messages_queue[endpoint->current_message_id].data_sz;
-        vmm_free_pages(endpoint_proc->descriptor.vmem, data, MAX(sz >> 12, 1));
+        vmm_free_pages(endpoint_proc->descriptor.vmem, data, (sz + PAGE_SIZE - 1) >> 12);
         arch_unmap_page(endpoint_proc->descriptor.vmem, data, MAX(sz, PAGE_SIZE));
     }
 
@@ -379,6 +406,7 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
     }
 
     int res = 0;
+    uintptr_t ptr;
     uint32_t flags;
     struct ipc_handle *handle;
     struct process *endpoint_proc;
@@ -416,16 +444,18 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
     /* Map the data from source process to the endpoint process */
     if (data) {
         arch_switch_pagedir(endpoint_proc->descriptor.vmem);
-        vbase_endpoint = vmm_alloc_vmem_user(endpoint_proc->descriptor.vmem, MAX(data_sz >> 12, 1));
+        vbase_endpoint = vmm_alloc_vmem_user(endpoint_proc->descriptor.vmem, (data_sz + PAGE_SIZE - 1) >> 12);
         if (!vbase_endpoint) {
             res = -ENOMEM;
             goto end;
         }
 
-        arch_map_page(endpoint_proc->descriptor.vmem, vbase_endpoint, arch_virt_to_phys(proc->descriptor.vmem, data),
-                    MAX(data_sz, PAGE_SIZE), PAGE_RW | PAGE_PRESENT | PAGE_USR);
-    }
-    else vbase_endpoint = NULL;
+        for (ptr = 0; ptr < MAX(data_sz, PAGE_SIZE); ptr += PAGE_SIZE) {
+            arch_map_page(endpoint_proc->descriptor.vmem, vbase_endpoint + ptr, arch_virt_to_phys(proc->descriptor.vmem, data + ptr),
+                        PAGE_SIZE, PAGE_RW | PAGE_PRESENT | PAGE_USR);
+        }
+    } else
+        vbase_endpoint = NULL;
 
     handle->endpoint->messages_queue[handle->message_id].source = proc->pid;
     handle->endpoint->messages_queue[handle->message_id].ipc = ipc;

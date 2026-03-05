@@ -2,7 +2,7 @@ TARGET=x86
 CC = i686-w64-mingw32-gcc
 LD = i686-w64-mingw32-ld
 
-CFLAGS = $(shell cat ../../../arch/$(TARGET)/cflags.txt) $(shell cat ../../../cflags.txt) -I../../libc/include/ -I../../../include -fleading-underscore -mno-stack-arg-probe -fno-stack-check -fno-stack-protector
+CFLAGS = $(shell cat ../../../arch/$(TARGET)/cflags.txt) $(shell cat ../../../cflags.txt) -I./include -I../../libc/include/ -I../../../include -fleading-underscore -mno-stack-arg-probe -fno-stack-check -fno-stack-protector
 
 ism_source := $(shell find src/ -name '*.c')
 ism_objects := $(patsubst src/%.c, build/%.o, $(ism_source))

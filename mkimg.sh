@@ -7,7 +7,7 @@ GRUB_DIR="./grub"
 IMAGE_NAME="build/rootfs.img"
 IMAGE_SIZE="10M"
 MOUNT_DIR="./fs"
-KERNEL_BIN="build/kernel.elf" 
+KERNEL_BIN="build/kernel.elf"
 GRUB_CFG="grub.cfg"
 
 cleanup() {
@@ -15,12 +15,12 @@ cleanup() {
         echo ">>> Unmounting..."
         umount $MOUNT_DIR
     fi
-    
+
     if [ ! -z "$LOOP_DEV" ] && [ -b "$LOOP_DEV" ]; then
         echo ">>> Detaching loop device..."
         losetup -d $LOOP_DEV 2>/dev/null || true
     fi
-    
+
     rm -rf $MOUNT_DIR
 
 
@@ -31,9 +31,9 @@ cleanup() {
     cp $KERNEL_BIN $GRUB_DIR/kernel.bin
     cp $GRUB_CFG $GRUB_DIR/boot/grub/grub.cfg
     cp $IMAGE_NAME $GRUB_DIR
-    grub-mkrescue -d /usr/lib/grub/i386-pc -o $BOOTABLE_IMAGE_NAME $GRUB_DIR 
+    grub-mkrescue -d /usr/lib/grub/i386-pc -o $BOOTABLE_IMAGE_NAME $GRUB_DIR
     chown $SUDO_USER:$SUDO_USER $BOOTABLE_IMAGE_NAME
-    
+
     rm -rf $GRUB_DIR
 }
 trap cleanup EXIT
@@ -82,6 +82,7 @@ mkdir -p $MOUNT_DIR/system
 mkdir -p $MOUNT_DIR/devices
 mkdir -p $MOUNT_DIR/system/fonts
 cp userspace/binutils/*.exe $MOUNT_DIR/programs 2>/dev/null || :
+cp userspace/*.exe $MOUNT_DIR/programs 2>/dev/null || :
 cp userspace/shell/*.exe $MOUNT_DIR/shell 2>/dev/null || :
 cp motd.txt $MOUNT_DIR/system
 cp *.sfn $MOUNT_DIR/system/fonts

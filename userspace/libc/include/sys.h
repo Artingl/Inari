@@ -92,8 +92,9 @@ int time(time_t *t);
 int ipc_create(const char *name, thread_entrypoint_t handler);
 int ipc_free(const char *name);
 /* Used by IPC handler thread to read message data. The data buffer is directly mapped to the memory
-   from caller process, allowing to send result to the caller using exactly the same memory */
-int ipc_fetch_next(pid_t *source, uint32_t *message, void **data, size_t *data_sz);
+   from caller process, allowing to send result to the caller using exactly the same memory.
+   A message with 0xFFFFFFFF can be sent, which means connection with handle at `source` PID is being closed. */
+int ipc_fetch_next(pid_t *source, handle_t *ipc, uint32_t *message, void **data, size_t *data_sz);
 /* Called by the IPC handler when it finishes processing the shared memory.
    This unmaps the memory from the handler's virtual space and wakes the sender. */
 int ipc_reply(int status);
