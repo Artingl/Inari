@@ -67,7 +67,7 @@ static const char *retrieve_symbol(uintptr_t base)
             {
                 ksyms.symtab = (struct elf32_sym*)(shdr[i].sh_addr);
                 ksyms.sym_count = shdr[i].sh_size / shdr[i].sh_entsize;
-                
+
                 uint32_t strtab_idx = shdr[i].sh_link;
                 if (strtab_idx < multiboot->u.elf_sec.num) {
                     ksyms.strtab = (char*)(shdr[strtab_idx].sh_addr);
@@ -76,7 +76,7 @@ static const char *retrieve_symbol(uintptr_t base)
             }
         }
     }
-    
+
     if (ksyms.symtab != NULL && ksyms.strtab != NULL) {
         for (i = 0; i < ksyms.sym_count; i++)
         {
@@ -178,20 +178,24 @@ void x86_exception_handler(struct x86_regs32 *regs)
     struct thread *th;
     uint8_t is_critical = non_critical_exceptions[regs->int_no] != 1;
 
-#ifdef CONFIG_DEBUG
-    if (regs->int_no == 0xe)
-    {
-        uint32_t cr2;
-        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-        kprintf("arch: Page Fault caused by accessing address: 0x%x", cr2);
-    }
-    kprintf("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
-    _print_stacktrace(regs, &helper_printf);
-#endif
-
-    
     if (sched_current_thread(&tid) == 0 && sched_get_thread(tid, &th) == 0)
     {
+#ifdef CONFIG_DEBUG
+        uint32_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        kprintf("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
+        if (th->proc_data) {
+            kprintf("arch: Process PID %llu; TID %llu; path: %s", th->proc_data->pid, th->tid, th->proc_data->path);
+
+            if (regs->int_no == 0xe) {
+                kprintf("arch: Page fault info:");
+                kprintf("arch:  access vbase: 0x%x", cr2);
+                kprintf("arch:  access pbase: 0x%x", arch_virt_to_phys(th->proc_data->descriptor.vmem, (void*)cr2));
+            }
+        }
+        _print_stacktrace(regs, &helper_printf);
+#endif
+
         /* v86 mode caused this exception, kill process that caused it */
         if (regs->eflags & (1 << 17))   // EFLAGS_VM
         {
@@ -235,4 +239,3 @@ void x86_exception_handler(struct x86_regs32 *regs)
     console_switch_normal();
     in_exception = 0;
 }
-

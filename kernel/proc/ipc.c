@@ -274,6 +274,7 @@ int ipc_reply(struct process *proc, struct thread *th, int status) {
     uint32_t flags;
     struct ipc_endpoint *endpoint;
     struct ipc_handle *handle;
+    struct process *endpoint_proc;
     spin_lock_irqsave(&lock, flags);
 
     if (!(endpoint = get_endpoint_pid_thread(proc->pid, th->tid))) {
@@ -283,15 +284,23 @@ int ipc_reply(struct process *proc, struct thread *th, int status) {
 
     /* Note: no need to check PID owner; get_endpoint_pid_thread ensures current process is the owner */
 
-    if (endpoint->current_message_id == -1) {
+    if (endpoint->current_message_id == -1 || endpoint->current_message_id >= IPC_MSG_QUEUE) {
         res = -IPCNONE;
         goto end;
+}
+
+    if ((res = proc_get_process(endpoint->owner, &endpoint_proc)) != 0)
+        goto end;
+
+    /* Deallocate virtual memory from ipc_send */
+    if (endpoint->messages_queue[endpoint->current_message_id].data) {
+        void *data = endpoint->messages_queue[endpoint->current_message_id].data;
+        size_t sz = endpoint->messages_queue[endpoint->current_message_id].data_sz;
+        vmm_free_pages(endpoint_proc->descriptor.vmem, data, MAX(sz >> 12, 1));
+        arch_unmap_page(endpoint_proc->descriptor.vmem, data, MAX(sz, PAGE_SIZE));
     }
 
-    endpoint->current_message_id = -1;
     endpoint->messages_queue[endpoint->current_message_id].occupied = 0;
-
-    /* TODO: deallocate virtual memory from ipc_send. Note: the data CAN be NULL, ignore in that case */
 
     /* Send answer to handle */
     if (!(handle = get_handle(endpoint->messages_queue[endpoint->current_message_id].ipc))) {
@@ -302,6 +311,7 @@ int ipc_reply(struct process *proc, struct thread *th, int status) {
     handle->status = 2;
     handle->result = status;
 end:
+    endpoint->current_message_id = -1;
     spin_unlock_irqrestore(&lock, flags);
     return res;
 }
@@ -359,9 +369,14 @@ end:
 
 int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *data, size_t data_sz) {
     /* Verify virtual memory integrity */
-    if (data)
+    if (data) {
         if (!VMM_IS_PTR_USERSPACE(data) || !VMM_IS_PTR_USERSPACE((uintptr_t)data + data_sz))
             return -EINVAL;
+
+        /* Ensure alignment */
+        if (((uintptr_t)data % PAGE_SIZE) != 0)
+            return -EINVAL;
+    }
 
     int res = 0;
     uint32_t flags;
@@ -389,8 +404,8 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
         goto end;
 
     handle->message_id = 0;
-    while (handle->message_id < IPC_MSG_QUEUE && handle->endpoint->messages_queue[handle->message_id++].occupied)
-        ;
+    while (handle->message_id < IPC_MSG_QUEUE && handle->endpoint->messages_queue[handle->message_id].occupied)
+        handle->message_id++;
 
     /* Check if we starved the IPC queue */
     if (handle->message_id >= IPC_MSG_QUEUE) {
@@ -400,6 +415,7 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
 
     /* Map the data from source process to the endpoint process */
     if (data) {
+        arch_switch_pagedir(endpoint_proc->descriptor.vmem);
         vbase_endpoint = vmm_alloc_vmem_user(endpoint_proc->descriptor.vmem, MAX(data_sz >> 12, 1));
         if (!vbase_endpoint) {
             res = -ENOMEM;
@@ -407,7 +423,7 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
         }
 
         arch_map_page(endpoint_proc->descriptor.vmem, vbase_endpoint, arch_virt_to_phys(proc->descriptor.vmem, data),
-                    data_sz, PAGE_RW | PAGE_PRESENT | PAGE_USR);
+                    MAX(data_sz, PAGE_SIZE), PAGE_RW | PAGE_PRESENT | PAGE_USR);
     }
     else vbase_endpoint = NULL;
 

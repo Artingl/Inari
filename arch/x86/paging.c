@@ -31,6 +31,7 @@ void *arch_map_page(pagedir_t *directory, void *vbase, void *pbase, size_t len, 
 {
     uintptr_t i, offset = (uintptr_t)pbase;
     struct x86_page_table *table = NULL;
+    flags &= ~PAGE_DIRTY;
 
     for (i = (uintptr_t)vbase; i < (uintptr_t)vbase + len; i+=PAGE_SIZE)
     {
@@ -54,6 +55,7 @@ void arch_unmap_page(pagedir_t *directory, void *vbase, size_t len)
         table = get_table((struct x86_paging_directory*)directory, i >> 22);
         table->pages[i >> 12 & 0x03FF] &= ~PAGE_PRESENT;
         table->pages[i >> 12 & 0x03FF] &= ~PAGE_USR;
+        table->pages[i >> 12 & 0x03FF] &= ~PAGE_RW;
         table->pages[i >> 12 & 0x03FF] |= PAGE_DIRTY;
         if (directory == (pagedir_t*)x86_current_dir)
             flush_tlb((uintptr_t)i);

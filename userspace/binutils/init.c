@@ -9,9 +9,12 @@ void ipc_handler() {
 
     do {
         int fetch = ipc_fetch_next(&source, &message, &data, &data_size);
-        /* TODO: data is not properly mapped */
         if (fetch == 0) {
-            printf("init: received ipc message %u from pid %llu, at 0x%x with size %llu; data contents: %s\n", message, source, data, data_size, (char*)data);
+            if (data) {
+                printf("init: received ipc message %u from pid %llu, at 0x%x with size %u; data contents: %s\n", message, source, data, data_size, (char*)data);
+            }
+            else
+                printf("init: received ipc message %u from pid %llu, at 0x%x with size %u\n", message, source, data, data_size);
         }
 
         ipc_reply(69);

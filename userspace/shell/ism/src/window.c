@@ -401,7 +401,7 @@ int ism_window_update(void) {
                 cursor_style = ISM_CURSOR_HAND;
                 window->controls_state[0] = mouse.buttons[MOUSE_BTN1];
                 if (window->controls_state[0] && prev_mouse_state != mouse.buttons[MOUSE_BTN1]) {
-                    char result[16] = "hello!";
+                    char result[16] __attribute__ ((aligned (0x1000))) = "hello!";
                     handle_t ipc;
                     if (ipc_open("init.handler", &ipc) != 0)
                         printf("Unable to open IPC\n");
