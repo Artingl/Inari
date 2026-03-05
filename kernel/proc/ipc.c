@@ -124,7 +124,7 @@ static int cleanup_endpoint(struct ipc_endpoint *endpoint) {
         sched_kill_thread(endpoint->th);
 
 #ifdef CONFIG_DEBUG
-    kprintf("ipc: cleanup; pid %ll under %s", endpoint->owner, endpoint->name);
+    kprintf("ipc: cleanup; pid %llu under %s", endpoint->owner, endpoint->name);
 #endif
 
     /* Don't forget to cleanup handles */
@@ -175,7 +175,7 @@ int ipc_create(struct process *proc, const char *name, thread_entrypoint_t handl
     list_add(&endpoint->list, &ipc_endpoints);
 
 #ifdef CONFIG_DEBUG
-    kprintf("ipc: endpoint created by %ll under %s", proc->pid, name);
+    kprintf("ipc: endpoint created by PID %llu under %s", proc->pid, name);
 #endif
 end:
     spin_unlock_irqrestore(&lock, flags);

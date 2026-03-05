@@ -28,7 +28,7 @@ void arch_sched_save(struct thread *task)
         return;
     }
     regs = (struct x86_regs32 *)frame->registers.base;
-    if ((regs->cs & 0x03) == 0x03) /* Came from ring3 */
+    if ((regs->cs & 0x03) == 0x03 || (regs->eflags & 0x20000)) /* Came from ring3 */
         task->saved_stack = (void*)regs->task_esp;
     else /* Came from ring0 */
         task->saved_stack = (void*)((struct x86_regs32_ring0*)regs)->task_esp;

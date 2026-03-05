@@ -134,23 +134,31 @@ section ._lo_kern_text
         mov  cr0, eax                          ; set cr0 to result
         jmp  dword CODE32:REBASE(p_mode32)     ; switch to 32bit selector (32bit protected mode)
     p_mode32: use32
-        mov  ax, DATA32                        ; get our 32bit data selector
-        mov  ds, ax                            ; reset ds selector
-        mov  es, ax                            ; reset es selector
-        mov  fs, ax                            ; reset fs selector
-        mov  gs, ax                            ; reset gs selector
-        mov  ss, ax                            ; reset ss selector
-        lgdt [REBASE(gdt32_ptr)]               ; restore 32bit gdt pointer
-        lidt [REBASE(idt32_ptr)]               ; restore 32bit idt pointer
-        mov  esp, [REBASE(stack32_ptr)]        ; restore 32bit stack pointer
-        mov  esi, STACK16                      ; set copy source to 16bit stack
-        lea  edi, [esp+0x28]                   ; set position of regs pointer on 32bit stack
-        mov  edi, [edi]                        ; use regs pointer in edi as copy destination
-        mov  ecx, regs16_t_size                ; set copy size to our struct size
-        cld                                    ; clear direction flag (so we copy forward)
-        rep  movsb                             ; do the actual copy (16bit stack to 32bit stack)
-        popa                                   ; restore registers
-        sti                                    ; enable interrupts
+        ; Restore the KERNEL GDT and IDT first!
+        lgdt [REBASE(gdt32_ptr)]
+        lidt [REBASE(idt32_ptr)]
+
+        ; Perform a FAR JUMP to reload CS from the Kernel GDT!
+        jmp dword 0x08:REBASE(.flush_cs)
+
+    .flush_cs:
+        ; NOW reload all data segments so VT-x caches the Kernel GDT attributes
+        mov  ax, 0x10
+        mov  ds, ax
+        mov  es, ax
+        mov  fs, ax
+        mov  gs, ax
+        mov  ss, ax
+
+        ; Restore the kernel stack
+        mov  esp, [REBASE(stack32_ptr)]
+        mov  esi, STACK16
+        lea  edi, [esp+0x28]
+        mov  edi, [edi]
+        mov  ecx, regs16_t_size
+        cld
+        rep  movsb
+        popa
         ret                                    ; return to caller
          
     resetpic:                                  ; reset's 8259 master and slave pic vectors

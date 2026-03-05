@@ -2,13 +2,20 @@
 #include <sys.h>
 
 static void ism_wait() {
-    int res = -1;
-    handle_t ipc;
+    int res = -1, timeout = 100;
+    handle_t ipc = 0;
     /* Really dumb way to do so */
 
     printf("init: waiting for ISM.\n");
-    while((res = ipc_open("ism.window", &ipc)) != 0)
+    while((res = ipc_open("ism.window", &ipc)) != 0 && timeout-- > 0)
         usleep(10000);
+
+    if (timeout <= 0) {
+        printf("init: ISM wait timedout.\n");
+        if (ipc)
+            ipc_close(ipc);
+        return;
+    }
 
     printf("init: ISM is alive.\n");
     ipc_close(ipc);

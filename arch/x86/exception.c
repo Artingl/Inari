@@ -183,7 +183,7 @@ void x86_exception_handler(struct x86_regs32 *regs)
 #ifdef CONFIG_DEBUG
         uint32_t cr2;
         __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-        kprintf("arch: Exception %s; eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->eip, retrieve_symbol(regs->eip), regs->esp);
+        kprintf("arch: Exception %s (0x%x); eip=0x%x (%s); esp=0x%x", exceptionstr[regs->int_no], regs->err_code, regs->eip, retrieve_symbol(regs->eip), regs->esp);
         if (th->proc_data) {
             kprintf("arch: Process PID %llu; TID %llu; path: %s", th->proc_data->pid, th->tid, th->proc_data->path);
 

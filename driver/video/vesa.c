@@ -133,7 +133,7 @@ static dev_t vesa_dev = 0;
 struct video_ops ops;
 
 static int vesa_switch_mode(uint32_t x, uint32_t y, uint8_t bpp, uint8_t allow_similar) {
-    struct x86_regs16 r;
+    struct x86_regs16 r = {0};
     struct vesa_mode_info *info = &lo_mode_info;
     uint16_t *modes, similar = 0xffff;
     uint32_t diff, last_diff = 0, best_diff = 0, cur_diff;
@@ -234,7 +234,7 @@ found_mode:
 }
 
 static int video_mode_find_next(struct video_device *device, struct video_mode_info *mode) {
-    struct x86_regs16 r;
+    struct x86_regs16 r = {0};
     struct vesa_mode_info *info = &lo_mode_info;
     uint16_t *modes;
     uint32_t default_w = 0, default_h = 0;
@@ -444,7 +444,7 @@ end:
 #pragma GCC pop_options
 
 static int vesa_probe() {
-    struct x86_regs16 r;
+    struct x86_regs16 r = {0};
     uint32_t x = 800, y = 600, bpp = 32;
 
     r.ax = VESA_GET_INFO;
@@ -478,7 +478,7 @@ static int vesa_probe() {
 static void vesa_disable(struct video_device *device) {
     if (!vesa_initialized)
         return;
-    struct x86_regs16 r;
+    struct x86_regs16 r = {0};
     // struct vesa_mode_info *info = &lo_mode_info;
     // uint16_t *modes;
     // size_t i;
