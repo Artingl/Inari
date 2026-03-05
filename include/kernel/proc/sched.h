@@ -12,7 +12,7 @@
 #define SCHED_TASK_DEAD     2
 #define SCHED_TASK_PAUSED   3
 
-#define SCHED_FLAG_SYSTEM (1 << 0) // This flag tells scheduler that a thread is system, if it dies system will crash
+#define SCHED_FLAG_SYSTEM       (1 << 0) // This flag tells scheduler that a thread is system, if it dies system will crash
 #define SCHED_FLAG_SYSCALL_RSLT (1 << 1)
 #define SCHED_FLAG_SIGRETURN    (1 << 2)
 

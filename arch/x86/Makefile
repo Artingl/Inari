@@ -25,5 +25,8 @@ clean:
 
 build: $(arch_objects_c) $(arch_objects_s)
 
+format: $(arch_source_c)
+	clang-format -i $(arch_source_c)
+
 build_ld:
 	$(LD) $(LDFLAGS) -o kernel.elf -T arch.ld -m elf_i386 $(shell find ../../build/ -name *.o)

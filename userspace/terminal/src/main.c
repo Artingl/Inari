@@ -18,7 +18,7 @@ int main(void) {
         .x = 40,
         .y = 40,
         .width = 640,
-        .height = 200,
+        .height = 400,
         .flags = ISM_WINDOW_FLAG_BORDER | ISM_WINDOW_FLAG_FRAME,
         .parent = ISM_WINDOW_ROOT
     };
@@ -28,10 +28,10 @@ int main(void) {
         return -1;
     }
 
-    // do {
-    // } while (1);
-    printf("terminal: HELLO!\n");
-    usleep(1000000);
-    printf("terminal: BYE!\n");
+    do {
+    } while (1);
+    // printf("terminal: HELLO!\n");
+    // usleep(5000000);
+    // printf("terminal: BYE!\n");
     return 0;
 }

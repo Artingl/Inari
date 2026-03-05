@@ -32,10 +32,10 @@ extern char kern_phys_end;
 #define VMM_USR_SIZE_BYTES (sizeof(struct vmm_page) * ((0xc0000000 + PAGE_SIZE) >> 12))
 #define VMM_USR_SIZE_PAGES (VMM_USR_SIZE_BYTES >> 12)
 
-#define VMM_KERN_VBASE ((uintptr_t)&vmm_pages_pool)
+#define VMM_KERN_VBASE ((uintptr_t) & vmm_pages_pool)
 
 #define VMM_IS_RANGE_USERSPACE(start, end)                                                                             \
-    ((uintptr_t)&kern_phys_end + PAGE_SIZE < ((uintptr_t)start) && ((uintptr_t)end) < VIRTUAL_ADDR - PAGE_SIZE)
+    ((uintptr_t) & kern_phys_end + PAGE_SIZE < ((uintptr_t)start) && ((uintptr_t)end) < VIRTUAL_ADDR - PAGE_SIZE)
 #define VMM_IS_PTR_USERSPACE(ptr) (VMM_IS_RANGE_USERSPACE(ptr, ptr) || ((uintptr_t)ptr) == 0)
 
 int vmm_init(void);

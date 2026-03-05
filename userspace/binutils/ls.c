@@ -1,6 +1,5 @@
 #include <io.h>
 #include <sys.h>
-#include <errno.h>
 
 int main(int argc, char const *argv[])
 {
@@ -9,7 +8,7 @@ int main(int argc, char const *argv[])
         printf("usage: %s directory\n", argv[0]);
         return -1;
     }
-    
+
     printf("Contents of %s:\n", argv[1]);
     struct fs_node node = {0};
     char *name;
@@ -31,8 +30,10 @@ int main(int argc, char const *argv[])
         found_files = 1;
     }
 
-    if (!found_files)
+    if (!found_files && res < 0)
         printf("No such directory.\n");
+    else if (!found_files && res == 0)
+        printf("Directory is empty.\n");
 
     return res;
 }

@@ -6,7 +6,7 @@
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/module.h>
-#include <kernel/sys/pci.h>
+#include <kernel/subsys/pci.h>
 
 #define INTEL_VEND    0x8086 // Vendor ID for Intel
 #define E1000_DEV     0x100E // Device ID for the e1000 Qemu, Bochs, and VirtualBox emmulated NICs

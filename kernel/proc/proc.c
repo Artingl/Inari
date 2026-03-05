@@ -3,9 +3,9 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/proc/ipc.h>
 #include <kernel/proc/pe.h>
 #include <kernel/proc/proc.h>
-#include <kernel/proc/ipc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/signals.h>
 #include <kernel/sync/spinlock.h>
@@ -262,7 +262,7 @@ int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo) {
         goto end;
     proc->signal_handler[signo] = handler;
 end:
-spin_unlock_irqrestore(&lock, flags);
+    spin_unlock_irqrestore(&lock, flags);
     return res;
 }
 

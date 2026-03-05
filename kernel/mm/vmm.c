@@ -208,13 +208,13 @@ static void *alloc_range(struct vmm_pool_entry *entry, size_t npages, uintptr_t 
     }
 
     /* Map all the physical memory to virtual memory and return new vbase */
-    arch_map_page(entry->pagedir, (void*)block_vbase, pbase, npages * PAGE_SIZE, flags);
+    arch_map_page(entry->pagedir, (void *)block_vbase, pbase, npages * PAGE_SIZE, flags);
 
     /* Cleanup the memory to avoid leaking stuff */
-    memset((void*)block_vbase, 0, npages * PAGE_SIZE);
+    memset((void *)block_vbase, 0, npages * PAGE_SIZE);
 
     arch_switch_pagedir(prev);
-    return (void*)block_vbase;
+    return (void *)block_vbase;
 }
 
 void *vmm_alloc_user(pagedir_t *target_dir, size_t npages) {

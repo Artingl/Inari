@@ -130,7 +130,7 @@ static spinlock_t vesa_lock = {0};
 static int vesa_initialized = 0;
 static dev_t vesa_dev = 0;
 
-struct video_ops ops;
+static struct video_ops ops;
 
 static int vesa_switch_mode(uint32_t x, uint32_t y, uint8_t bpp, uint8_t allow_similar) {
     struct x86_regs16 r = {0};
@@ -534,7 +534,7 @@ static void vesa_cleanup() {
     spin_unlock_irqrestore(&vesa_lock, flags);
 }
 
-struct video_ops ops = {.mode_info = &video_mode_info,
+static struct video_ops ops = {.mode_info = &video_mode_info,
                         .mode_find_next = &video_mode_find_next,
                         .mode_switch = &video_mode_switch,
                         .blit = &vesa_blit,

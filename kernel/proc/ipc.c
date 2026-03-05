@@ -245,8 +245,8 @@ void ipc_announce_death(struct process *proc, tid_t th) {
     spin_unlock_irqrestore(&lock, flags);
 }
 
-int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, ipc_handle_t *ipc, uint32_t *message, void **data,
-                   size_t *data_sz) {
+int ipc_fetch_next(struct process *proc, struct thread *th, pid_t *source, ipc_handle_t *ipc, uint32_t *message,
+                   void **data, size_t *data_sz) {
     int res = 0;
     uint32_t id = 0;
     uint32_t flags;
@@ -451,8 +451,9 @@ int ipc_send(struct process *proc, ipc_handle_t ipc, uint32_t message, void *dat
         }
 
         for (ptr = 0; ptr < MAX(data_sz, PAGE_SIZE); ptr += PAGE_SIZE) {
-            arch_map_page(endpoint_proc->descriptor.vmem, vbase_endpoint + ptr, arch_virt_to_phys(proc->descriptor.vmem, data + ptr),
-                        PAGE_SIZE, PAGE_RW | PAGE_PRESENT | PAGE_USR);
+            arch_map_page(endpoint_proc->descriptor.vmem, vbase_endpoint + ptr,
+                          arch_virt_to_phys(proc->descriptor.vmem, data + ptr), PAGE_SIZE,
+                          PAGE_RW | PAGE_PRESENT | PAGE_USR);
         }
     } else
         vbase_endpoint = NULL;

@@ -44,6 +44,7 @@ clean:
 	make -C arch/${TARGET} clean
 
 format: $(kernel_source) $(driver_source) $(headers)
+	make -C arch/${TARGET} format && \
 	clang-format -i $(kernel_source) $(driver_source) $(headers)
 
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)

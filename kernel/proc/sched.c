@@ -119,7 +119,8 @@ static void sched_update_tasks(struct sched_core *core) {
         else if (entry->state == SCHED_TASK_DEAD && core->task != entry) {
             list_del(pos);
             if (entry->kernel_stack_pointer && entry->vmem)
-                vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer, (CONFIG_STACK_SIZE_KRN >> 12) + 1);
+                vmm_free_pages(arch_get_kernel_pagedir(), entry->kernel_stack_pointer,
+                               (CONFIG_STACK_SIZE_KRN >> 12) + 1);
             if (entry->thread_stack_pointer && entry->vmem)
                 vmm_free_pages(entry->vmem, entry->thread_stack_pointer, (CONFIG_STACK_SIZE >> 12) + 1);
             sched_handle_death(entry);

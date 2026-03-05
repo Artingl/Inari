@@ -22,11 +22,11 @@
 #include <misc/string.h>
 
 #ifdef CONFIG_SUBSYS_PCI
-#include <kernel/sys/pci.h>
+#include <kernel/subsys/pci.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_NET
-#include <kernel/sys/net.h>
+#include <kernel/subsys/net.h>
 #endif
 
 #ifdef CONFIG_SUBSYS_HID

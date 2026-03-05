@@ -15,10 +15,10 @@
         "text": "set arch i386:intel",
         "description": "Force i686 architecture",
       },
-      {
-        "text": "set substitute-path /media/psf/Home/stuff/workspace/local/inari/ $ZED_WORKTREE_ROOT",
-        "description": "Map remote build paths to local workspace",
-      },
+      // {
+      // "text": "set substitute-path /media/psf/Home/stuff/workspace/local/inari/ $ZED_WORKTREE_ROOT",
+      // "description": "Map remote build paths to local workspace",
+      // },
     ],
   },
 ]

@@ -43,6 +43,12 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+if [ -d "./fs" ]; then
+    echo "Unmounting old fs"
+    umount -q $(pwd)/fs
+    rm -rf $(pwd)/fs
+fi
+
 # Create empty file
 echo ">>> Creating disk image..."
 rm -f $IMAGE_NAME

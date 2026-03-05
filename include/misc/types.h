@@ -41,7 +41,7 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 #endif
 
 #ifndef offsetof
-#define offsetof(type, member) ((size_t)&(((type *)0)->member))
+#define offsetof(type, member) ((size_t) & (((type *)0)->member))
 #endif
 
 #endif

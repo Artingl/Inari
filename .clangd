@@ -17,12 +17,12 @@ CompileFlags:
     - -std=gnu99
     - -fno-pie
     - -include
-    - /Users/artingl/stuff/workspace/local/inari/build/config.h
-    - -I/Users/artingl/stuff/workspace/local/inari/include
+    - /home/artingl/dev/inari/build/config.h
+    - -I/home/artingl/dev/inari/include
 ---
 If:
   PathMatch: userspace/.*
 CompileFlags:
   Add:
-    - -I/Users/artingl/stuff/workspace/local/inari/userspace/libc/include
-    - -I/Users/artingl/stuff/workspace/local/inari/userspace/shell/ism/include
+    - -I/home/artingl/dev/inari/userspace/libc/include
+    - -I/home/artingl/dev/inari/userspace/shell/ism/include
