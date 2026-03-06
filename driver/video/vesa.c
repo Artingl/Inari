@@ -196,7 +196,7 @@ found_mode:
         return -1;
     }
 
-    kprintf("vesa: swithing mode to %dx%d_%d", info->h_res, info->v_res, info->bpp);
+    kprintf("vesa: swithing mode to %dx%d_%d (%d)", info->h_res, info->v_res, info->bpp, (uint32_t)modes[i]);
 
     r.ax = VESA_SET_MODE;
     r.bx = modes[i] | 0x4000;
@@ -224,12 +224,12 @@ found_mode:
         return -1;
     }
 
+    mode_id = modes[i];
+    spin_unlock_irqrestore(&vesa_lock, flags);
+
     if (vesa_dev)
         video_remove_device(vesa_dev);
     video_add_device(&vesa_dev, "vesa0", (uintptr_t)current_mode_base, &ops);
-    mode_id = modes[i];
-
-    spin_unlock_irqrestore(&vesa_lock, flags);
     return 0;
 }
 
@@ -512,11 +512,11 @@ static void vesa_cleanup() {
         return;
     kprintf("vesa: cleaning up");
 
-    uint32_t flags;
-    spin_lock_irqsave(&vesa_lock, flags);
-
     if (vesa_dev)
         video_remove_device(vesa_dev);
+
+    uint32_t flags;
+    spin_lock_irqsave(&vesa_lock, flags);
     vesa_dev = 0;
     mode_id = 0;
 
@@ -545,7 +545,7 @@ static struct video_ops ops = {.mode_info = &video_mode_info,
 module_t vesa_module = {
     .probe = vesa_probe,
     .cleanup = vesa_cleanup,
-    .flags = MODULE_FLAG_LAZY_LOAD,
+    // .flags = MODULE_FLAG_LAZY_LOAD,
 };
 
 module_register("vesa", vesa_module);

@@ -81,9 +81,9 @@ int register_blkdev(uint32_t driver, struct block_ops *ops, uint64_t size, void 
 
     list_add_tail(&bdev->list, &group->devices);
     kprintf("block: new dev:blk_%s%u; driver 0x%04x", group->name, minor, driver);
-    event_bus_broadcast((event_t){.type = EVENT_LOAD_BLKDEV, .as = {.dev = bdev->dev}});
     if (dev)
         *dev = bdev->dev;
+    event_bus_broadcast((event_t){.type = EVENT_LOAD_BLKDEV, .as = {.dev = bdev->dev}});
     return 0;
 }
 

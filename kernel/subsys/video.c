@@ -121,4 +121,13 @@ int video_disable(void) {
     return 0;
 }
 
+struct video_device *video_get(dev_t dev) {
+    if (!is_initialized || !ISGROUP(DRVID(dev), DRIVER_VIDEO_GROUP))
+        return NULL;
+    struct device *chardev = char_get(dev);
+    if (!chardev)
+        return NULL;
+    return chardev->driver_data;
+}
+
 #endif

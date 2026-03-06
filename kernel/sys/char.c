@@ -79,9 +79,9 @@ int register_chardev(uint32_t driver, struct char_ops *ops, void *driver_data, d
 
     list_add_tail(&chardev->list, &group->devices);
     kprintf("char: new dev:char_%s%u; driver 0x%04x", group->name, minor, driver);
-    event_bus_broadcast((event_t){.type = EVENT_LOAD_CHARDEV, .as = {.dev = chardev->dev}});
     if (dev)
         *dev = chardev->dev;
+    event_bus_broadcast((event_t){.type = EVENT_LOAD_CHARDEV, .as = {.dev = chardev->dev}});
     return 0;
 }
 

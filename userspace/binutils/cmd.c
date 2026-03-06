@@ -171,7 +171,7 @@ void exec_cmd()
         {
             if (errstr[-cmd_res] == NULL)
                 printf("cd: Invalid error.\n");
-            else 
+            else
                 printf("cd: %s\n", errstr[-cmd_res]);
             return;
         }
@@ -192,7 +192,7 @@ void exec_cmd()
 
     if (errstr[-res] == NULL)
         printf("%s: Invalid error.\n", exec_path);
-    else 
+    else
         printf("%s: %s\n", exec_path, errstr[-res]);
 }
 
@@ -212,6 +212,11 @@ int main(int argc, char const *argv[])
         printf("error: unable to open keyboard.\n");
         exit(1);
     }
+
+    handle_t video_handle;
+    open(&video_handle, "/devices/video/char_video0", WRITE);
+    ioctl(video_handle, 5, NULL);   // VIDEO_IOCTL_DISABLE
+    close(video_handle);
 
     printf("0@%s # ", current_dir);
     command_offset = 0;

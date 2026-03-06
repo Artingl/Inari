@@ -47,6 +47,9 @@ __attribute__((unused)) static const char *errstr[] = {
     [IPCACCES] = "IPC access denied",
 };
 
+#undef errno
+#define errno(err) (errstr[((err) < 0 ? -(err) : err)] ? errstr[((err) < 0 ? -(err) : err)] : "Invalid error")
+
 //
 // #define	ENOENT		 2	/* No such file or directory */
 // #define	ESRCH		 3	/* No such process */

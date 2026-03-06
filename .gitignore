@@ -6,3 +6,4 @@ build/
 nohup.out
 docs/
 /fs/
+splash.h

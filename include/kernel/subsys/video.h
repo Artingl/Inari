@@ -85,6 +85,6 @@ int video_init(void);
 int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_ops *ops);
 int video_remove_device(dev_t dev);
 int video_disable(void);
-struct device *video_get(dev_t dev);
+struct video_device *video_get(dev_t dev);
 
 #endif

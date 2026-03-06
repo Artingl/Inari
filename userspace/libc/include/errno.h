@@ -21,6 +21,10 @@
 #define EINTR     16 /* Interrupted */
 #define EKILLED   17 /* Killed */
 
+#define IPCBSY   18 /* IPC is busy */
+#define IPCNONE  19 /* IPC endpoint not found */
+#define IPCACCES 20 /* IPC access denied */
+
 __attribute__((unused)) static const char *errstr[] = {
     [0] = "OK",
     [ENODEV] = "No such device",
@@ -38,6 +42,9 @@ __attribute__((unused)) static const char *errstr[] = {
     [EACCES] = "Permission denied",
     [EFAULT] = "Bad address",
     [ENOEXEC] = "Exec format error",
+    [IPCBSY] = "IPC is busy",
+    [IPCNONE] = "IPC endpoint not found",
+    [IPCACCES] = "IPC access denied",
 };
 
 #include <io.h>
@@ -51,5 +58,4 @@ __attribute__((unused)) static const char *errstr[] = {
         }                                                                                                              \
         printf("%s: %s.\n", get_name(), errno(err));                                                                   \
     } while (0)
-
 #endif
