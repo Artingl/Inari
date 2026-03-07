@@ -8,7 +8,13 @@ void spin_lock(spinlock_t *lock) {
         return;
     while (atomic_exchange_explicit(&lock->lock, 1, memory_order_acquire))
         ;
-    // sched_yield();
+}
+
+int spin_try_lock(spinlock_t *lock) {
+    if (!lock)
+        return 0;
+    uint8_t expected = 0;
+    return atomic_compare_exchange_strong(&lock->lock, &expected, 1);
 }
 
 int spin_lock_is_free(spinlock_t *lock) {

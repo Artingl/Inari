@@ -1,6 +1,8 @@
 #include <misc/string.h>
 #include <misc/types.h>
 
+#pragma GCC push_options
+#pragma GCC optimize("O3")
 void *memset(void *buf, int ch, size_t count) {
     volatile unsigned char *c = buf;
     while (count--)
@@ -26,3 +28,4 @@ int memcmp(const void *s1, const void *s2, size_t n) {
     }
     return 0;
 }
+#pragma GCC pop_options

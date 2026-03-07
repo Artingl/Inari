@@ -44,4 +44,12 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 #define offsetof(type, member) ((size_t) & (((type *)0)->member))
 #endif
 
+__attribute__((unused)) static inline uint32_t swap_endian32(uint32_t v) {
+    return ((((((v & 0xff) << 8) | ((v >> 8) & 0xff)) << 8) | ((v >> 16) & 0xff)) << 8) |((v >> 24) & 0xff);
+}
+
+__attribute__((unused)) static inline uint16_t swap_endian16(uint16_t v) {
+    return ((v & 0xff) << 8) | (v >> 8);
+}
+
 #endif

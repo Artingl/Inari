@@ -32,8 +32,8 @@ $(arch_build_stamp): $(arch_sources)
 
 mkconfig:
 	mkdir -p build && \
-	cat config.h > build/config.h && \
-	echo "#define CONFIG_ARCH_$(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]')" >> build/config.h
+	echo "#define CONFIG_ARCH_$(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]')" > build/config.h && \
+	cat config.h >> build/config.h
 
 clean:
 	-rm -rf build userspace/binutils/*.exe userspace/binutils/*.o && \

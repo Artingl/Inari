@@ -27,6 +27,8 @@ static inline char k_toupper(char c) { return (c >= 'a' && c <= 'z') ? c - 0x20 
 /* =========================
    Memory functions
    ========================= */
+#pragma GCC push_options
+#pragma GCC optimize("O3")
 static inline void *memset(void *buf, int ch, size_t count) {
     volatile unsigned char *c = buf;
     while (count--)
@@ -52,6 +54,7 @@ static inline int memcmp(const void *s1, const void *s2, size_t n) {
     }
     return 0;
 }
+#pragma GCC pop_options
 
 /* =========================
    String functions

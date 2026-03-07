@@ -1,5 +1,9 @@
 #define CONFIG_DEBUG
 
+#define CONFIG_NET_ICMP
+#define CONFIG_NET_UDP
+#define CONFIG_NET_TCP
+
 #define CONFIG_SUBSYS_HID
 #define CONFIG_SUBSYS_VIDEO
 #define CONFIG_SUBSYS_PCI
@@ -34,3 +38,9 @@
 #define CONFIG_CONSOLE_POOL_SZ 32
 
 #define CONFIG_VFS_NAME_MAX 256
+
+#ifdef CONFIG_ARCH_X86
+#define CONFIG_LITTLE_ENDIAN
+#else
+#define CONFIG_BIG_ENDIAN
+#endif
