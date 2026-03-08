@@ -36,8 +36,7 @@ static void read_bar(struct pci_device *dev, uint8_t bar) {
     if (dev->bar[bar].base & 1) {
         dev->bar[bar].base &= ~0b1111;
         dev->bar[bar].type = PCI_TYPE_IO_SPACE;
-    }
-    else {
+    } else {
         dev->bar[bar].base &= ~0b11;
         dev->bar[bar].type = PCI_TYPE_MEMORY_SPACE;
         if ((dev->bar[bar].base & 0b110) == 0b100) {
@@ -72,10 +71,9 @@ static void read_bar(struct pci_device *dev, uint8_t bar) {
 #ifdef CONFIG_DEBUG
         kprintf("pci: %d:%d:%d BAR %d%s MEM_SPACE size 0x%x base 0x%x", dev->bus, dev->slot, dev->func, bar,
                 (dev->bar[bar].is_x64 ? " (64 bit)" : ""), dev->bar[bar].size, dev->bar[bar].vbase);
-    }
-    else {
+    } else {
         kprintf("pci: %d:%d:%d BAR %d%s IO_SPACE size 0x%x base 0x%x", dev->bus, dev->slot, dev->func, bar,
-                    (dev->bar[bar].is_x64 ? " (64 bit)" : ""), dev->bar[bar].size, dev->bar[bar].base);
+                (dev->bar[bar].is_x64 ? " (64 bit)" : ""), dev->bar[bar].size, dev->bar[bar].base);
 #endif
     }
 

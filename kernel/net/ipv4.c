@@ -8,7 +8,8 @@
 #include <misc/types.h>
 
 static int ipv4_tx_layer(void *layer_info, void *packet, uint32_t ln) {
-    if (!packet) return -1;
+    if (!packet)
+        return -1;
 
     /* Construct IPv4 packet and transmit further */
     struct net_network_layer_info *info = layer_info;
@@ -17,7 +18,7 @@ static int ipv4_tx_layer(void *layer_info, void *packet, uint32_t ln) {
     /* Step back in packet buffer to access memory allocated for IPv4 packet by `req_buf` */
     struct ipv4_packet *ipv4_packet = (struct ipv4_packet *)(packet - sizeof(struct ipv4_packet));
     memcpy(ipv4_packet, ipv4_layer_packet, 20);
-    ipv4_packet->length = 20 + ln;
+    ipv4_packet->length = bigend16(20 + ln);
     ipv4_packet->off_fragment = 0;
     ipv4_packet->flgs = 0;
     ipv4_packet->id = 0;
@@ -26,17 +27,9 @@ static int ipv4_tx_layer(void *layer_info, void *packet, uint32_t ln) {
     ipv4_packet->src_address = 0x8501a8c0;
     ipv4_packet->dest_address = ipv4_layer_packet->src_address;
 
-#ifdef CONFIG_LITTLE_ENDIAN
-    ipv4_packet->length = swap_endian16(ipv4_packet->length);
-#endif
-
     /* Finally, calculate checksum */
     ipv4_packet->checksum = 0;
-    ipv4_packet->checksum = net_checksum(ipv4_packet, ln + sizeof(struct ipv4_packet));
-
-#ifdef CONFIG_LITTLE_ENDIAN
-    ipv4_packet->checksum = swap_endian16(ipv4_packet->checksum);
-#endif
+    ipv4_packet->checksum = bigend16(net_checksum(ipv4_packet, ln + sizeof(struct ipv4_packet)));
 
     return info->link_layer->ops->tx(info->link_layer, ipv4_packet, ln + sizeof(struct ipv4_packet));
 }
@@ -68,7 +61,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         /* Different packet version */
         return NET_DROPPED;
 
-    /* TODO: checksum validation */
+        /* TODO: checksum validation */
 
 #ifdef CONFIG_LITTLE_ENDIAN
     /* Some more dirty work here to get flags on little endian */
@@ -82,15 +75,13 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
     struct net_network_layer_info network_layer = {
         .link_layer = layer, .layer = packet, .ops = &ipv4_network_layer_ops};
 
-#ifdef CONFIG_LITTLE_ENDIAN
-    uint32_t protocol_ln = swap_endian16(packet->length) - header_size;
-#else
-    uint32_t protocol_ln = packet->length - header_size;
-#endif
+    uint32_t protocol_ln = bigend16(packet->length) - header_size;
+
+    struct net_protocol *protocol = net_invoke_protocol(packet->protocol);
 
     /* Send the packet to correct protocol handler */
-    if (net_get_protocol_rx(packet->protocol))
-        return net_get_protocol_rx(packet->protocol)(&network_layer, ((uint8_t *)packet) + header_size, protocol_ln);
+    if (protocol)
+        return protocol->rx(&network_layer, ((uint8_t *)packet) + header_size, protocol_ln);
     return NET_DROPPED;
 }
 

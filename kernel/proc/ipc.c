@@ -492,8 +492,8 @@ int ipc_wait(struct process *proc, ipc_handle_t ipc, uint8_t do_sleep) {
             handle->status = 0;
             res = handle->result;
             break;
-        }
-        else res = 1;
+        } else
+            res = 1;
 
         spin_unlock_irqrestore(&lock, flags);
         if (do_sleep)

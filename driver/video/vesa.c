@@ -535,16 +535,15 @@ static void vesa_cleanup() {
 }
 
 static struct video_ops ops = {.mode_info = &video_mode_info,
-                        .mode_find_next = &video_mode_find_next,
-                        .mode_switch = &video_mode_switch,
-                        .blit = &vesa_blit,
-                        .disable = &vesa_disable,
-                        .fill_rect = &vesa_fill_rect,
-                        .map_video = &vesa_map_video};
+                               .mode_find_next = &video_mode_find_next,
+                               .mode_switch = &video_mode_switch,
+                               .blit = &vesa_blit,
+                               .disable = &vesa_disable,
+                               .fill_rect = &vesa_fill_rect,
+                               .map_video = &vesa_map_video};
 
 module_t vesa_module = {
-    .probe = vesa_probe,
-    .cleanup = vesa_cleanup,
+    .probe = vesa_probe, .cleanup = vesa_cleanup,
     // .flags = MODULE_FLAG_LAZY_LOAD,
 };
 

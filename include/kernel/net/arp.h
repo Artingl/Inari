@@ -8,9 +8,9 @@ struct arp_resolv_ipv4_packet {
     uint16_t hardware_info, protocol_type;
     uint8_t hardware_ln, protocol_ln;
     uint16_t operation;
-    uint8_t source_hardware_addr[6];    // typically 6 for ethernet
+    uint8_t source_hardware_addr[6]; // typically 6 for ethernet
     uint32_t source_ipv4;
-    uint8_t destination_hardware_addr[6];    // typically 6 for ethernet
+    uint8_t destination_hardware_addr[6]; // typically 6 for ethernet
     uint32_t destination_ipv4;
 } __attribute__((packed));
 

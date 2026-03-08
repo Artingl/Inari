@@ -36,11 +36,11 @@ static void draw(dev_t dev) {
 
     /* Render on screen */
     struct video_blit blit_info = {.x = (info.width >> 1) - (LOGO_WIDTH >> 1),
-                                        .y = (info.height >> 1) - (LOGO_HEIGHT >> 1),
-                                        .width = LOGO_WIDTH,
-                                        .height = LOGO_HEIGHT,
-                                        .format = VIDEO_R8G8B8_FORMAT,
-                                        .buffer = (uint8_t*)&splash_logo};
+                                   .y = (info.height >> 1) - (LOGO_HEIGHT >> 1),
+                                   .width = LOGO_WIDTH,
+                                   .height = LOGO_HEIGHT,
+                                   .format = VIDEO_R8G8B8_FORMAT,
+                                   .buffer = (uint8_t *)&splash_logo};
     if ((res = video_dev->ops->blit(video_dev, &blit_info)) != 0) {
         kprintf("splash: %s.", errno(res));
         return;

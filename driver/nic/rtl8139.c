@@ -72,6 +72,7 @@ static int rtl8139_irq(uint32_t irq, void *driver_data) {
     struct rtl8139_packet_header *header;
     uint32_t status = x86_inw(dev->bar[0].base + REG_ISR);
     uint16_t length, cba_offset;
+    int timeout = 64;
     /* Check if different device triggered the IRQ */
     if (status == 0x0)
         return IRQ_HANDLED;
@@ -84,7 +85,8 @@ static int rtl8139_irq(uint32_t irq, void *driver_data) {
     /* Check if have any packets (ROK) */
     if (status & (1 << 0)) {
         /* Loop while have any new packets */
-        while (net_is_active(net_dev) && (cba_offset = x86_inw(dev->bar[0].base + REG_CBA)) != rx_offset) {
+        while (net_is_active(net_dev) && timeout-- > 0 &&
+               (cba_offset = x86_inw(dev->bar[0].base + REG_CBA)) != rx_offset) {
             rx_offset %= RX_BUFFER_SIZE;
             header = (struct rtl8139_packet_header *)&rx_buffer[rx_offset];
             length = *(uint16_t *)&rx_buffer[rx_offset + sizeof(struct rtl8139_packet_header)];
@@ -149,6 +151,7 @@ static int rtl8139_tx(struct net_device *bdev, void *packet, uint32_t length) {
     int32_t signed_ln = (int32_t)length;
 
     do {
+        /* TODO: this is bad. directly flush the data to current tx_counter */
         if (flush_tx_buffer(packet + (length - signed_ln), MIN(signed_ln, 1792)) != 0)
             /* Dropping, return amount of unsent data */
             return MIN(signed_ln, 1792);

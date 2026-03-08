@@ -17,14 +17,14 @@ struct pci_device {
     uint8_t irq;
 
     struct {
-        #define PCI_TYPE_IO_SPACE   2
-        #define PCI_TYPE_MEMORY_SPACE   1
+#define PCI_TYPE_IO_SPACE     2
+#define PCI_TYPE_MEMORY_SPACE 1
         uint8_t type;   // 0 - unused; 1 - memory space; 2 - IO space
         uint8_t is_x64; // 0 - 32 bit BAR; 1 - first part of 64 bit BAR; 2 - second part
         uint32_t size;
-        uint32_t base;  // BAR base
-        uint32_t original;  // original BAR base with flags
-        void *vbase; // mapped virtual memory IF type is 1 (memory space)
+        uint32_t base;     // BAR base
+        uint32_t original; // original BAR base with flags
+        void *vbase;       // mapped virtual memory IF type is 1 (memory space)
     } bar[6];
 
     struct list_head list;

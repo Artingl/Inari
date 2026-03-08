@@ -7,12 +7,16 @@
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
 
+#define NET_IOCTL_INFO        0
+#define NET_IOCTL_IFADDR_NEXT 1
+
 struct net_ops {
     int (*tx)(struct net_device *bdev, void *packet, uint32_t length);
     int (*ioctl)(struct net_device *bdev, unsigned long req, void *arg);
 } __attribute__((packed));
 
 struct net_device_info {
+    char name[DEV_NAME_SIZE + 1];
     uint8_t mac_addr[6];
     uint16_t mtu;
 
@@ -20,19 +24,44 @@ struct net_device_info {
     uint8_t link_state; // 1 = Cable plugged in, 0 = Cable unplugged
 };
 
+struct net_ifaddr {
+#define NET_IF_INET  0 // IPv4
+#define NET_IF_INET6 1 // IPv6
+
+    uint16_t family;
+
+    union {
+        uint8_t ipv4[4];
+        uint8_t ipv6[16];
+    } address;
+
+    union {
+        uint8_t ipv4[4];
+        uint8_t ipv6[16];
+    } netmask;
+
+    union {
+        uint8_t ipv4[4];
+        uint8_t ipv6[16];
+    } gateway;
+
+    struct net_device *device;
+    struct list_head list;
+};
+
 struct net_device {
-    char name[DEV_NAME_SIZE + 1];
     struct net_device_info info;
     struct net_ops *ops;
     dev_t dev;
 
+    struct list_head ifaddrs;
     struct list_head list;
 } __attribute__((packed));
 
 #define NET_ETHTYPE_IPV4 0x0800
 #define NET_ETHTYPE_ARP  0x0806
 
-#define NET_OK 0
+#define NET_OK      0
 #define NET_DROPPED -1
 
 #define NET_IPN_ICMP 0x01
@@ -79,7 +108,7 @@ struct net_link_layer_info {
 
     uint8_t dest_mac[6];
     uint8_t src_mac[6];
-    uint8_t device_mac[6];  // receiver NIC MAC
+    uint8_t device_mac[6]; // receiver NIC MAC
     uint16_t ether_type;
 
     /* Layer specific ops */
@@ -87,8 +116,8 @@ struct net_link_layer_info {
 };
 
 struct net_network_layer_info {
-    void *layer;                                      // ipv4/ipv6 packet
-    struct net_link_layer_info *link_layer;           // underlying link layer
+    void *layer;                            // ipv4/ipv6 packet
+    struct net_link_layer_info *link_layer; // underlying link layer
 
     /* Layer specific ops */
     struct net_layer_ops *ops;
@@ -100,9 +129,10 @@ struct net_protocol {
     net_protocol_rx rx;
 };
 
-net_protocol_rx net_get_protocol_rx(uint8_t ipn);
-
+struct net_protocol *net_invoke_protocol(uint8_t ipn);
 int net_init(void);
+int net_attach_ifaddr(dev_t dev, struct net_ifaddr ifaddr);
+int net_detach_ifaddr(dev_t dev, struct net_ifaddr ifaddr);
 int net_define_protocol(uint8_t ipn, struct net_protocol protocol);
 void net_free_protocol(uint8_t ipn);
 int net_add_device(dev_t *dev, struct net_ops *ops, uint8_t *mac, uint16_t mtu, const char *name);
@@ -115,9 +145,9 @@ __attribute__((unused)) static inline uint16_t net_checksum(void *data, uint32_t
     uint32_t checksum = 0;
     for (uint32_t i = 0; i < ln >> 1; i++) {
 #ifdef CONFIG_LITTLE_ENDIAN
-        checksum += swap_endian16(((uint16_t*)data)[i]);
+        checksum += swap_endian16(((uint16_t *)data)[i]);
 #else
-        checksum += ((uint16_t*)data)[i];
+        checksum += ((uint16_t *)data)[i];
 #endif
     }
     return (~((checksum & 0xffff) + ((checksum >> 16) & 0xf))) & 0xffff;

@@ -9,9 +9,7 @@ int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
     struct arp_resolv_ipv4_packet *response;
     uint16_t protocol_type = resolv->protocol_type;
 
-#ifdef CONFIG_LITTLE_ENDIAN
-    protocol_type = swap_endian16(protocol_type);
-#endif
+    protocol_type = bigend16(protocol_type);
 
     if (protocol_type != NET_ETHTYPE_IPV4)
         return NET_DROPPED;
@@ -25,7 +23,7 @@ int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
     response->protocol_type = resolv->protocol_type;
     response->hardware_ln = resolv->hardware_ln;
     response->protocol_ln = resolv->protocol_ln;
-    response->operation = 0x0002;   // ARP reply
+    response->operation = 0x0002; // ARP reply
 
     /* Set the destination to the requester */
     memcpy(response->destination_hardware_addr, resolv->source_hardware_addr, 6);

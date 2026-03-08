@@ -3,6 +3,7 @@
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/mm/kmalloc.h>
+#include <kernel/mm/vmm.h>
 #include <kernel/net/arp.h>
 #include <kernel/net/ipv4.h>
 #include <kernel/proc/sched.h>
@@ -112,11 +113,7 @@ static void net_queue_thread(void *_) {
         link.dev = net_frame->dev;
         link.ops = &net_link_layer_ops;
 
-#ifdef CONFIG_LITTLE_ENDIAN
-        switch (swap_endian16(frame->ether_type)) {
-#else
-        switch (frame->ether_type) {
-#endif
+        switch (bigend16(frame->ether_type)) {
         case NET_ETHTYPE_IPV4:
             res = ipv4_rx_stack(&link, (struct ipv4_packet *)frame->data,
                                 net_frame->length - sizeof(struct ethernet_frame));
@@ -135,18 +132,69 @@ static void net_queue_thread(void *_) {
                     swap_endian16(frame->ether_type));
 #endif
 
+        /* Before completing, write down 64 bytes of zeros onto data pointer. This ensures we obliterate the ethernet
+         * frame and dont accidentally handle it again. TODO: that's actually bad and we dont even need that in the
+         * first place.
+         *
+         * The issue is that the data pointer is currently passed from NICs ring buffer. We need to copy it to the net
+         * subsystem ring buffer, so we dont run into race conditions or other issues by directly accessing NICs ring
+         * buffer. */
+        memset(net_frame->data, 0, 64);
+
         net_frame->set = 0;
+        net_frame->data = NULL;
+        net_frame->length = 0;
 
         /* Don't forget to unlock, so net_rx can use this frame spot */
         spin_unlock(&net_frame->frame_lock);
     } while (1);
 }
 
-static struct char_ops ops = {
-    // .ioctl = &net_ioctl
-};
+static int net_ioctl(struct device *chardev, unsigned long req, void *arg) {
+    if (!chardev || !chardev->driver_data)
+        return -EINVAL;
+    struct net_device *device = (struct net_device *)chardev->driver_data;
+    struct list_head *pos;
+    struct net_ifaddr *entry, *ifaddr;
+    int found = -1, idx = 0;
 
-net_protocol_rx net_get_protocol_rx(uint8_t ipn) { return protocols[ipn].rx; }
+    switch (req) {
+    case NET_IOCTL_INFO:
+        if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(device->info)))
+            memcpy(arg, &device->info, sizeof(device->info));
+        return 0;
+    case NET_IOCTL_IFADDR_NEXT:
+        if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(struct net_ifaddr))) {
+            ifaddr = arg;
+            if (!ifaddr->device)
+                found = 0;
+
+            list_for_each(pos, &device->ifaddrs) {
+                entry = list_entry(pos, struct net_ifaddr, list);
+                if (idx++ == found) {
+                    memcpy(arg, entry, sizeof(struct net_ifaddr));
+                    return 1;
+                }
+
+                if (memcmp(entry->address.ipv4, ifaddr->address.ipv4, sizeof(ifaddr->address.ipv4)) == 0 ||
+                    memcmp(entry->address.ipv6, ifaddr->address.ipv6, sizeof(ifaddr->address.ipv6)) == 0) {
+                    found = idx;
+                }
+            }
+        }
+        return 0;
+    }
+
+    return -ENOSYS;
+}
+
+static struct char_ops ops = {.ioctl = &net_ioctl};
+
+struct net_protocol *net_invoke_protocol(uint8_t ipn) {
+    if (!protocols[ipn].rx)
+        return NULL;
+    return &protocols[ipn];
+}
 
 int net_init(void) {
     memset(&protocols, 0, sizeof(protocols));
@@ -162,9 +210,7 @@ int net_define_protocol(uint8_t ipn, struct net_protocol protocol) {
     return 0;
 }
 
-void net_free_protocol(uint8_t ipn) {
-    memset(&protocols[ipn], 0, sizeof(struct net_protocol));
-}
+void net_free_protocol(uint8_t ipn) { memset(&protocols[ipn], 0, sizeof(struct net_protocol)); }
 
 int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t mtu, const char *name) {
     if (!net_ops || !name || !is_initialized || !mac)
@@ -175,11 +221,12 @@ int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t m
     if (!device)
         return -ENOMEM;
 
-    strcpy(device->name, name);
+    strcpy(device->info.name, name);
     memcpy(device->info.mac_addr, mac, sizeof(device->info.mac_addr));
-    device->name[DEV_NAME_SIZE] = '\0';
+    device->info.name[DEV_NAME_SIZE] = '\0';
     device->info.mtu = mtu;
     device->ops = net_ops;
+    INIT_LIST_HEAD(&device->ifaddrs);
 
     if ((res = register_chardev(NET_DRIVER, &ops, device, &device->dev)) != 0) {
         kfree(device);
@@ -194,6 +241,57 @@ int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t m
     return 0;
 }
 
+int net_attach_ifaddr(dev_t dev, struct net_ifaddr ifaddr) {
+    struct net_device *device = get_device(dev);
+    if (!device)
+        return -ENODEV;
+
+    struct list_head *pos;
+    struct net_ifaddr *entry;
+
+    /* Check we don't already have that exact address in the NIC */
+    list_for_each(pos, &device->ifaddrs) {
+        entry = list_entry(pos, struct net_ifaddr, list);
+        if (memcmp(entry->address.ipv4, ifaddr.address.ipv4, sizeof(ifaddr.address.ipv4)) == 0 ||
+            memcmp(entry->address.ipv6, ifaddr.address.ipv6, sizeof(ifaddr.address.ipv6)) == 0) {
+            /* Ignore duplicate */
+            return -EINVAL;
+        }
+    }
+
+    /* TODO: also would be great to check that other NICs doesn't have that ifaddr */
+
+    /* Now, attach it */
+    struct net_ifaddr *list_ifaddr = kmalloc(sizeof(struct net_ifaddr));
+    memcpy(list_ifaddr, &ifaddr, sizeof(ifaddr));
+
+    list_ifaddr->device = device;
+    list_add(&list_ifaddr->list, &device->ifaddrs);
+
+    return 0;
+}
+
+int net_detach_ifaddr(dev_t dev, struct net_ifaddr ifaddr) {
+    struct net_device *device = get_device(dev);
+    if (!device)
+        return -ENODEV;
+
+    struct list_head *pos;
+    struct net_ifaddr *entry;
+
+    list_for_each(pos, &device->ifaddrs) {
+        entry = list_entry(pos, struct net_ifaddr, list);
+        if (memcmp(entry->address.ipv4, ifaddr.address.ipv4, sizeof(ifaddr.address.ipv4)) == 0 ||
+            memcmp(entry->address.ipv6, ifaddr.address.ipv6, sizeof(ifaddr.address.ipv6)) == 0) {
+            list_del(pos);
+            kfree(entry);
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
 int net_remove_device(dev_t dev) {
     if (!is_initialized)
         return -EINVAL;
@@ -201,7 +299,18 @@ int net_remove_device(dev_t dev) {
     if (!chardev)
         return -ENODEV;
     if (chardev->driver_data) {
-        list_del(&((struct net_device *)chardev->driver_data)->list);
+        /* Don't forget to deallocate ifaddrs */
+        struct list_head *pos, *n;
+        struct net_ifaddr *entry;
+        struct net_device *device = chardev->driver_data;
+
+        list_for_each_safe(pos, n, &device->ifaddrs) {
+            entry = list_entry(pos, struct net_ifaddr, list);
+            list_del(pos);
+            kfree(entry);
+        }
+
+        list_del(&device->list);
         kfree(chardev->driver_data);
     }
     return unregister_chardev(dev);

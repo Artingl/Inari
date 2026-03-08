@@ -35,10 +35,7 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
         memcpy(icmp, packet, ln);
         icmp->checksum = 0;
         icmp->type = 0;
-        icmp->checksum = net_checksum(icmp, ln);
-#ifdef CONFIG_LITTLE_ENDIAN
-        icmp->checksum = swap_endian16(icmp->checksum);
-#endif
+        icmp->checksum = bigend16(net_checksum(icmp, ln));
         return layer->ops->tx(layer, icmp, ln);
 
     default:
