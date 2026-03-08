@@ -1,13 +1,24 @@
+#include <kernel/inari.h>
 #include <kernel/proc/sched.h>
 #include <kernel/sync/spinlock.h>
+#include <kernel/timer.h>
 
 #include <arch/sys.h>
 
 void spin_lock(spinlock_t *lock) {
     if (!lock)
         return;
-    while (atomic_exchange_explicit(&lock->lock, 1, memory_order_acquire))
-        ;
+#ifdef CONFIG_DEBUG
+    size_t start_time = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
+#endif
+
+    while (atomic_exchange_explicit(&lock->lock, 1, memory_order_acquire)) {
+#ifdef CONFIG_DEBUG
+        if (start_time > 10000000) {
+            panic("spinlock timeout");
+        }
+#endif
+    }
 }
 
 int spin_try_lock(spinlock_t *lock) {

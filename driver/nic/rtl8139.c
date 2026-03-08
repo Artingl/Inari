@@ -6,8 +6,8 @@
 #include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>
 #include <kernel/module.h>
-#include <kernel/subsys/pci.h>
 #include <kernel/subsys/net.h>
+#include <kernel/subsys/pci.h>
 
 #include <misc/string.h>
 
@@ -25,15 +25,27 @@
 #define REG_CBA      0x3A // Size 2
 #define REG_ISR      0x3E // Size 2
 #define REG_IMR      0x3C // Size 2
+#define REG_TCR      0x40 // Size 4
 #define REG_CONFIG_1 0x52 // Size 1
 #define REG_RCR      0x44 // Size 4
+
+#define REG_TX0     0x20 // Size 4
+#define REG_TX1     0x24 // Size 4
+#define REG_TX2     0x28 // Size 4
+#define REG_TX3     0x2C // Size 4
+#define REG_TX0_CMD 0x10 // Size 4
+#define REG_TX1_CMD 0x14 // Size 4
+#define REG_TX2_CMD 0x18 // Size 4
+#define REG_TX3_CMD 0x1C // Size 4
 
 #define RX_BUFFER_SIZE 8192
 
 static dev_t net_dev = 0;
 static struct pci_device *dev = NULL;
 static uint16_t rx_offset;
-static uint8_t rx_buffer[RX_BUFFER_SIZE + 16 + 1500]; // 8KB + 16 bytes + 1500 bytes
+static _lo_data uint8_t rx_buffer[RX_BUFFER_SIZE + 16 + 1500]; // 8KB + 16 bytes + 1500 bytes
+static int tx_counter = 0;
+static _lo_data uint8_t tx_buffer[4][1792];
 
 struct rtl8139_packet_header {
     uint32_t rok : 1;   // Receive OK: When set, indicates that a good packet is received.
@@ -64,26 +76,90 @@ static int rtl8139_irq(uint32_t irq, void *driver_data) {
     if (status == 0x0)
         return IRQ_HANDLED;
 
-    /* Loop while have any new packets */
-    while (net_is_active(net_dev) && (cba_offset = x86_inw(dev->bar[0].base + REG_CBA)) != rx_offset) {
-        rx_offset %= RX_BUFFER_SIZE;
-        header = (struct rtl8139_packet_header*)&rx_buffer[rx_offset];
-        length = *(uint16_t*)&rx_buffer[rx_offset + sizeof(struct rtl8139_packet_header)];
+    /* Clear TOK on successful send */
+    if (status & (1 << 2)) {
+        // status &= ~(1 << 2);
+    }
 
-        if (header->rok) {
-            net_rx_packet(net_dev, &rx_buffer[rx_offset + 4], length);
+    /* Check if have any packets (ROK) */
+    if (status & (1 << 0)) {
+        /* Loop while have any new packets */
+        while (net_is_active(net_dev) && (cba_offset = x86_inw(dev->bar[0].base + REG_CBA)) != rx_offset) {
+            rx_offset %= RX_BUFFER_SIZE;
+            header = (struct rtl8139_packet_header *)&rx_buffer[rx_offset];
+            length = *(uint16_t *)&rx_buffer[rx_offset + sizeof(struct rtl8139_packet_header)];
+
+            if (header->rok) {
+                net_rx_packet(net_dev, &rx_buffer[rx_offset + 4], length);
+            }
+
+            rx_offset = (rx_offset + length + 4 + 3) & ~3;
+            x86_outw(dev->bar[0].base + REG_CAPR, rx_offset - 16);
         }
-
-        rx_offset = (rx_offset + length + 4 + 3) & ~3;
-        x86_outw(dev->bar[0].base + REG_CAPR, rx_offset - 16);
     }
 
     x86_outw(dev->bar[0].base + REG_ISR, status);
     return IRQ_HANDLED;
 }
 
-static struct net_ops ops = {
+static int flush_tx_buffer(void *packet, size_t sz) {
+    /* Try to find free buffer to use for transmission */
+    int found_counter = -1, timeout = 10;
 
+    do {
+        uint32_t reg = x86_inl(dev->bar[0].base + REG_TX0_CMD + tx_counter * 4);
+        /* Checking if OWN bit is set (idle) */
+        if (reg & (1 << 13)) {
+            found_counter = tx_counter;
+            tx_counter = (tx_counter + 1) % 4;
+            break;
+        }
+
+        tx_counter = (tx_counter + 1) % 4;
+    } while (timeout-- > 0);
+
+    if (found_counter == -1) {
+        /* Didn't find any free buffer, drop */
+        return -1;
+    }
+
+    /* Copy packet to tx buffer */
+    memcpy(&tx_buffer[found_counter], packet, sz);
+
+    /* The RTL8139 requires minimum 60 bytes of payload */
+    if (sz < 60) {
+        memset(tx_buffer[found_counter] + sz, 0, 60 - sz);
+        sz = 60;
+    }
+
+    uint8_t tx = REG_TX0 + found_counter * 4;
+    uint8_t tx_cmd = REG_TX0_CMD + found_counter * 4;
+
+    /* Send physical address of the buffer to NIC */
+    x86_outl(dev->bar[0].base + tx, (uint32_t)arch_virt_to_phys(arch_get_kernel_pagedir(), &tx_buffer[found_counter]));
+
+    /* Specify the size of the data */
+    x86_outl(dev->bar[0].base + tx_cmd, sz & 0x3fff);
+    return 0;
+}
+
+static int rtl8139_tx(struct net_device *bdev, void *packet, uint32_t length) {
+    if (!dev)
+        return -ENODEV;
+    int32_t signed_ln = (int32_t)length;
+
+    do {
+        if (flush_tx_buffer(packet + (length - signed_ln), MIN(signed_ln, 1792)) != 0)
+            /* Dropping, return amount of unsent data */
+            return MIN(signed_ln, 1792);
+        signed_ln -= 1792;
+    } while (signed_ln > 0);
+
+    return 0;
+}
+
+static struct net_ops ops = {
+    .tx = &rtl8139_tx,
 };
 
 static int rtl8139_probe() {
@@ -129,15 +205,19 @@ static int rtl8139_probe() {
     /* Enable RX/TX (set the RE and TE bits high) */
     x86_outb(dev->bar[0].base + REG_CMD, 0x0C);
 
+    /* * Set Transmit Configuration Register:
+     * 0x03000000 = Standard Interframe Gap (IFG)
+     * 0x00000700 = Maximum DMA burst size
+     */
+    x86_outl(dev->bar[0].base + REG_TCR, 0x03000700);
+
     uint8_t mac[6] = {
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 0),
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 1),
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 2),
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 3),
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 4),
-        x86_inb(dev->bar[0].base + REG_MAC0_5 + 5),
+        x86_inb(dev->bar[0].base + REG_MAC0_5 + 0), x86_inb(dev->bar[0].base + REG_MAC0_5 + 1),
+        x86_inb(dev->bar[0].base + REG_MAC0_5 + 2), x86_inb(dev->bar[0].base + REG_MAC0_5 + 3),
+        x86_inb(dev->bar[0].base + REG_MAC0_5 + 4), x86_inb(dev->bar[0].base + REG_MAC0_5 + 5),
     };
 
+    tx_counter = 0;
     irq_request(dev->irq, rtl8139_irq, NULL);
     return net_add_device(&net_dev, &ops, &mac[0], 1500, "rtl8139");
 }
@@ -146,6 +226,7 @@ static void rtl8139_cleanup() {
     irq_free(dev->irq, rtl8139_irq);
     net_remove_device(net_dev);
     net_dev = 0;
+    tx_counter = 0;
     dev = NULL;
 }
 

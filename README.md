@@ -40,6 +40,7 @@ Here's currently supported hardware:
  * Partition parsing for both MBR and GPT.
  * A custom libc and basic userspace utilities.
  * Simple video/hid subsystem for common devices.
+ * Simple network stack (Ethernet/IPv4/ARP/ICMP)
 
 ## Screenshot
 ![Screenshot](screenshot.png)

@@ -32,11 +32,11 @@ struct net_device {
 #define NET_ETHTYPE_IPV4 0x0800
 #define NET_ETHTYPE_ARP  0x0806
 
-#define NET_HANDLED 0
+#define NET_OK 0
 #define NET_DROPPED -1
 
 #define NET_IPN_ICMP 0x01
-#define NET_IPN_TCP  0x07
+#define NET_IPN_TCP  0x06
 #define NET_IPN_UDP  0x11
 
 __attribute__((unused)) static const char *ipnstr[] = {
@@ -47,6 +47,7 @@ __attribute__((unused)) static const char *ipnstr[] = {
 
 struct net_frame {
     uint8_t set;
+    dev_t dev;
     void *data;
     uint32_t length;
     spinlock_t frame_lock;
@@ -59,10 +60,67 @@ struct ethernet_frame {
     uint8_t data[];
 } __attribute__((packed));
 
+struct net_layer_ops {
+    /* Use this layer to transmit data.
+     * Note: data passed in `packet` variable MUST be allocated via req_buf. After packet transmission the buffer will
+     * be deallocated automatically.
+     */
+    int (*tx)(void *layer_info, void *packet, uint32_t ln);
+
+    /* Used to request buffer of asked size. This function will account for all additional required space in buffer
+     * (ethernet frame + ipv4/ipv6 packet, etc.) and will put it right before the provided pointer
+     */
+    int (*req_buf)(void *layer_info, void **result, uint32_t ln);
+};
+
+struct net_link_layer_info {
+    dev_t dev; // source device
+    struct ethernet_frame *layer;
+
+    uint8_t dest_mac[6];
+    uint8_t src_mac[6];
+    uint8_t device_mac[6];  // receiver NIC MAC
+    uint16_t ether_type;
+
+    /* Layer specific ops */
+    struct net_layer_ops *ops;
+};
+
+struct net_network_layer_info {
+    void *layer;                                      // ipv4/ipv6 packet
+    struct net_link_layer_info *link_layer;           // underlying link layer
+
+    /* Layer specific ops */
+    struct net_layer_ops *ops;
+};
+
+typedef int (*net_protocol_rx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+
+struct net_protocol {
+    net_protocol_rx rx;
+};
+
+net_protocol_rx net_get_protocol_rx(uint8_t ipn);
+
 int net_init(void);
+int net_define_protocol(uint8_t ipn, struct net_protocol protocol);
+void net_free_protocol(uint8_t ipn);
 int net_add_device(dev_t *dev, struct net_ops *ops, uint8_t *mac, uint16_t mtu, const char *name);
 int net_remove_device(dev_t dev);
 int net_is_active(dev_t dev);
+int net_tx_packet(dev_t dev, void *packet, uint32_t length);
 int net_rx_packet(dev_t dev, void *data, uint32_t length);
+
+__attribute__((unused)) static inline uint16_t net_checksum(void *data, uint32_t ln) {
+    uint32_t checksum = 0;
+    for (uint32_t i = 0; i < ln >> 1; i++) {
+#ifdef CONFIG_LITTLE_ENDIAN
+        checksum += swap_endian16(((uint16_t*)data)[i]);
+#else
+        checksum += ((uint16_t*)data)[i];
+#endif
+    }
+    return (~((checksum & 0xffff) + ((checksum >> 16) & 0xf))) & 0xffff;
+}
 
 #endif
