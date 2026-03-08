@@ -17,7 +17,7 @@
 #include <misc/string.h>
 #include <misc/types.h>
 
-#define RING_LN 64
+#define RING_LN 512
 
 static struct net_frame net_ring_buffer[RING_LN] = {0};
 
@@ -228,6 +228,7 @@ int net_tx_packet(dev_t dev, void *packet, uint32_t length) {
 int net_rx_packet(dev_t dev, void *data, uint32_t length) {
     static size_t ring_off = 0;
     struct net_frame *frame = NULL;
+    int timeout = RING_LN * 2;
 
     /* Find free frame to save the packet into */
     do {
@@ -248,7 +249,7 @@ int net_rx_packet(dev_t dev, void *data, uint32_t length) {
 
         /* Try next spot */
         ring_off = (ring_off + 1) % RING_LN;
-    } while (1);
+    } while (timeout-- > 0);
 
     if (!frame) {
 #ifdef CONFIG_DEBUG
