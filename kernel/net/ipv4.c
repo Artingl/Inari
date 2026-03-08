@@ -24,7 +24,7 @@ static int ipv4_tx_layer(void *layer_info, void *packet, uint32_t ln) {
     ipv4_packet->id = 0;
     ipv4_packet->ttl = 64;
 
-    ipv4_packet->src_address = 0x8501a8c0;
+    memcpy((uint8_t *)&ipv4_packet->src_address, info->ifaddr->address.ipv4, 4);
     ipv4_packet->dest_address = ipv4_layer_packet->src_address;
 
     /* Finally, calculate checksum */
@@ -50,6 +50,21 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         return NET_DROPPED;
     }
 
+    struct list_head *pos;
+    struct net_ifaddr *entry;
+    int found = 0;
+    list_for_each(pos, &layer->dev->ifaddrs) {
+        entry = list_entry(pos, struct net_ifaddr, list);
+        if (memcmp(entry->address.ipv4, (uint8_t *)&packet->dest_address, 4) == 0) {
+            found = 1;
+            break;
+        }
+    }
+
+    /* Didn't match the IPv4 address */
+    if (!found)
+        return NET_DROPPED;
+
 #ifdef CONFIG_LITTLE_ENDIAN
     /* Dirty work here to get ihl and version on little endian */
     uint16_t header_size = ((swap_endian16(*(uint16_t *)packet) >> 8) & 0xf) * 4;
@@ -61,7 +76,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         /* Different packet version */
         return NET_DROPPED;
 
-        /* TODO: checksum validation */
+    /* TODO: checksum validation */
 
 #ifdef CONFIG_LITTLE_ENDIAN
     /* Some more dirty work here to get flags on little endian */
@@ -73,7 +88,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         return NET_DROPPED;
 
     struct net_network_layer_info network_layer = {
-        .link_layer = layer, .layer = packet, .ops = &ipv4_network_layer_ops};
+        .link_layer = layer, .layer = packet, .ops = &ipv4_network_layer_ops, .ifaddr = entry};
 
     uint32_t protocol_ln = bigend16(packet->length) - header_size;
 

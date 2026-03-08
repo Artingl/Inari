@@ -7,8 +7,10 @@
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
 
-#define NET_IOCTL_INFO        0
-#define NET_IOCTL_IFADDR_NEXT 1
+#define NET_IOCTL_INFO          0
+#define NET_IOCTL_IFADDR_NEXT   1
+#define NET_IOCTL_ATTACH_IFADDR 2
+#define NET_IOCTL_DETACH_IFADDR 3
 
 struct net_ops {
     int (*tx)(struct net_device *bdev, void *packet, uint32_t length);
@@ -103,7 +105,7 @@ struct net_layer_ops {
 };
 
 struct net_link_layer_info {
-    dev_t dev; // source device
+    struct net_device *dev; // source device
     struct ethernet_frame *layer;
 
     uint8_t dest_mac[6];
@@ -118,6 +120,7 @@ struct net_link_layer_info {
 struct net_network_layer_info {
     void *layer;                            // ipv4/ipv6 packet
     struct net_link_layer_info *link_layer; // underlying link layer
+    struct net_ifaddr *ifaddr;
 
     /* Layer specific ops */
     struct net_layer_ops *ops;

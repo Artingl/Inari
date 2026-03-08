@@ -1,4 +1,4 @@
-#define CONFIG_DEBUG
+// #define CONFIG_DEBUG
 
 #define CONFIG_NET_ICMP
 #define CONFIG_NET_UDP

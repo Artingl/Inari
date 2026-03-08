@@ -1,6 +1,7 @@
 #include <kernel/inari.h>
 #include <kernel/net/arp.h>
 
+#include <misc/list.h>
 #include <misc/string.h>
 #include <misc/types.h>
 
@@ -19,6 +20,18 @@ int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
         /* Unable to allocate buffer for answer */
         return NET_DROPPED;
 
+    struct list_head *pos;
+    struct net_ifaddr *entry;
+    list_for_each(pos, &layer->dev->ifaddrs) {
+        entry = list_entry(pos, struct net_ifaddr, list);
+        if (memcmp(entry->address.ipv4, (uint8_t *)&resolv->destination_ipv4, 4) == 0)
+            goto match;
+    }
+
+    /* Didn't match the IPv4 address */
+    return NET_DROPPED;
+match:
+
     response->hardware_info = resolv->hardware_info;
     response->protocol_type = resolv->protocol_type;
     response->hardware_ln = resolv->hardware_ln;
@@ -31,7 +44,7 @@ int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
 
     /* Now set the source hardware/protocol addresses */
     memcpy(response->source_hardware_addr, layer->device_mac, 6);
-    response->source_ipv4 = 0x8501a8c0;
+    memcpy((uint8_t *)&response->source_ipv4, entry->address.ipv4, 4);
 
 #ifdef CONFIG_LITTLE_ENDIAN
     response->operation = swap_endian16(response->operation);

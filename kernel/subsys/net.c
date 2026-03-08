@@ -55,7 +55,7 @@ int net_link_layer_tx(void *layer_info, void *packet, uint32_t ln) {
     frame->ether_type = info->layer->ether_type;
 
     /* Finally, send packet */
-    int res = net_tx_packet(info->dev, frame, ln + sizeof(struct ethernet_frame));
+    int res = net_tx_packet(info->dev->dev, frame, ln + sizeof(struct ethernet_frame));
 
     /* Don't forget to deallocate buffer! */
     kfree(frame);
@@ -110,7 +110,7 @@ static void net_queue_thread(void *_) {
         memcpy(link.dest_mac, frame->dest_mac, 6);
         memcpy(link.device_mac, device->info.mac_addr, 6);
         link.layer = frame;
-        link.dev = net_frame->dev;
+        link.dev = device;
         link.ops = &net_link_layer_ops;
 
         switch (bigend16(frame->ether_type)) {
@@ -126,11 +126,12 @@ static void net_queue_thread(void *_) {
         }
 
     end:
+        if (res == NET_DROPPED) {
 #ifdef CONFIG_DEBUG
-        if (res == NET_DROPPED)
             kprintf("net: dropped rx 0x%x, ln 0x%x; ether type: 0x%x", net_frame->data, net_frame->length,
                     swap_endian16(frame->ether_type));
 #endif
+        }
 
         /* Before completing, write down 64 bytes of zeros onto data pointer. This ensures we obliterate the ethernet
          * frame and dont accidentally handle it again. TODO: that's actually bad and we dont even need that in the
@@ -163,6 +164,14 @@ static int net_ioctl(struct device *chardev, unsigned long req, void *arg) {
         if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(device->info)))
             memcpy(arg, &device->info, sizeof(device->info));
         return 0;
+    case NET_IOCTL_ATTACH_IFADDR:
+        if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(struct net_ifaddr)))
+            return net_attach_ifaddr(device->dev, *((struct net_ifaddr *)arg));
+        return -EINVAL;
+    case NET_IOCTL_DETACH_IFADDR:
+        if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(struct net_ifaddr)))
+            return net_detach_ifaddr(device->dev, *((struct net_ifaddr *)arg));
+        return -EINVAL;
     case NET_IOCTL_IFADDR_NEXT:
         if (VMM_IS_PTR_USERSPACE(arg) && VMM_IS_PTR_USERSPACE(arg + sizeof(struct net_ifaddr))) {
             ifaddr = arg;

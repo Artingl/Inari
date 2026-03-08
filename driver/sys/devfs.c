@@ -66,7 +66,7 @@ static void handle_dev_load(uint8_t is_blk, dev_t dev) {
     struct list_head *group;
     struct device *bdev = NULL;
     struct device *chardev = NULL;
-    char *name, *group_name = "invalid";
+    char *name, *group_name __attribute__((unused)) = "invalid";
     if (is_blk && (bdev = block_get(dev)))
         group_name = bdev->group->name;
     else if ((chardev = char_get(dev)))
@@ -93,7 +93,7 @@ static void handle_dev_unload(dev_t dev) {
     struct list_head *group;
     struct device *bdev = NULL;
     struct device *chardev = NULL;
-    char *name, *group_name = "invalid";
+    char *name, *group_name __attribute__((unused)) = "invalid";
     if (!(group = get_dev_group(dev, &name)))
         return; /* Ignore invalid driver groups */
 
@@ -419,7 +419,6 @@ static int devfs_event_handler(event_t event) {
 static void devfs_cleanup() {
     size_t i;
     struct list_head *group;
-    struct device *bdev;
     struct list_head *pos, *n;
     struct devfs_group_item *entry;
 
@@ -431,8 +430,8 @@ static void devfs_cleanup() {
             if (!entry)
                 continue;
 
-            bdev = block_get(entry->dev);
 #ifdef CONFIG_DEBUG
+            struct device *bdev = block_get(entry->dev);
             if (bdev)
                 kprintf("devfs: removed entry dev:%s%d in group %s", bdev->group->name, DEVID(entry->dev),
                         devfs_groups[i]);
