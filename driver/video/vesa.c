@@ -309,7 +309,7 @@ static int video_mode_info(struct video_device *device, struct video_mode_info *
     if (!result)
         return -EINVAL;
     if (mode_id == 0)
-        return -ENOSYS;
+        return -ESUBSYSDIS;
 
     uint32_t flags;
     spin_lock_irqsave(&vesa_lock, flags);
@@ -479,32 +479,12 @@ static void vesa_disable(struct video_device *device) {
     if (!vesa_initialized)
         return;
     struct x86_regs16 r = {0};
-    // struct vesa_mode_info *info = &lo_mode_info;
-    // uint16_t *modes;
-    // size_t i;
 
     /* Switch back to 80x25 mode */
-    r.ax = 0x0003; // VESA_SET_MODE;
-    // r.bx = modes[i];
+    r.ax = 0x0003;
     v86_bios(0x10, &r);
-    // modes = (uint16_t *)REAL_PTR(vesa_block.video_mode_ptr);
-    // for (i = 0; modes[i] != 0xFFFF; i++) {
-    //     r.ax = VESA_GET_MODE_INFO;
-    //     r.cx = modes[i];
-    //     r.es = SEG(info);
-    //     r.di = OFF(info);
-    //     v86_bios(0x10, &r);
 
-    //     if (r.ax != 0x4f)
-    //         continue;
-
-    //     if ((info->mode_attr & 0x15) == 0x05 && info->h_res == 80 && info->v_res == 25) {
-    //         r.ax = VESA_SET_MODE;
-    //         r.bx = modes[i];
-    //         v86_bios(0x10, &r);
-    //         break;
-    //     }
-    // }
+    mode_id = 0;
 }
 
 static void vesa_cleanup() {

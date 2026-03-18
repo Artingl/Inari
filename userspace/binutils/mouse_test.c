@@ -34,12 +34,28 @@ const uint8_t cursor_color_bitmap[16][16] = {
     { T, T, T, T, T, T, B, B, T, T, T, T, T, T, T, T }
 };
 
+handle_t video_hndl = 0;
+
+void sigquit_handler(uint32_t signal) {
+    /* Disable video and return to text mode */
+    if (video_hndl) {
+        ioctl(video_hndl, VIDEO_IOCTL_DISABLE, NULL);
+    }
+    exit(0);
+}
+
 int main(int argc, char *argv[])
 {
+    signal_handler(&sigquit_handler, SIGQUIT);
+
+    int exit_code = 0;
     struct video_mode_info info = {0};
     struct video_blit blit;
     struct mouse_event mouse;
-    handle_t video_hndl, mouse_hndl;
+    handle_t mouse_hndl;
+    uint8_t *buf0 = NULL;
+    uint8_t *buf1 = NULL;
+    uint8_t *fullscreen = NULL;
     char *video_device = "/devices/video/char_video0";
     size_t i, j;
     int res;
@@ -84,20 +100,18 @@ int main(int argc, char *argv[])
     printf("%s: current mode: %dx%d_%d\n", argv[0], info.width, info.height, info.bpp);
 
     /* Fill the whole screen with some color */
-    uint8_t *fullscreen = (uint8_t*)malloc(info.width * info.height * 3);
+    fullscreen = (uint8_t*)malloc(info.width * info.height * 3);
     if (!fullscreen)
     {
         printf("%s: unable to allocate buffer.\n", argv[0]);
-        close(video_hndl);
-        close(mouse_hndl);
-        free(fullscreen);
-        return -1;
+        exit_code = -1;
+        goto end;
     }
 
     memset(fullscreen, 0x22, info.width * info.height * 3);
     // for (i = 0; i < info.width * info.height * 3; i+=3)
     //     { fullscreen[i + 0] = 0x }
-    
+
     blit.buffer = fullscreen;
     blit.width = info.width;
     blit.height = info.height;
@@ -107,24 +121,19 @@ int main(int argc, char *argv[])
     if (res != 0)
     {
         printf("%s: ioctl error: %s.\n", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
-        close(video_hndl);
-        close(mouse_hndl);
-        free(fullscreen);
-        return -1;
+        exit_code = -1;
+        goto end;
     }
     free(fullscreen);
 
     /* Allocate memory for mouse blit */
-    uint8_t *buf0 = (uint8_t*)malloc(MOUSE_WIDTH * MOUSE_HEIGHT * 3);
-    uint8_t *buf1 = (uint8_t*)malloc(MOUSE_WIDTH * MOUSE_HEIGHT * 3);
+    buf0 = (uint8_t*)malloc(MOUSE_WIDTH * MOUSE_HEIGHT * 3);
+    buf1 = (uint8_t*)malloc(MOUSE_WIDTH * MOUSE_HEIGHT * 3);
     if (!buf1 || !buf0)
     {
         printf("%s: unable to allocate buffer.\n", argv[0]);
-        close(video_hndl);
-        close(mouse_hndl);
-        if (buf0) free(buf0);
-        if (buf1) free(buf1);
-        return -1;
+        exit_code = -1;
+        goto end;
     }
 
     blit.format = VIDEO_R8G8B8_FORMAT;
@@ -152,11 +161,8 @@ int main(int argc, char *argv[])
         if (read(mouse_hndl, (void*)&mouse, sizeof(struct mouse_event), NULL) != 0)
         {
             printf("%s: unable to read mouse: %s.", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
-            close(video_hndl);
-            close(mouse_hndl);
-            if (buf0) free(buf0);
-            if (buf1) free(buf1);
-            return -1;
+            exit_code = -1;
+            goto end;
         }
 
         if (mouse.buttons[HID_MOUSE_BTN3])
@@ -190,7 +196,7 @@ int main(int argc, char *argv[])
                 blit.height = 1;
                 ioctl(video_hndl, VIDEO_IOCTL_BLIT, &blit);
             }
-            
+
             /* Redraw mouse */
             blit.buffer = buf0;
             blit.width = MOUSE_WIDTH;
@@ -209,9 +215,13 @@ int main(int argc, char *argv[])
         rel_y = mouse.rel_y;
     } while (1);
 
+end:
+    /* Disable video and return to text mode */
+    ioctl(video_hndl, VIDEO_IOCTL_DISABLE, NULL);
+
     if (buf0) free(buf0);
     if (buf1) free(buf1);
     close(mouse_hndl);
     close(video_hndl);
-    return 0;
+    return exit_code;
 }

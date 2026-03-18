@@ -250,7 +250,7 @@ int main(int argc, char const *argv[])
             else if (kbd.key == 0x102 && command_offset > 0) // backspace
             {
                 command_offset--;
-                ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)1);
+                ioctl(stdout, CONSOLE_IOCTL_REWIND, (void*)1);
             }
             else if (kbd.key == 0x136) // arrow up
             {
