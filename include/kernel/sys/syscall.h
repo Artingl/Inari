@@ -39,7 +39,7 @@
 #define SYSCALL_LSPROC         34
 #define SYSCALL_FLUSH          35
 #define SYSCALL_UNAME          36
-#define SYSCALL_TIME           37
+#define SYSCALL_UPTIME         37
 #define SYSCALL_IPC_CREATE     38
 #define SYSCALL_IPC_FREE       39
 #define SYSCALL_IPC_FETCH_NEXT 40
@@ -49,6 +49,7 @@
 #define SYSCALL_IPC_SEND       44
 #define SYSCALL_IPC_WAIT       45
 #define SYSCALL_EXECPVF        46
+#define SYSCALL_LSTHRD         47
 
 int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *param3, void *param4);
 

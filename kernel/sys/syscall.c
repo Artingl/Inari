@@ -34,13 +34,16 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
     struct process *proc = (struct process *)th->proc_data;
     arch_switch_pagedir(proc->descriptor.vmem);
 
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+
     switch (id) {
     case SYSCALL_EXIT:
         res = exit(proc->pid, (int)param0);
         break;
 
     case SYSCALL_USLEEP:
-        sched_usleep(tid, (size_t)param0);
+        sched_usleep(tid, (time_t)param0);
         break;
 
     case SYSCALL_DEBUG:
@@ -284,7 +287,7 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
-        res = proc_ls((int)param0, (char *)param1, (pid_t *)param2, (double *)param3);
+        res = proc_ls((int)param0, (char *)param1, (pid_t *)param2, (time_t *)param3);
         break;
 
     case SYSCALL_FLUSH:
@@ -299,12 +302,12 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         res = uname((struct utsname *)param0);
         break;
 
-    case SYSCALL_TIME:
-        if (!VMM_IS_PTR_USERSPACE(param1)) {
+    case SYSCALL_UPTIME:
+        if (!VMM_IS_PTR_USERSPACE(param0)) {
             res = -EINVAL;
             break;
         }
-        *((time_t *)param1) = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
+        *((time_t *)param0) = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
         res = 0;
         break;
 
@@ -361,6 +364,15 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             break;
         }
         res = execpvf((pid_t *)param0, (const char *)param1, (int)param2, (int)param3, (char **)param4);
+        break;
+
+    case SYSCALL_LSTHRD:
+        if (!VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param2) || !VMM_IS_PTR_USERSPACE(param3) ||
+            !VMM_IS_PTR_USERSPACE(param4)) {
+            res = -EINVAL;
+            break;
+        }
+        res = sched_ls((int)param0, (char *)param1, (tid_t *)param2, (time_t *)param3, (uint8_t *)param4);
         break;
 
     default:

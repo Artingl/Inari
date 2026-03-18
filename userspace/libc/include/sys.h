@@ -7,7 +7,7 @@ typedef int64_t handle_t;
 #ifdef time_t
 #undef time_t
 #endif
-typedef int64_t time_t;
+typedef uint64_t time_t;
 
 typedef void (*thread_entrypoint_t)();
 typedef void (*proc_signal_t)(uint32_t);
@@ -71,7 +71,7 @@ int p_option_get(const char *name, union p_option_value *result);
 int p_option_set(const char *name, union p_option_value value);
 
 int exit(int code);
-int usleep(size_t t);
+int usleep(time_t t);
 int open(handle_t *hndl, const char *path, int flags);
 int close(handle_t hndl);
 int execp(pid_t *pid, const char *path);
@@ -103,10 +103,11 @@ void poweroff(void);
 int rmmod(const char *name);
 int insmod(const char *name);
 int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t *flags);
-int lsproc(int idx, char *name, pid_t *pid, double *usg);
+int lsproc(int idx, char *name, pid_t *pid, time_t *usg);
+int lsthrd(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state);
 int flush_hndl(handle_t hndl);
 int uname(struct utsname *buf);
-int time(time_t *t);
+int uptime(time_t *t);
 
 /* This will create a new thread under using `handler`, which can listen for upcoming events using `ipc_fetch_next`.
    The events will arrive in a queue style, one-by-one. */

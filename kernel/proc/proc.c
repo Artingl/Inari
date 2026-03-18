@@ -391,7 +391,7 @@ int spawn_process(pid_t *pid, int exec_flags, const char *path, task_descriptor_
             goto end;
         }
 
-new_options:
+    new_options:
         proc_add_option(proc->pid, "io", (union process_option_value){.value = "/devices/terminals/char_tty0"});
         proc_add_option(proc->pid, "path", (union process_option_value){.value = "/"});
     } else
@@ -450,11 +450,12 @@ end:
     return res;
 }
 
-int proc_ls(int idx, char *name, pid_t *pid, double *usg) {
+int proc_ls(int idx, char *name, pid_t *pid, time_t *usg) {
     struct list_head *pos;
     struct process *entry;
     struct thread *th;
-    size_t i = 0;
+    size_t i = 0, j = 0;
+    time_t th_usg = 0;
     uint32_t flags;
 
     spin_lock_irqsave(&lock, flags);
@@ -470,8 +471,13 @@ int proc_ls(int idx, char *name, pid_t *pid, double *usg) {
                 /* Sum up all thread's usage */
                 for (i = 0; i < CONFIG_PROC_MAX_THREADS; i++)
                     if (entry->threads[i] != 0) {
-                        if ((th = __sched_get_thread(entry->threads[i])) != NULL)
-                            *usg += (double)th->cpu_time / (double)th->reschedules_count;
+                        th_usg = 0;
+                        if ((th = __sched_get_thread(entry->threads[i])) != NULL) {
+                            for (j = 0; j < 64; j++)
+                                th_usg += th->cpu_time[j];
+                        }
+
+                        *usg += th_usg >> 6;
                     }
             }
 
@@ -526,7 +532,7 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint) {
         return -EINVAL;
     }
 
-    if ((res = sched_create_thread(&i_tid, entrypoint, proc->descriptor.vmem, (void *)&thread_cleanup, proc)) != 0)
+    if ((res = sched_create_thread("proc_thread", &i_tid, entrypoint, proc->descriptor.vmem, (void *)&thread_cleanup, proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);

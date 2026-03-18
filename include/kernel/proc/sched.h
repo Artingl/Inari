@@ -6,6 +6,7 @@
 
 #include <arch/paging.h>
 #include <kernel/proc/proc.h>
+#include <kernel/timer.h>
 
 #define SCHED_TASK_ACTIVE   0
 #define SCHED_TASK_SLEEPING 1
@@ -29,15 +30,19 @@ struct thread {
     void *sig_saved_stack_base;
     void *saved_stack;
     uint32_t flags;
-    size_t sleep_timeout;
+    uint64_t sleep_timeout;
     void *thread_stack_pointer;
     void *kernel_stack_pointer;
     thread_cleanup_t cleanup_handler;
     struct process *proc_data;
 
+    char name[32];
+
     /* Count of reschedules for this task */
     size_t reschedules_count;
-    size_t cpu_time;
+
+    size_t cpu_time_off;
+    uint64_t cpu_time[64];
 
     uint32_t syscall_result;
 
@@ -55,17 +60,18 @@ void sched_thread_preentry();
 
 int sched_init();
 int sched_is_running();
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler,
-                        struct process *proc_data);
+int sched_create_thread(const char *name, tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem,
+                        thread_cleanup_t cleanup_handler, struct process *proc_data);
 int sched_kill_thread(tid_t tid);
 void sched_yield();
 void sched_enter_core();
 void sched_stop();
 void sched_call();
 int sched_thread_set_state(tid_t tid, int state);
-int sched_usleep(tid_t tid, size_t us);
+int sched_usleep(tid_t tid, time_t us);
 int sched_get_thread(tid_t tid, struct thread **task);
 int sched_current_thread(tid_t *tid);
 int sched_thread_set_flags(tid_t tid, uint32_t flags);
+int sched_ls(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state);
 
 #endif

@@ -36,9 +36,9 @@ mkconfig:
 	cat config.h >> build/config.h
 
 clean:
-	-rm -rf build userspace/binutils/*.exe userspace/binutils/*.o && \
+	-rm -rf build userspace/apps/*.exe userspace/apps/*.o && \
 	make -C userspace/libc clean && \
-	make -C userspace/binutils clean && \
+	make -C userspace/apps clean && \
 	make -C userspace/shell/ism clean && \
 	make -C userspace/terminal clean && \
 	make -C arch/${TARGET} clean
@@ -50,7 +50,7 @@ format: $(kernel_source) $(driver_source) $(headers)
 build: mkconfig $(kernel_objects) $(driver_objects) $(arch_build_stamp)
 	make -C arch/${TARGET} build_ld && \
 	make -C userspace/libc build && \
-	make -C userspace/binutils build && \
+	make -C userspace/apps build && \
 	make -C userspace/shell/ism build && \
 	make -C userspace/terminal build && \
 	cp arch/${TARGET}/kernel.elf build/kernel.elf

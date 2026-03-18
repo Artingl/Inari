@@ -2,6 +2,7 @@
 #include <io.h>
 #include <lib.h>
 #include <list.h>
+#include <signals.h>
 #include <string.h>
 #include <sys.h>
 
@@ -348,8 +349,12 @@ static int copy_window_buffer(struct ism_window *window) {
 static void update_window(struct ism_window *window) {}
 
 static void render_window(struct ism_window *window) {
-    /* Draw window background and contents */
-    fill_rect(window->buffer, window->bg_color, 0, 0, window->width, window->height, 3);
+    if (window->window_id == ISM_WINDOW_ROOT) {
+        /* Draw window background and contents */
+        fill_rect(window->buffer, window->bg_color, 0, 0, window->width, window->height, 3);
+    } else {
+        /* Note: Apps owning the window must manager the rendering on their side */
+    }
 
     /* Mark region to rerender (With slight offset to cover window frame) */
     mark_region_range(window->x - 8, window->y - 8 - WINDOW_FRAME_HEIGHT, window->width + 16,
@@ -416,6 +421,12 @@ int ism_window_update(void) {
         move_front_window(window);
 
     if (window && window->flags & ISM_WINDOW_FLAG_FRAME) {
+        /* Send SIGQUIT to owner of a window */
+        if (window->owner != 0 && window->controls_state[0] && !mouse.buttons[MOUSE_BTN1]) {
+            signal(window->owner, SIGQUIT);
+            window->controls_state[0] = 0;
+        }
+
         /* Check if mouse hovers window controls */
         if (mouse.pos_y >= window->y + 1 && mouse.pos_y < window->y + 17) {
             /* Close button */
@@ -662,7 +673,12 @@ int window_handle_event(pid_t source, uint32_t message, void *data, size_t data_
     wind_t wind;
 
     struct ism_create_window *create_message = data;
+    struct ism_draw_window_payload *draw_message = data;
+    struct ism_window *window;
+    struct ism_buffer buf0; //, buf1;
 
+    // struct ism_buffer vbuf = {
+    //     .base = video_buffer, .size = video_map.size, .width = video_width, .height = video_height};
     switch (message) {
     case ISM_IPC_CREATE_WINDOW:
         if (data_sz != sizeof(struct ism_create_window))
@@ -673,6 +689,23 @@ int window_handle_event(pid_t source, uint32_t message, void *data, size_t data_
             goto err;
 
         return wind;
+    case ISM_IPC_DRAW_WINDOW:
+        if (draw_message->bpp != 32) {
+            /* TODO: Support other BPPs */
+            return -EINVAL;
+        }
+
+        window = get_window_pid(source);
+        if (!window)
+            return -EINVAL;
+
+        buf0 = (struct ism_buffer){.base = (uint8_t *)&draw_message->buffer,
+                                   .size = draw_message->width * draw_message->height * 4,
+                                   .width = draw_message->width,
+                                   .height = draw_message->height};
+        blit_buffer(window->buffer, buf0, draw_message->x, draw_message->y);
+        render_window(window);
+        return 0;
     case 0xFFFFFFFF: /* Connection closed */
         ism_window_destroy_owner(source);
         return 0;

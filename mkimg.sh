@@ -87,7 +87,7 @@ mkdir -p $MOUNT_DIR/shell
 mkdir -p $MOUNT_DIR/system
 mkdir -p $MOUNT_DIR/devices
 mkdir -p $MOUNT_DIR/system/fonts
-cp userspace/binutils/*.exe $MOUNT_DIR/programs 2>/dev/null || :
+cp userspace/apps/*.exe $MOUNT_DIR/programs 2>/dev/null || :
 cp userspace/*.exe $MOUNT_DIR/programs 2>/dev/null || :
 cp userspace/shell/*.exe $MOUNT_DIR/shell 2>/dev/null || :
 cp motd.txt $MOUNT_DIR/system

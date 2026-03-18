@@ -271,7 +271,7 @@ int console_init(void) {
     console_pool_init();
 
     register_chardev(TTY_DRIVER, &console_ops, NULL, &console_dev);
-    ret = sched_create_thread(&console_task_id, &console_thread, NULL, NULL, NULL);
+    ret = sched_create_thread("console", &console_task_id, &console_thread, NULL, NULL, NULL);
     return ret;
 }
 

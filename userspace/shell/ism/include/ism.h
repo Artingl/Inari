@@ -30,4 +30,15 @@ struct ism_create_window {
     int32_t width, height;
 } __attribute__((packed));
 
+struct ism_draw_window_payload {
+    wind_t wind;
+    int32_t bpp;
+    int32_t width;
+    int32_t height;
+    int32_t x;
+    int32_t y;
+
+    uint8_t buffer[];
+} __attribute__((packed));
+
 #endif

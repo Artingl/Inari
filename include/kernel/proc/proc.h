@@ -3,6 +3,8 @@
 
 #include <arch/paging.h>
 
+#include <kernel/timer.h>
+
 #include <misc/list.h>
 #include <misc/types.h>
 
@@ -76,7 +78,7 @@ int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv);
 int proc_get_process(pid_t pid, struct process **proc);
 int proc_install_signal(pid_t pid, proc_signal_t handler, uint32_t signo);
 int proc_signal(pid_t pid, uint32_t signo);
-int proc_ls(int idx, char *name, pid_t *pid, double *usg);
+int proc_ls(int idx, char *name, pid_t *pid, time_t *usg);
 int kill_process(pid_t pid, int exit_code);
 int spawn_process(pid_t *pid, int flags, const char *path, task_descriptor_t descriptor);
 int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint);

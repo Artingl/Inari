@@ -88,7 +88,10 @@ static void sched_save(struct thread *task) {
     }
 
     task->reschedules_count++;
-    task->cpu_time += timer_get_ticks() - sched_cores[core_id].last_schedule_ticks;
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    uint64_t time = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
+    task->cpu_time[task->cpu_time_off++ % 64] = time - sched_cores[core_id].last_schedule_ticks;
 
     arch_sched_save(task);
 }
@@ -104,7 +107,10 @@ static void sched_update_tasks(struct sched_core *core) {
     struct thread *entry;
 
     /* Update tasks */
-    size_t sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
+
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    uint64_t sleep_timeout = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
     list_for_each_safe(pos, n, &sched_task_list) {
         entry = list_entry(pos, struct thread, list);
         if (!entry)
@@ -188,6 +194,7 @@ int sched_init() {
     sched_idle_task->sig_saved_stack = NULL;
     sched_idle_task->flags = 0;
     sched_idle_task->reschedules_count = 1;
+    memcpy((void *)sched_idle_task->name, "idle\0", 5);
     list_add_tail(&sched_idle_task->list, &sched_task_list);
 
     ret = irq_request(IRQ_TIMER_INTERRUPT, &sched_irq, NULL);
@@ -212,7 +219,7 @@ void sched_yield() {
         interrupts_trigger(SWI_RESCHEDULE);
 }
 
-int sched_usleep(tid_t tid, size_t us) {
+int sched_usleep(tid_t tid, time_t us) {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, flags);
     struct thread *task = __sched_get_thread(tid);
@@ -221,7 +228,9 @@ int sched_usleep(tid_t tid, size_t us) {
         return -EINVAL;
     }
 
-    task->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + us;
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    task->sleep_timeout = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution) + us;
     task->state = SCHED_TASK_SLEEPING;
     spin_unlock_irqrestore(&sched_lock, flags);
     return 0;
@@ -243,14 +252,19 @@ void sched_call() {
     } while (load_result != 0 && tries++ < 5);
     if (!sched_cores[core_id].task)
         panic("sched: no tasks to schedule cpu%u", core_id);
-    sched_cores[core_id].last_schedule_ticks = timer_get_ticks();
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    uint64_t time = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
+    sched_cores[core_id].last_schedule_ticks = time;
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler,
+int sched_create_thread(const char *name, tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler,
                         struct process *proc_data) {
     uint32_t flags;
     struct thread *node = kmalloc(sizeof(*node));
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
     if (!node)
         return -ENOMEM;
     if (!vmem)
@@ -263,8 +277,11 @@ int sched_create_thread(tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *v
     node->sig_saved_stack = NULL;
     node->reschedules_count = 0xff; // start with larger value for correct cpu usage calculation for short-lived tasks
     node->flags = 0;
-    node->sleep_timeout = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000 + 0x1000;
+    node->sleep_timeout = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution) + 0x1000;
     node->state = SCHED_TASK_SLEEPING;
+    if (!name)
+        name = "null";
+    memcpy((void *)node->name, (void *)name, strlen(name) + 1 > 32 ? 32 : strlen(name) + 1);
     spin_lock_irqsave(&sched_lock, flags);
     list_add_tail(&node->list, &sched_task_list);
     spin_unlock_irqrestore(&sched_lock, flags);
@@ -367,4 +384,36 @@ void sched_enter_core() {
     sched_cores[core_id].task = (struct thread *)NULL;
     enable_int();
     cpu_relax();
+}
+
+int sched_ls(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state) {
+    struct list_head *pos;
+    struct thread *entry;
+    size_t i = 0, j = 0;
+    uint32_t flags;
+
+    spin_lock_irqsave(&sched_lock, flags);
+    list_for_each(pos, &sched_task_list) {
+        entry = list_entry(pos, struct thread, list);
+        if (i++ >= (size_t)idx) {
+            if (tid)
+                *tid = entry->tid;
+            if (state)
+                *state = entry->state;
+            if (name)
+                memcpy((void *)name, (void *)entry->name, strlen(entry->name) + 1);
+            if (usg) {
+                *usg = 0;
+                for (j = 0; j < 64; j++)
+                    *usg += entry->cpu_time[j];
+                *usg /= 64;
+            }
+
+            spin_unlock_irqrestore(&sched_lock, flags);
+            return 1;
+        }
+    }
+
+    spin_unlock_irqrestore(&sched_lock, flags);
+    return 0;
 }

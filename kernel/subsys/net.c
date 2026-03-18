@@ -209,7 +209,7 @@ int net_init(void) {
     memset(&protocols, 0, sizeof(protocols));
     register_chardev_group(NET_DRIVER, "net");
     is_initialized = 1;
-    return sched_create_thread(&queue_thread, &net_queue_thread, NULL, NULL, NULL);
+    return sched_create_thread("net_queue", &queue_thread, &net_queue_thread, NULL, NULL, NULL);
 }
 
 int net_define_protocol(uint8_t ipn, struct net_protocol protocol) {

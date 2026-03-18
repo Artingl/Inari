@@ -54,13 +54,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    ism_window_create(0, NULL, ISM_WINDOW_ROOT, "Test", ISM_WINDOW_FLAG_BORDER, 500, 40, 400, 300);
-
     /* Run main ism loop */
+    time_t start = 0, end = 0;
     do {
+        uptime(&start);
         ism_window_update();
         ism_window_render();
         ism_video_flush();
+        uptime(&end);
+
+        /* Around 60 FPS (1000 / 60) */
+        usleep(16000 - ((end - start) > 16000 ? 0 : (end - start)));
     } while(is_running());
 
     ism_ipc_cleanup();

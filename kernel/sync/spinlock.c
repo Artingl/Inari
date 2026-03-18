@@ -9,7 +9,9 @@ void spin_lock(spinlock_t *lock) {
     if (!lock)
         return;
 #ifdef CONFIG_DEBUG
-    size_t start_time = (timer_get_ticks() * 1000) / timer_get_resolution() * 1000;
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    uint64_t start_time = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
 #endif
 
     while (atomic_exchange_explicit(&lock->lock, 1, memory_order_acquire)) {

@@ -33,8 +33,9 @@
 #define PIT_CHANNEL2 0x42
 #define PIT_COMMAND  0x43
 
-#define PIT_DIVIDER      250
-#define PIT_FREQUENCY_HZ 1193182
+#define PIT_BASE_FREQUENCY 1193182
+#define PIT_TARGET_HZ      150
+#define PIT_DIVIDER        (PIT_BASE_FREQUENCY / PIT_TARGET_HZ)
 
 int x86_pit_init() {
     /* Setup the pit */
@@ -48,7 +49,7 @@ int x86_pit_init() {
     x86_outb(PIT_CHANNEL0, PIT_DIVIDER & 0xFF);
     x86_outb(PIT_CHANNEL0, (PIT_DIVIDER >> 8) & 0xff);
 
-    timer_init(PIT_FREQUENCY_HZ / PIT_DIVIDER);
+    timer_init(PIT_TARGET_HZ);
     return 0;
 }
 

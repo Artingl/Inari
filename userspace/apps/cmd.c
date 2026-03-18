@@ -163,12 +163,15 @@ void exec_cmd() {
             return;
         }
 
-        memset((void *)&current_dir[0], 0, sizeof(current_dir));
-        strcpy(current_dir, argv[0]);
-
         union p_option_value option;
-        memcpy(option.value, current_dir, strlen(current_dir) + 1);
-        p_option_set("path", option);
+        memcpy(option.value, argv[0], strlen(argv[0]) + 1);
+        if (p_option_set("path", option) != 0) {
+            printf("cd: Unable to save change directory.");
+        }
+        else {
+            memset((void *)&current_dir[0], 0, sizeof(current_dir));
+            strcpy(current_dir, argv[0]);
+        }
         return;
     } else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, CONSOLE_IOCTL_CLR, NULL);

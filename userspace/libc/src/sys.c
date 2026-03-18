@@ -55,7 +55,10 @@ int syscall(uint32_t id, uint32_t param0, uint32_t param1, uint32_t param2, uint
 
 int exit(int code) { return syscall(1, (uint32_t)(code), 0, 0, 0, 0); }
 
-int usleep(size_t t) { return syscall(2, (uint32_t)(t), 0, 0, 0, 0); }
+int usleep(time_t t) {
+    /* TODO: precision lost. */
+    return syscall(2, (uint32_t)(t), 0, 0, 0, 0);
+}
 
 int open(handle_t *hndl, const char *path, int flags) {
     return (int)syscall(4, (uint32_t)hndl, (uint32_t)path, (uint32_t)flags, 0, 0);
@@ -139,7 +142,7 @@ int lsmod(int idx, char *name, uintptr_t *ptr, uint32_t *flags) {
     return (int)syscall(33, (uint32_t)idx, (uint32_t)name, (uint32_t)ptr, (uint32_t)flags, 0);
 }
 
-int lsproc(int idx, char *name, pid_t *pid, double *usg) {
+int lsproc(int idx, char *name, pid_t *pid, time_t *usg) {
     return (int)syscall(34, (uint32_t)idx, (uint32_t)name, (uint32_t)pid, (uint32_t)usg, 0);
 }
 
@@ -147,7 +150,7 @@ int flush_hndl(handle_t hndl) { return (int)syscall(35, (uint32_t)hndl, 0, 0, 0,
 
 int uname(struct utsname *buf) { return (int)syscall(36, (uint32_t)buf, 0, 0, 0, 0); }
 
-int time(time_t *t) { return (int)syscall(37, (uint32_t)t, 0, 0, 0, 0); }
+int uptime(time_t *t) { return (int)syscall(37, (uint32_t)t, 0, 0, 0, 0); }
 
 int ipc_create(const char *name, thread_entrypoint_t handler) {
     return syscall(38, (uint32_t)name, (uint32_t)handler, 0, 0, 0);
@@ -173,4 +176,8 @@ int ipc_wait(handle_t ipc, uint8_t do_sleep) { return syscall(45, (uint32_t)ipc,
 
 int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv) {
     return syscall(46, (uint32_t)(pid), (uint32_t)(path), (uint32_t)(flags), (uint32_t)(argc), (uint32_t)(argv));
+}
+
+int lsthrd(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state) {
+    return (int)syscall(47, (uint32_t)idx, (uint32_t)name, (uint32_t)tid, (uint32_t)usg, (uint32_t)state);
 }

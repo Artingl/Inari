@@ -148,7 +148,7 @@ static void init_stub_thread() {
 
 int init_task() {
     tid_t tid;
-    return sched_create_thread(&tid, &init_stub_thread, NULL, NULL, NULL);
+    return sched_create_thread("init_stub", &tid, &init_stub_thread, NULL, NULL, NULL);
 }
 
 bootinfo_t get_boot_info() { return bootinfo; }

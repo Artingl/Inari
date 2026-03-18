@@ -10,7 +10,7 @@ Note: this kernel is NOT unix-based, not posix compliant. None of that, even tho
 ## Building
 To build the kernel simply run `make build`. This will generate file in `build/kernel.elf`, which can be booted with any multiboot compliant bootloader. The `make build` will also build the userspace programs.
 
-To build rootfs you can use `./mkimg.sh`, this will bundle all binutils, kernel file and install grub.
+To build rootfs you can use `./mkimg.sh`, this will bundle all apps, kernel file and install grub.
 
 ## Booting
 You you can run the kernel via `qemu-system-i386 -serial stdio -cdrom build/boot.iso` if constructing rootfs with `./mkimg.sh`.
@@ -42,5 +42,6 @@ Here's currently supported hardware:
  * Simple video/hid subsystem for common devices.
  * Simple network stack (Ethernet/IPv4/ARP/ICMP)
 
-## Screenshot
+## Screenshots
 ![Screenshot](screenshot.png)
+![GUI](screenshot2.png)
