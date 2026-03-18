@@ -126,14 +126,14 @@ int main(void) {
         }
 
         y_off = 100 + idx * 22;
-        render_text(draw_window, "  TID   NAME   USG   STATE", 50, y_off);
+        render_text(draw_window, "  TID   USG   STATE   NAME", 50, y_off);
         totalusg = 1;
         idx = 0;
         while (lsthrd(idx++, &cmd[0], &tid, &usg, &state) > 0)
             totalusg += usg;
         idx = 0;
         while (lsthrd(idx++, &cmd[0], &tid, &usg, &state) > 0) {
-            sprintf(strbuff, "  %llu  %s   %2f%%   0x%x", tid, &cmd[0], ((double)usg / (double)totalusg) * 100.0f, state);
+            sprintf(strbuff, "  %llu   %2f%%   0x%x   %s", tid, ((double)usg / (double)totalusg) * 100.0f, state, &cmd[0]);
             render_text(draw_window, strbuff, 50, y_off + idx * 22);
         }
 

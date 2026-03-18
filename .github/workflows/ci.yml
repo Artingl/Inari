@@ -6,49 +6,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mingw-w64-i686 g++-mingw-w64-i686 binutils-mingw-w64-i686 nasm
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Cache i686-elf-tools
-      id: cache-tools
-      uses: actions/cache@v4
-      with:
-        path: ~/opt/i686-elf-tools
-        key: ubuntu-i686-elf-tools-15.2.0
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip gcc-mingw-w64-i686 g++-mingw-w64-i686 binutils-mingw-w64-i686 nasm
 
-    - name: Download and unzip i686-elf-tools
-      if: steps.cache-tools.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p ~/opt/i686-elf-tools
-        curl -sLf https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/i686-elf-tools-linux.zip -o tools.zip
-        unzip -q tools.zip -d ~/opt/i686-elf-tools
+      - name: Cache i686-elf-tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/opt/i686-elf-tools
+          key: ubuntu-i686-elf-tools-15.2.0
 
-    - name: Add tools to PATH
-      run: |
-        echo "$HOME/opt/i686-elf-tools/bin" >> $GITHUB_PATH
-    
-    - name: Check
-      run: |
-        i686-elf-gcc --version
-        i686-w64-mingw32-gcc --version
-        nasm --version
+      - name: Download and unzip i686-elf-tools
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/opt/i686-elf-tools
+          curl -sLf https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/i686-elf-tools-linux.zip -o tools.zip
+          unzip -q tools.zip -d ~/opt/i686-elf-tools
 
-    - name: Build
-      run: |
-        make build
+      - name: Add tools to PATH
+        run: |
+          echo "$HOME/opt/i686-elf-tools/bin" >> $GITHUB_PATH
 
-    - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: built-binaries
-        path: |
-          build/*.iso
-          build/*.img
-          build/kernel.elf
-        if-no-files-found: error
-        retention-days: 5
+      - name: Check
+        run: |
+          i686-elf-gcc --version
+          i686-w64-mingw32-gcc --version
+          nasm --version
+
+      - name: Build
+        run: |
+          python3 -m pip install pillow --break-system-packages
+          python3 logo.py
+          make build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-binaries
+          path: |
+            build/*.iso
+            build/*.img
+            build/kernel.elf
+          if-no-files-found: error
+          retention-days: 5
