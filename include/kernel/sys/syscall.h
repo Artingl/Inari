@@ -48,6 +48,7 @@
 #define SYSCALL_IPC_CLOSE      43
 #define SYSCALL_IPC_SEND       44
 #define SYSCALL_IPC_WAIT       45
+#define SYSCALL_EXECPVF        46
 
 int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *param3, void *param4);
 

@@ -18,10 +18,13 @@ handle_t stdin = -1;
 
 int libc_io_init() {
     int res = 0;
-    /* For now, default to TTY0 (kernel console) */
-    if ((res = open(&stdout, "/devices/terminals/char_tty0", WRITE)) != 0)
+    char *io = "/devices/terminals/char_tty0";
+    union p_option_value result;
+    if (p_option_get("io", &result) == 0)
+        io = result.value;
+    if ((res = open(&stdout, io, WRITE)) != 0)
         return res;
-    if ((res = open(&stdin, "/devices/terminals/char_tty0", READ)) != 0)
+    if ((res = open(&stdin, io, READ)) != 0)
         return res;
     return 0;
 }

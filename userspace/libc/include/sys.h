@@ -32,6 +32,23 @@ typedef unsigned int dev_t;
 #define STAT_BLOCK (1 << 2)
 #define STAT_CHAR  (1 << 3)
 
+
+#define EXEC_FLAG_CP_OPTIONS (1 << 0) // Copies options from the caller process
+
+union p_option_value {
+    char value[256];
+    uint32_t u32;
+    uint64_t u64;
+    size_t sz;
+} __attribute__((packed));
+
+struct p_option {
+    char name[32];
+    union p_option_value value;
+    struct p_option *next;
+    struct p_option *prev;
+} __attribute__((packed));
+
 struct fs_node {
     char name[256];
     uint32_t st_mode; // File type + permissions
@@ -50,11 +67,16 @@ struct utsname {
     char machine[16];  /* Hardware type identifier */
 } __attribute__((packed));
 
+int p_option_get(const char *name, union p_option_value *result);
+int p_option_set(const char *name, union p_option_value value);
+
 int exit(int code);
 int usleep(size_t t);
 int open(handle_t *hndl, const char *path, int flags);
 int close(handle_t hndl);
 int execp(pid_t *pid, const char *path);
+int execpv(pid_t *pid, const char *path, int argc, char **argv);
+int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv);
 int read(handle_t hndl, void *buf, size_t len, size_t *rlen);
 int seek(handle_t hndl, size_t offset);
 int tell(handle_t hndl, size_t *offset);
@@ -68,7 +90,6 @@ int unmount(const char *path);
 int readdir(const char *path, struct fs_node *node);
 int write(handle_t hndl, const void *buf, size_t sz);
 int waitpid(pid_t pid);
-int execpv(pid_t *pid, const char *path, int argc, char **argv);
 void *memalloc(size_t npages, uint32_t flags); // todo: this syscall currently ignores flags value
 void memfree(void *vbase, size_t npages);
 void *memmap(void *vbase, void *pbase, size_t len, uint32_t flags);

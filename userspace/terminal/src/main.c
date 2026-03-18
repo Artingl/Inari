@@ -29,6 +29,8 @@ int main(void) {
     }
 
     do {
+
+        // ipc_send(ism_ipc, ISM_IPC_DRAW, &window, sizeof(window));
     } while (1);
     // printf("terminal: HELLO!\n");
     // usleep(5000000);

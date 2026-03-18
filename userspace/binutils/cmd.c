@@ -1,9 +1,9 @@
-#include <types.h>
+#include <errno.h>
 #include <io.h>
+#include <lib.h>
 #include <string.h>
 #include <sys.h>
-#include <errno.h>
-#include <lib.h>
+#include <types.h>
 
 #include <kernel/console/console.h>
 #include <kernel/subsys/hid.h>
@@ -16,41 +16,31 @@ int command_offset = 0, last_exitcode = 0;
 handle_t kb_hndl;
 
 char shift_keys[] = {
-    [ '1' ] = '!',
-    [ '2' ] = '@',
-    [ '3' ] = '#',
-    [ '4' ] = '$',
-    [ '5' ] = '%',
-    [ '6' ] = '^',
-    [ '7' ] = '&',
-    [ '8' ] = '*',
-    [ '9' ] = '(',
-    [ '0' ] = ')',
-    [ '-' ] = '_',
-    [ '=' ] = '+',
-    [ ';' ] = ':',
-    [ '\\' ] = '|',
-    [ ',' ] = '<',
-    [ '.' ] = '>',
-    [ '/' ] = '?',
+    ['1'] = '!', ['2'] = '@',  ['3'] = '#', ['4'] = '$', ['5'] = '%', ['6'] = '^',
+    ['7'] = '&', ['8'] = '*',  ['9'] = '(', ['0'] = ')', ['-'] = '_', ['='] = '+',
+    [';'] = ':', ['\\'] = '|', [','] = '<', ['.'] = '>', ['/'] = '?',
 };
 
-char** split_into_buffer(void *buffer, const char *input, int *argc, char **first_arg_out) {
-    if (!buffer || !input || !argc) return NULL;
+char **split_into_buffer(void *buffer, const char *input, int *argc, char **first_arg_out) {
+    if (!buffer || !input || !argc)
+        return NULL;
 
     const char *p = input;
-    while (*p && (*p == ' ' || *p == '\t')) p++;
+    while (*p && (*p == ' ' || *p == '\t'))
+        p++;
 
     if (*p == '\0') {
         *argc = 0;
-        if (first_arg_out) *first_arg_out = NULL;
+        if (first_arg_out)
+            *first_arg_out = NULL;
         char **empty_argv = (char **)buffer;
         empty_argv[0] = NULL;
         return empty_argv;
     }
 
     const char *first_word_start = p;
-    while (*p && (*p != ' ' && *p != '\t')) p++;
+    while (*p && (*p != ' ' && *p != '\t'))
+        p++;
     size_t first_word_len = p - first_word_start;
     const char *start_from = p;
 
@@ -97,31 +87,30 @@ char** split_into_buffer(void *buffer, const char *input, int *argc, char **firs
         p++;
     }
 
-    if (in_word) *data_ptr = '\0';
+    if (in_word)
+        *data_ptr = '\0';
 
     new_argv[count] = NULL;
     *argc = count;
     return new_argv;
 }
 
-int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, int is_background, const char *bin_path, int argc, char **argv)
-{
+int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, int is_background, const char *bin_path,
+                      int argc, char **argv) {
     pid_t pid;
     int res, offset = 0;
 
     char combined_path[128];
-    memset((void*)&combined_path[0], 0, sizeof(combined_path));
-    if (prefix)
-    {
+    memset((void *)&combined_path[0], 0, sizeof(combined_path));
+    if (prefix) {
         strcpy(combined_path, prefix);
         combined_path[strlen(prefix)] = '/';
         offset = strlen(prefix) + 1;
         strcpy(combined_path + offset, bin_path);
-    }
-    else strcpy(combined_path, bin_path);
+    } else
+        strcpy(combined_path, bin_path);
     offset += strlen(bin_path);
-    if (suffix)
-    {
+    if (suffix) {
         strcpy(combined_path + offset, suffix);
     }
 
@@ -130,45 +119,43 @@ int try_to_execute_at(const char *prefix, const char *suffix, int *exit_code, in
 
     if (!is_background)
         *exit_code = waitpid(pid);
-    else *exit_code = 0;
+    else
+        *exit_code = 0;
     return 0;
 }
 
-void exec_cmd()
-{
+void exec_cmd() {
     int res;
     char buff[256] = {0};
     char *exec_path = NULL;
-    int is_background = command[command_offset-1] == '&';
-    if (is_background) command[command_offset-1] = '\0';
+    int is_background = command[command_offset - 1] == '&';
+    if (is_background)
+        command[command_offset - 1] = '\0';
     int argc = 0;
-    char **argv = split_into_buffer((void*)&buff[0], command, &argc, &exec_path);
-    if (!exec_path) return;
+    char **argv = split_into_buffer((void *)&buff[0], command, &argc, &exec_path);
+    if (!exec_path)
+        return;
 
-    if (history_offset >= 8)
-    {
-        memcpy((void*)&history[0], (void*)&history[0] + 128, sizeof(history) - 128);
+    if (history_offset >= 8) {
+        memcpy((void *)&history[0], (void *)&history[0] + 128, sizeof(history) - 128);
         history_offset = 7;
     }
 
     history_scroll = history_offset;
     history[history_offset][0] = 0;
-    memcpy((void*)&history[history_offset++], (void*)&command[0], 128);
+    memcpy((void *)&history[history_offset++], (void *)&command[0], 128);
 
     if (strcmp(exec_path, "exit") == 0) {
         exit(0);
         return;
-    }
-    else if (strcmp(exec_path, "cd") == 0) {
-        if (argc < 1)
-        {
+    } else if (strcmp(exec_path, "cd") == 0) {
+        if (argc < 1) {
             printf("cd: requires at least one param.\n");
             return;
         }
         struct fs_node node = {0};
         int cmd_res = readdir(argv[0], &node);
-        if (cmd_res == -ENOENT)
-        {
+        if (cmd_res == -ENOENT) {
             if (errstr[-cmd_res] == NULL)
                 printf("cd: Invalid error.\n");
             else
@@ -176,19 +163,39 @@ void exec_cmd()
             return;
         }
 
-        memset((void*)&current_dir[0], 0, sizeof(current_dir));
+        memset((void *)&current_dir[0], 0, sizeof(current_dir));
         strcpy(current_dir, argv[0]);
+
+        union p_option_value option;
+        memcpy(option.value, current_dir, strlen(current_dir) + 1);
+        p_option_set("path", option);
         return;
-    }
-    else if (strcmp(exec_path, "clear") == 0) {
+    } else if (strcmp(exec_path, "clear") == 0) {
         ioctl(stdout, CONSOLE_IOCTL_CLR, NULL);
+        return;
+    } else if (strcmp(exec_path, "p") == 0) {
+        if (argc < 1) {
+            printf("p: provide option name.\n");
+            return;
+        }
+
+        union p_option_value result;
+        if (p_option_get(argv[0], &result) == 0)
+            printf("str: %s\nu32: %u\nu64: %llu\nsz: 0x%x\n", result.value, result.u32, result.u64, result.sz);
+        else
+            printf("p: option %s doesn't exist.\n", argv[0]);
+
         return;
     }
 
-    if ((res = try_to_execute_at("/programs", NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at("/programs", ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
-    if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0) return;
+    if ((res = try_to_execute_at("/programs", NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0)
+        return;
+    if ((res = try_to_execute_at(current_dir, NULL, &last_exitcode, is_background, exec_path, argc, argv)) == 0)
+        return;
+    if ((res = try_to_execute_at("/programs", ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0)
+        return;
+    if ((res = try_to_execute_at(current_dir, ".exe", &last_exitcode, is_background, exec_path, argc, argv)) == 0)
+        return;
 
     if (errstr[-res] == NULL)
         printf("%s: Invalid error.\n", exec_path);
@@ -196,26 +203,24 @@ void exec_cmd()
         printf("%s: %s\n", exec_path, errstr[-res]);
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     pid_t pid;
     int res;
     int is_shift_pressed = 0;
-    char *cat_argv[] = { "/system/motd.txt", NULL };
+    char *cat_argv[] = {"/system/motd.txt", NULL};
     struct kbd_event kbd;
 
     if (execpv(&pid, "/programs/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
 
-    if (open(&kb_hndl, "/devices/input/char_kbd0", READ) != 0)
-    {
+    if (open(&kb_hndl, "/devices/input/char_kbd0", READ) != 0) {
         printf("error: unable to open keyboard.\n");
         exit(1);
     }
 
     handle_t video_handle;
     open(&video_handle, "/devices/video/char_video0", WRITE);
-    ioctl(video_handle, 5, NULL);   // VIDEO_IOCTL_DISABLE
+    ioctl(video_handle, 5, NULL); // VIDEO_IOCTL_DISABLE
     close(video_handle);
 
     printf("0@%s # ", current_dir);
@@ -223,13 +228,11 @@ int main(int argc, char const *argv[])
     history_offset = 0;
     history_scroll = 0;
     last_exitcode = 0;
-    memset((void*)&command[0], 0, sizeof(command));
+    memset((void *)&command[0], 0, sizeof(command));
     flush(stdout);
 
-    do
-    {
-        if ((res = read(kb_hndl, (void*)&kbd, sizeof(kbd), NULL)) != 0)
-        {
+    do {
+        if ((res = read(kb_hndl, (void *)&kbd, sizeof(kbd), NULL)) != 0) {
             printf("%s: unable to read keyboard: %s.", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
             return -1;
         }
@@ -237,42 +240,35 @@ int main(int argc, char const *argv[])
         if (kbd.key == 0x106) // KEY_LSHIFT
             is_shift_pressed = !kbd.released;
 
-        if (kbd.released)
-        {
+        if (kbd.released) {
             if (kbd.key == 0x101) // enter
             {
                 printf("\n");
                 exec_cmd();
                 command_offset = 0;
-                memset((void*)&command[0], 0, sizeof(command));
+                memset((void *)&command[0], 0, sizeof(command));
                 printf("%d@%s # ", last_exitcode, current_dir);
-            }
-            else if (kbd.key == 0x102 && command_offset > 0) // backspace
+            } else if (kbd.key == 0x102 && command_offset > 0) // backspace
             {
                 command_offset--;
-                ioctl(stdout, CONSOLE_IOCTL_REWIND, (void*)1);
-            }
-            else if (kbd.key == 0x136) // arrow up
+                ioctl(stdout, CONSOLE_IOCTL_REWIND, (void *)1);
+            } else if (kbd.key == 0x136) // arrow up
             {
-                if (history_scroll >= 0)
-                {
-                    memcpy((void*)&command[0], (void*)&history[history_scroll--], 128);
-                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)command_offset);
+                if (history_scroll >= 0) {
+                    memcpy((void *)&command[0], (void *)&history[history_scroll--], 128);
+                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
                     printf(command);
                     command_offset = strlen(command);
                 }
-            }
-            else if (kbd.key == 0x13b) // arrow down
+            } else if (kbd.key == 0x13b) // arrow down
             {
-                if (history_scroll < 8 && history_scroll < history_offset)
-                {
-                    memcpy((void*)&command[0], (void*)&history[history_scroll++], 128);
-                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void*)command_offset);
+                if (history_scroll < 8 && history_scroll < history_offset) {
+                    memcpy((void *)&command[0], (void *)&history[history_scroll++], 128);
+                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
                     printf(command);
                     command_offset = strlen(command);
                 }
-            }
-            else if (kbd.key >= 0x20 && kbd.key <= 0x7E) { // is ascii
+            } else if (kbd.key >= 0x20 && kbd.key <= 0x7E) { // is ascii
                 char key = kbd.key;
                 if (is_shift_pressed && shift_keys[(int)key] != 0)
                     key = shift_keys[(int)key];
@@ -280,11 +276,11 @@ int main(int argc, char const *argv[])
                 command[command_offset++] = key;
                 command[command_offset] = '\0';
 
-                printf("%c", command[command_offset-1]);
+                printf("%c", command[command_offset - 1]);
             }
         }
         flush(stdout);
-    } while(1);
+    } while (1);
 
     return 0;
 }

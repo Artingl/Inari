@@ -3,28 +3,30 @@
 #ifndef _INARI_ERRNO_H
 #define _INARI_ERRNO_H
 
-#define ENODEV     1  /* No such device */
-#define EPERM      2  /* Operation not permitted */
-#define EBUSY      3  /* Device or resource busy */
-#define EINVAL     4  /* Invalid argument */
-#define ENOMEM     5  /* Out of memory */
-#define EINVFS     6  /* Invalid file-system */
-#define EIO        7  /* I/O error */
-#define ETIMEDOUT  8  /* Connection timed out */
-#define ENOENT     9  /* No such file or directory */
-#define EBADHNDL   10 /* Bad handle */
-#define ENOSYS     11 /* Function not implemented */
-#define ESRCH      12 /* No such process */
-#define EACCES     13 /* Permission denied */
-#define EFAULT     14 /* Bad address */
-#define ENOEXEC    15 /* Exec format error */
-#define EINTR      16 /* Interrupted */
-#define EKILLED    17 /* Killed */
-#define ESUBSYSDIS 18 /* Subsystem disabled */
+// -1 is dedicated
 
-#define IPCBSY   19 /* IPC is busy */
-#define IPCNONE  20 /* IPC endpoint not found */
-#define IPCACCES 21 /* IPC access denied */
+#define ENODEV     2  /* No such device */
+#define EPERM      3  /* Operation not permitted */
+#define EBUSY      4  /* Device or resource busy */
+#define EINVAL     5  /* Invalid argument */
+#define ENOMEM     6  /* Out of memory */
+#define EINVFS     7  /* Invalid file-system */
+#define EIO        8  /* I/O error */
+#define ETIMEDOUT  9  /* Connection timed out */
+#define ENOENT     10  /* No such file or directory */
+#define EBADHNDL   11 /* Bad handle */
+#define ENOSYS     12 /* Function not implemented */
+#define ESRCH      13 /* No such process */
+#define EACCES     14 /* Permission denied */
+#define EFAULT     15 /* Bad address */
+#define ENOEXEC    16 /* Exec format error */
+#define EINTR      17 /* Interrupted */
+#define EKILLED    18 /* Killed */
+#define ESUBSYSDIS 19 /* Subsystem disabled */
+
+#define IPCBSY   20 /* IPC is busy */
+#define IPCNONE  21 /* IPC endpoint not found */
+#define IPCACCES 22 /* IPC access denied */
 
 __attribute__((unused)) static const char *errstr[] = {
     [0] = "OK",

@@ -1,4 +1,31 @@
+#include <string.h>
 #include <sys.h>
+
+#include <io.h>
+
+int p_option_get(const char *name, union p_option_value *result) {
+    struct p_option *item;
+
+    for (item = (struct p_option *)*((uint32_t *)0x1902000); item; item = item->next)
+        if (strcmp(item->name, name) == 0) {
+            memcpy(result, &item->value, sizeof(item->value));
+            return 0;
+        }
+
+    return -1;
+}
+
+int p_option_set(const char *name, union p_option_value value) {
+    struct p_option *item;
+
+    for (item = (struct p_option *)*((uint32_t *)0x1902000); item; item = item->next)
+        if (strcmp(item->name, name) == 0) {
+            memcpy(&item->value, &value, sizeof(value));
+            return 0;
+        }
+
+    return -1;
+}
 
 int syscall(uint32_t id, uint32_t param0, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4) {
     int res = 0;
@@ -143,3 +170,7 @@ int ipc_send(handle_t ipc, uint32_t message, void *data, size_t data_sz) {
 }
 
 int ipc_wait(handle_t ipc, uint8_t do_sleep) { return syscall(45, (uint32_t)ipc, (uint32_t)do_sleep, 0, 0, 0); }
+
+int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv) {
+    return syscall(46, (uint32_t)(pid), (uint32_t)(path), (uint32_t)(flags), (uint32_t)(argc), (uint32_t)(argv));
+}

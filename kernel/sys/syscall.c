@@ -355,6 +355,14 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         res = ipc_wait(proc, (ipc_handle_t)param0, (uint8_t)param1);
         break;
 
+    case SYSCALL_EXECPVF:
+        if (!VMM_IS_PTR_USERSPACE(param0) || !VMM_IS_PTR_USERSPACE(param1) || !VMM_IS_PTR_USERSPACE(param3)) {
+            res = -EINVAL;
+            break;
+        }
+        res = execpvf((pid_t *)param0, (const char *)param1, (int)param2, (int)param3, (char **)param4);
+        break;
+
     default:
         proc_signal(proc->pid, SIGSYS);
         res = -EINVAL;

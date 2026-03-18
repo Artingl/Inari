@@ -135,6 +135,7 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
 
         /* Cleanup memory */
         pmm_free_pages(arch_virt_to_phys(proc->descriptor.vmem, (void *)PROC_ARGS_BASE), 2);
+        pmm_free_pages(arch_virt_to_phys(proc->descriptor.vmem, (void *)PROC_OPTIONS_BASE), 2);
         arch_free_pagedir(proc->descriptor.vmem);
         kfree((void *)proc);
     } else
@@ -148,6 +149,10 @@ int exit(pid_t pid, int exit_code) { return kill_process(pid, exit_code); }
 int execp(pid_t *pid, const char *path) { return execpv(pid, path, 0, NULL); }
 
 int execpv(pid_t *pid, const char *path, int argc, char **argv) {
+    return execpvf(pid, path, EXEC_FLAG_CP_OPTIONS, argc, argv);
+}
+
+int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv) {
     pagedir_t *vmem = NULL, *prev_dir = arch_get_pagedir();
     size_t size;
     vfs_handle_t hndl = (vfs_handle_t)NULL;
@@ -188,13 +193,21 @@ int execpv(pid_t *pid, const char *path, int argc, char **argv) {
     vmm_disable_region(vmem, (struct reserved_memory){.start = PROC_ARGS_BASE, .end = PROC_ARGS_BASE + PAGE_SIZE * 2});
     copy_to_fixed_buffer(argc + 1, (char **)tmp_args_base, (void *)PROC_ARGS_BASE);
 
+    /* Allocate options list memory */
+    args_pbase = pmm_alloc_pages(1);
+    if (arch_map_page(vmem, (void *)PROC_OPTIONS_BASE, args_pbase, PAGE_SIZE * 2, PAGE_PRESENT | PAGE_RW | PAGE_USR) ==
+        NULL)
+        goto err;
+    vmm_disable_region(vmem,
+                       (struct reserved_memory){.start = PROC_OPTIONS_BASE, .end = PROC_OPTIONS_BASE + PAGE_SIZE * 2});
+
     /* Load the PE into non-kernel memory */
     if ((res = pe_load(vmem, &entrypoint, buf, size)) != 0)
         goto err;
 
     arch_switch_pagedir(prev_dir);
 
-    spawn_process(pid, path, (task_descriptor_t){.entrypoint = entrypoint, .vmem = vmem});
+    spawn_process(pid, flags, path, (task_descriptor_t){.entrypoint = entrypoint, .vmem = vmem});
 
     goto end;
 err:
@@ -213,10 +226,110 @@ end:
     return res;
 }
 
-int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor) {
+int proc_add_option(pid_t pid, const char *name, union process_option_value value) {
+    int res = 0;
     uint32_t flags;
     struct process *proc;
-    tid_t tid;
+    struct process_option *item;
+    pagedir_t *prev = arch_get_pagedir();
+
+    if (!name)
+        return -EINVAL;
+
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    arch_switch_pagedir(proc->descriptor.vmem);
+    for (item = proc->options_list; item->next; item = item->next)
+        ;
+    item->next =
+        (struct process_option *)vmm_alloc_user(proc->descriptor.vmem, MAX(1, sizeof(struct process_option) >> 12));
+    if (!item->next) {
+        res = -ENOMEM;
+        goto end;
+    }
+    item->next->next = NULL;
+    item->next->prev = item;
+    memcpy(&item->next->name[0], name, strlen(name) + 1 > 32 ? 32 : strlen(name) + 1);
+    memcpy(&item->next->value, &value, sizeof(value));
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    arch_switch_pagedir(prev);
+    return res;
+}
+
+int proc_get_option(pid_t pid, const char *name, union process_option_value *result) {
+    int res = 0;
+    uint32_t flags;
+    struct process *proc;
+    struct process_option *item;
+    pagedir_t *prev = arch_get_pagedir();
+
+    if (!VMM_IS_PTR_USERSPACE(result) || !VMM_IS_RANGE_USERSPACE(name, name + 32))
+        return -EINVAL;
+
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    arch_switch_pagedir(proc->descriptor.vmem);
+    res = -1;
+    for (item = proc->options_list; item; item = item->next)
+        if (strcmp(item->name, name) == 0) {
+            if (!VMM_IS_PTR_USERSPACE(item)) {
+                res = -EINVAL;
+                goto end;
+            }
+            memcpy(result, &item->value, sizeof(item->value));
+            res = 0;
+            goto end;
+        }
+
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    arch_switch_pagedir(prev);
+    return res;
+}
+
+int proc_free_option(pid_t pid, const char *name) {
+    int res = 0;
+    uint32_t flags;
+    struct process *proc;
+    struct process_option *item;
+    pagedir_t *prev = arch_get_pagedir();
+
+    if (!VMM_IS_RANGE_USERSPACE(name, name + 32))
+        return -EINVAL;
+
+    spin_lock_irqsave(&lock, flags);
+    if ((res = get_process(&proc, pid)) != 0)
+        goto end;
+    arch_switch_pagedir(proc->descriptor.vmem);
+    res = -1;
+    for (item = proc->options_list; item; item = item->next)
+        if (strcmp(item->name, name) == 0 && item->prev) {
+            if (!VMM_IS_PTR_USERSPACE(item)) {
+                res = -EINVAL;
+                goto end;
+            }
+            item->prev->next = item->next;
+            vmm_free_pages(proc->descriptor.vmem, item, MAX(1, sizeof(struct process_option) >> 12));
+            res = 0;
+            goto end;
+        }
+
+end:
+    spin_unlock_irqrestore(&lock, flags);
+    arch_switch_pagedir(prev);
+    return res;
+}
+
+int spawn_process(pid_t *pid, int exec_flags, const char *path, task_descriptor_t descriptor) {
+    uint32_t flags;
+    int res = 0;
+    struct thread *caller_th;
+    struct process *proc, *caller_proc;
+    struct process_option *item;
+    tid_t tid, caller_tid;
 
     proc = (struct process *)kmalloc(sizeof(struct process));
     if (!proc)
@@ -235,8 +348,59 @@ int spawn_process(pid_t *pid, const char *path, task_descriptor_t descriptor) {
         *pid = proc->pid;
     spin_unlock_irqrestore(&lock, flags);
 
+    pagedir_t *prev = arch_get_pagedir();
+    /* Copy pointer to options linked list */
+    arch_switch_pagedir(proc->descriptor.vmem);
+    proc->options_list =
+        (struct process_option *)vmm_alloc_user(proc->descriptor.vmem, MAX(1, sizeof(struct process_option) >> 12));
+    if (proc->options_list) {
+        proc->options_list->next = NULL;
+        proc->options_list->prev = NULL;
+        memcpy(proc->options_list->name, "null\0", 5);
+        *((uint32_t *)PROC_OPTIONS_BASE) = (uint32_t)proc->options_list;
+
+        if (exec_flags & EXEC_FLAG_CP_OPTIONS) {
+            /* Find the caller process */
+
+            if (sched_current_thread(&caller_tid) != 0)
+                goto new_options;
+            if (sched_get_thread(caller_tid, &caller_th) != 0)
+                goto new_options;
+            if (!caller_tid || !caller_th->proc_data)
+                goto new_options;
+            caller_proc = (struct process *)caller_th->proc_data;
+            union process_option_value option;
+            char option_name[32];
+            /* TODO: highly inefficient! but works for now */
+            arch_switch_pagedir(caller_proc->descriptor.vmem);
+            for (item = proc->options_list; item; item = item->next) {
+                /* Firstly, copy everything from the caller */
+                memcpy(option_name, item->name, 32);
+                memcpy(&option, &item->value, sizeof(option));
+
+                arch_switch_pagedir(proc->descriptor.vmem);
+                /* Then copy to the new process */
+                proc_add_option(proc->pid, option_name, option);
+
+                /* Return back to caller memory */
+                arch_switch_pagedir(caller_proc->descriptor.vmem);
+            }
+
+            /* Return back to new process memory */
+            arch_switch_pagedir(proc->descriptor.vmem);
+            goto end;
+        }
+
+new_options:
+        proc_add_option(proc->pid, "io", (union process_option_value){.value = "/devices/terminals/char_tty0"});
+        proc_add_option(proc->pid, "path", (union process_option_value){.value = "/"});
+    } else
+        res = -ENOMEM;
+end:
+    arch_switch_pagedir(prev);
+
     spawn_thread(&tid, proc->pid, (thread_entrypoint_t)descriptor.entrypoint);
-    return 0;
+    return res;
 }
 
 int proc_get_process(pid_t pid, struct process **proc) {
