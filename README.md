@@ -1,11 +1,14 @@
 # Inari
-I guess this is my 5th or so attempt on trying to create a kernel/OS. Seems like a successful one so far.
+A monolithic 32-bit x86 Operating System built from scratch.
 
-Simple OS with custom-made kernel and ring 3 userspace
+Now in its third architectural iteration. The goal is to get to a sustainable working userspace, custom GUI, fully-featured network stack. Some of that work is being done currently.
 
-`
-Note: this kernel is NOT unix-based, not posix compliant. None of that, even though you might get a feeling of otherwise when examining the code. I am building it by taking little things from different kinds of OSes and doing it the way I like.
-`
+> [!NOTE]  
+ This kernel is not unix-based, not posix compliant. You _might_ get a feeling of otherwise, but frame it rather as getting things from different concepts I enjoy. E.g. not supporting forking and rather implementing spawing.
+
+## Screenshots
+![Screenshot](screenshot.png)
+![GUI](screenshot2.png)
 
 ## Building
 To build the kernel simply run `make build`. This will generate file in `build/kernel.elf`, which can be booted with any multiboot compliant bootloader. The `make build` will also build the userspace programs.
@@ -42,6 +45,3 @@ Here's currently supported hardware:
  * Simple video/hid subsystem for common devices.
  * Simple network stack (Ethernet/IPv4/ARP/ICMP)
 
-## Screenshots
-![Screenshot](screenshot.png)
-![GUI](screenshot2.png)
