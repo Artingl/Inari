@@ -25,23 +25,14 @@ You can also specify bootargs, which kernel will parse (e.g. by specifying in `g
 
 Example for bootargs: `earlycon=vga_text root=mbr0 init=/programs/cmd.exe`
 
-## Hardware support
-For now it only supports i686 systems, but support for other arches is planned in _some_ future.
-Here's currently supported hardware:
- * ATA in PIO mode
- * PS/2 keyboard and Mouse
- * PC8250 serial and VGA text mode for console and earlycon
- * VBE/Vesa implementation
- * PCI enumeration
- * RTL8139 driver
+## Core Architecture & Features
+Unlike many hobby OS projects, Inari focuses on a robust internal architecture and hardware isolation:
 
-## Features
- * Multitasking and Scheduling.
- * Userspace with ring 3 and kernel threads in ring 0
- * Kernel modules with autoprobing
- * A Virtual File System (VFS) with devfs.
- * Partition parsing for both MBR and GPT.
- * A custom libc and basic userspace utilities.
- * Simple video/hid subsystem for common devices.
- * Simple network stack (Ethernet/IPv4/ARP/ICMP)
-
+* **Memory Management:** Custom PMM and VMM with direct page-table manipulation and userspace isolation.
+* **Process Management:** Ring 3 userspace processes and Ring 0 kernel threads, with a custom preemptive scheduler.
+* **Inter-Process Communication (IPC):** Fast message-passing mechanism between isolated processes (using direct page mapping for zero-copy data transfer).
+* **Loadable Kernel Modules:** Dynamic module loading.
+* **Storage & File Systems:** Virtual File System, `devfs`, MBR/GPT partition parsing, and FAT filesystem support.
+* **Custom GUI & Compositor:** A fully custom windowing system with a GUI compositor, rendering multiple overlapping windows and handling PS/2 mouse/keyboard inputs.
+* **Network Stack:** Custom implementation of Ethernet, IPv4, ARP, and ICMP directly over the RTL8139 driver.
+* **Userland:** A custom `libc` implementation and a set of basic core utilities.
