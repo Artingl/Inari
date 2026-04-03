@@ -3,6 +3,7 @@
 
 #include <misc/types.h>
 
+#include <kernel/proc/proc.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
@@ -51,6 +52,15 @@ struct net_ifaddr {
     struct list_head list;
 };
 
+struct net_route_entry {
+    /* TODO: only ipv4 for now. Look at ifaddr for reference for future */
+    uint8_t dest_network[4];
+    uint8_t netmask[4];
+    uint8_t gateway[4];
+    struct net_device *device;
+    struct list_head list;
+};
+
 struct net_device {
     struct net_device_info info;
     struct net_ops *ops;
@@ -70,6 +80,7 @@ struct net_device {
 #define NET_IPN_TCP  0x06
 #define NET_IPN_UDP  0x11
 
+/* IPN = IP number */
 __attribute__((unused)) static const char *ipnstr[] = {
     [NET_IPN_ICMP] = "ICMP",
     [NET_IPN_TCP] = "TCP",
@@ -127,10 +138,53 @@ struct net_network_layer_info {
 };
 
 typedef int (*net_protocol_rx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+// typedef int (*net_protocol_tx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
 
 struct net_protocol {
+    uint8_t is_privileged; /* Does it require to be privileged to use this protocol (e.g. in future something like root)
+                            */
+
     net_protocol_rx rx;
+    // net_protocol_tx tx;
 };
+
+typedef int64_t net_handle_t;
+
+/* Used in syscalls */
+#define NET_SYS_CREATE 0x0
+#define NET_SYS_FREE   0x1
+#define NET_SYS_TX     0x2
+#define NET_SYS_RX     0x3
+struct net_sys_command {
+    uint8_t id;
+    union {
+        struct {
+            uint8_t ipn;
+            uint16_t ethtype;
+        } create;
+
+        /* Data flow (recv/send) */
+        struct {
+            void *buffer;
+            size_t buffer_sz;
+            uint8_t *addr;
+            size_t addr_sz;
+        } flow;
+    } as;
+} __attribute__((packed));
+
+struct net_socket {
+    net_handle_t handle;
+    uint8_t ipn;
+    uint16_t ethtype;
+    pid_t owner;
+    struct list_head list;
+} __attribute__((packed));
+
+int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *sock_handle);
+
+/* Used by proc.c to cleanup net handles for a given process */
+void net_proc_cleanup(struct process *proc);
 
 struct net_protocol *net_invoke_protocol(uint8_t ipn);
 int net_init(void);

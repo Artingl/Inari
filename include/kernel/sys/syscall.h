@@ -50,6 +50,7 @@
 #define SYSCALL_IPC_WAIT       45
 #define SYSCALL_EXECPVF        46
 #define SYSCALL_LSTHRD         47
+#define SYSCALL_NET            48
 
 int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *param3, void *param4);
 

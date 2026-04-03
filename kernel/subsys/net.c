@@ -22,7 +22,13 @@
 
 static struct net_frame net_ring_buffer[RING_LN] = {0};
 
+static spinlock_t net_handles_lock = {0};
+static net_handle_t net_handles_last = 0xff;
+
+static LIST_HEAD(net_handles);
+static LIST_HEAD(net_routing_table);
 static LIST_HEAD(net_devices);
+
 static int is_initialized = 0;
 static tid_t queue_thread;
 static struct net_protocol protocols[0xff];
@@ -38,6 +44,126 @@ static struct net_device *get_device(dev_t dev) {
     }
 
     return NULL;
+}
+
+static struct net_device *get_device_route(uint8_t *addr, size_t sz) {
+    struct list_head *pos;
+    struct net_route_entry *route_entry;
+    uint32_t in_addr = *((uint32_t *)addr), subnet_mask, dest_network;
+
+    /* TODO: support other than ipv4 */
+    if (sz != 4)
+        return NULL;
+
+    /* TODO: routing table based on active net_devices */
+    list_for_each(pos, &net_routing_table) {
+        route_entry = list_entry(pos, struct net_route_entry, list);
+        subnet_mask = *((uint32_t *)route_entry->netmask);
+        dest_network = *((uint32_t *)route_entry->dest_network);
+        if ((in_addr & subnet_mask) == dest_network) {
+            return route_entry->device;
+        }
+    }
+
+    return NULL;
+}
+
+static void cleanup_routing(struct net_device *dev) {
+    struct list_head *pos, *n;
+    struct net_route_entry *entry;
+
+    list_for_each_safe(pos, n, &net_routing_table) {
+        entry = list_entry(pos, struct net_route_entry, list);
+        if (entry->device == dev) {
+            list_del(pos);
+            kfree(entry);
+        }
+    }
+}
+
+static void update_routing(struct net_device *dev) {
+    /* Ensure we don't duplicate routing entries */
+    cleanup_routing(dev);
+
+    struct list_head *pos;
+    struct net_route_entry *route_entry;
+    struct net_ifaddr *entry;
+    uint32_t dev_addr, dev_mask, res;
+
+    list_for_each(pos, &dev->ifaddrs) {
+        entry = list_entry(pos, struct net_ifaddr, list);
+
+        /* Local link */
+        route_entry = kmalloc(sizeof(struct net_route_entry));
+
+        /* OOM */
+        if (!route_entry)
+            return;
+
+        dev_addr = *((uint32_t *)entry->address.ipv4);
+        dev_mask = *((uint32_t *)entry->netmask.ipv4);
+
+        res = dev_addr & dev_mask;
+        memcpy(route_entry->dest_network, &res, 4);
+        memcpy(route_entry->netmask, entry->netmask.ipv4, 4);
+        memset(route_entry->gateway, 0, 4);
+        route_entry->device = dev;
+        list_add(&route_entry->list, &net_routing_table);
+
+        /* Add default gateway if ifaddr has one */
+        if (*((uint32_t *)entry->gateway.ipv4) != 0) {
+            route_entry = kmalloc(sizeof(struct net_route_entry));
+
+            /* OOM */
+            if (!route_entry)
+                return;
+
+            memset(route_entry->dest_network, 0, 4);
+            memset(route_entry->netmask, 0, 4);
+            memcpy(route_entry->gateway, entry->gateway.ipv4, 4);
+            route_entry->device = dev;
+            list_add(&route_entry->list, &net_routing_table);
+        }
+    }
+}
+
+static struct net_socket *get_sock_handle(net_handle_t handle) {
+    struct list_head *pos;
+    struct net_socket *entry;
+
+    list_for_each(pos, &net_handles) {
+        entry = list_entry(pos, struct net_socket, list);
+        if (entry->handle == handle)
+            return entry;
+    }
+
+    return NULL;
+}
+
+static int cleanup_sock(struct net_socket *sock) {
+    list_del(&sock->list);
+
+    /* TODO: smarter logic here. */
+
+    kfree(sock);
+    return 0;
+}
+
+static int sock_create(struct net_socket **sock, net_handle_t *handle) {
+    *handle = net_handles_last++;
+    *sock = kmalloc(sizeof(struct net_socket));
+    if (!*sock)
+        return -ENOMEM;
+    (*sock)->handle = *handle;
+    list_add(&(*sock)->list, &net_handles);
+    return 0;
+}
+
+static int cleanup_sock_handle(net_handle_t handle) {
+    struct net_socket *sock;
+    if (!(sock = get_sock_handle(handle)))
+        return -1;
+    return cleanup_sock(sock);
 }
 
 int net_link_layer_tx(void *layer_info, void *packet, uint32_t ln) {
@@ -112,7 +238,6 @@ static void net_queue_thread(void *_) {
         link.layer = frame;
         link.dev = device;
         link.ops = &net_link_layer_ops;
-
         switch (bigend16(frame->ether_type)) {
         case NET_ETHTYPE_IPV4:
             res = ipv4_rx_stack(&link, (struct ipv4_packet *)frame->data,
@@ -124,7 +249,6 @@ static void net_queue_thread(void *_) {
         default:
             res = NET_DROPPED;
         }
-
     end:
         if (res == NET_DROPPED) {
 #ifdef CONFIG_DEBUG
@@ -221,6 +345,133 @@ int net_define_protocol(uint8_t ipn, struct net_protocol protocol) {
 
 void net_free_protocol(uint8_t ipn) { memset(&protocols[ipn], 0, sizeof(struct net_protocol)); }
 
+void net_proc_cleanup(struct process *proc) {
+    uint32_t flags;
+    spin_lock_irqsave(&net_handles_lock, flags);
+
+    struct list_head *pos, *n;
+    struct net_socket *entry;
+
+    list_for_each_safe(pos, n, &net_handles) {
+        entry = list_entry(pos, struct net_socket, list);
+        if (entry->owner == proc->pid)
+            cleanup_sock(entry);
+    }
+
+    spin_unlock_irqrestore(&net_handles_lock, flags);
+}
+
+int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *sock_handle) {
+    /* Crucial note! When adding new commands, don't forget to check if pointers/buffers ARE IN USERSPACE
+     * The `command` and `sock_handle` structure pointers are already checked by the syscall handler.
+     */
+    int ret = -ENOSYS;
+    uint32_t flags;
+    struct net_socket *sock;
+    // struct net_protocol *protocol;
+    struct net_device *device;
+    // struct net_link_layer_info *layer;
+    spin_lock_irqsave(&net_handles_lock, flags);
+    // get_sock_handle
+
+    // memcpy(link.src_mac, frame->src_mac, 6);
+    // memcpy(link.dest_mac, frame->dest_mac, 6);
+    // memcpy(link.device_mac, device->info.mac_addr, 6);
+    // link.layer = frame;
+    // link.dev = device;
+    // link.ops = &net_link_layer_ops;
+
+    switch (command->id) {
+    case NET_SYS_CREATE:
+        /* Check that the request IPN exists (and in future that we have sufficient permissions) */
+        if (!net_invoke_protocol(command->as.create.ipn)) {
+            ret = -ENOSYS;
+            goto end;
+        }
+
+        /* Finally, create the socket */
+        if ((ret = sock_create(&sock, sock_handle)) != 0)
+            goto end;
+        sock->ethtype = command->as.create.ethtype;
+        sock->ipn = command->as.create.ipn;
+        sock->owner = caller;
+        ret = 0;
+        break;
+
+    case NET_SYS_FREE:
+        ret = cleanup_sock_handle(*sock_handle);
+        break;
+    case NET_SYS_TX:
+        /* Ensure data */
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.addr, command->as.flow.addr_sz) ||
+            !VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        if (!(sock = get_sock_handle(*sock_handle))) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Ensure we're the owner */
+        if (sock->owner != caller) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* TODO: only ipv4 support for now */
+        if (command->as.flow.addr_sz != 4) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Find required device for our destination. */
+        if (!(device = get_device_route(command->as.flow.addr, command->as.flow.addr_sz))) {
+            ret = -ENETUNREACH;
+            goto end;
+        }
+
+
+        // switch (sock->ethtype) {
+        // case NET_ETHTYPE_IPV4:
+        //     res = ipv4_rx_stack(&link, (struct ipv4_packet *)frame->data,
+        //                         net_frame->length - sizeof(struct ethernet_frame));
+        //     break;
+        // case NET_ETHTYPE_ARP:
+        //     res = arp_rx_stack(&link, frame->data, net_frame->length - sizeof(struct ethernet_frame));
+        //     break;
+        // default:
+        //     res = NET_DROPPED;
+        // }
+
+        // ret = net_tx_stack(sock, struct net_frame * net_frame, struct net_link_layer_info * link,
+        //                    struct ethernet_frame * frame)
+
+        /* Get the required protocol.
+         * Note: we don't store it in net_socket, because protocols are usually modular (loaded via kernel modules),
+         * so one might be unavailable during some time. */
+        // if (!(protocol = net_invoke_protocol(sock->ipn))) {
+        //     ret = -ENOSYS;
+        //     goto end;
+        // }
+
+        /* Finally TX! */
+        // if (protocol->tx)
+
+        break;
+    case NET_SYS_RX:
+        /* TODO: How i see it: we put the thread to sleep (blocking), mark this socket as one that
+         *       awaits for data and simple wait for the net queue to handle data for us */
+        ret = -ENOSYS;
+        break;
+    }
+
+end:
+    spin_unlock_irqrestore(&net_handles_lock, flags);
+    return ret;
+}
+
 int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t mtu, const char *name) {
     if (!net_ops || !name || !is_initialized || !mac)
         return -EINVAL;
@@ -243,6 +494,7 @@ int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t m
     }
 
     list_add(&device->list, &net_devices);
+    update_routing(device);
     if (dev)
         *dev = device->dev;
 
@@ -277,6 +529,9 @@ int net_attach_ifaddr(dev_t dev, struct net_ifaddr ifaddr) {
     list_ifaddr->device = device;
     list_add(&list_ifaddr->list, &device->ifaddrs);
 
+    /* Don't forget to update routing table */
+    update_routing(device);
+
     return 0;
 }
 
@@ -294,6 +549,8 @@ int net_detach_ifaddr(dev_t dev, struct net_ifaddr ifaddr) {
             memcmp(entry->address.ipv6, ifaddr.address.ipv6, sizeof(ifaddr.address.ipv6)) == 0) {
             list_del(pos);
             kfree(entry);
+            /* Don't forget to update routing table */
+            update_routing(device);
             return 0;
         }
     }
@@ -319,6 +576,7 @@ int net_remove_device(dev_t dev) {
             kfree(entry);
         }
 
+        cleanup_routing(device);
         list_del(&device->list);
         kfree(chardev->driver_data);
     }

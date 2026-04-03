@@ -181,3 +181,7 @@ int execpvf(pid_t *pid, const char *path, int flags, int argc, char **argv) {
 int lsthrd(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state) {
     return (int)syscall(47, (uint32_t)idx, (uint32_t)name, (uint32_t)tid, (uint32_t)usg, (uint32_t)state);
 }
+
+int net_sys(void *command, void *sock) {
+    return (int)syscall(48, (uint32_t)command, (uint32_t)sock, 0, 0, 0);
+}

@@ -174,7 +174,7 @@ static void console_thread(void *arg) {
     while (1) {
         /* If there's nothing to do, wait a bit to avoid busy spin. */
         if (!console_flush_buffer())
-            usleep(1000);
+            timer_usleep(1000);
     }
 }
 

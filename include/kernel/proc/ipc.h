@@ -42,6 +42,6 @@ int ipc_wait(struct process *proc, ipc_handle_t ipc, uint8_t do_sleep);
 void ipc_announce_death(struct process *proc, tid_t th);
 
 /* Used by proc.c to cleanup IPC endpoints for a given process */
-void ipc_cleanup(struct process *proc);
+void ipc_proc_cleanup(struct process *proc);
 
 #endif

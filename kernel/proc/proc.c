@@ -3,6 +3,7 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
+#include <kernel/subsys/net.h>
 #include <kernel/proc/ipc.h>
 #include <kernel/proc/pe.h>
 #include <kernel/proc/proc.h>
@@ -125,7 +126,8 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
             }
         }
 
-        ipc_cleanup(proc);
+        ipc_proc_cleanup(proc);
+        net_proc_cleanup(proc);
         list_del(&proc->list);
 
         spin_unlock_irqrestore(&lock, flags);

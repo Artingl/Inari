@@ -204,7 +204,7 @@ end:
     return res;
 }
 
-void ipc_cleanup(struct process *proc) {
+void ipc_proc_cleanup(struct process *proc) {
     uint32_t flags;
     spin_lock_irqsave(&lock, flags);
 

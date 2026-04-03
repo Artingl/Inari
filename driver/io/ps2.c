@@ -137,7 +137,7 @@ uint16_t scancode_set1_map[128] = {
 static void ps2_wait_write() {
     int timeout = 1000;
     while ((x86_inb(0x64) & 2) && timeout-- > 0) {
-        usleep(1000);
+        timer_usleep(1000);
     }
 }
 
@@ -157,7 +157,7 @@ static int ps2_send_command(uint8_t port, uint8_t cmd) {
 
         timeout = 100;
         while (!(x86_inb(0x64) & 1) && timeout-- > 0) {
-            usleep(1000);
+            timer_usleep(1000);
         }
 
         if (timeout <= 0) {
@@ -196,7 +196,7 @@ static int ps2_identify(uint8_t port) {
     /* Read first ID byte with timeout */
     timeout = 100;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
 
     if (timeout > 0) {
         b0 = x86_inb(0x60);
@@ -204,7 +204,7 @@ static int ps2_identify(uint8_t port) {
         /* Try to read a second ID byte with timeout */
         timeout = 100;
         while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-            usleep(1000);
+            timer_usleep(1000);
 
         if (timeout > 0) {
             b1 = x86_inb(0x60);
@@ -358,7 +358,7 @@ static int ps2_kbd_init(uint8_t port) {
     x86_outb(0x60, 0xEE);
     timeout = 100;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
     if (timeout <= 0 || x86_inb(0x60) != 0xEE)
         return -ENODEV;
 
@@ -385,17 +385,17 @@ static int ps2_mouse_init(uint8_t port) {
     x86_outb(0x60, 0xFF);
     timeout = 100;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
     if (timeout <= 0 || x86_inb(0x60) != 0xFA)
         return -ENODEV;
     timeout = 1000;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
     if (timeout <= 0 || x86_inb(0x60) != 0xAA)
         return -ENODEV;
     timeout = 100;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
     if (timeout <= 0)
         return -ENODEV;
     x86_inb(0x60);
@@ -414,7 +414,7 @@ static int ps2_mouse_init(uint8_t port) {
     x86_outb(0x60, 0xF4);
     timeout = 100;
     while (!(x86_inb(0x64) & 1) && timeout-- > 0)
-        usleep(1000);
+        timer_usleep(1000);
     if (timeout <= 0 || x86_inb(0x60) != 0xFA)
         return -ENODEV;
     if (hid_add_device(&dev, HID_TYPE_MOUSE, "PS/2 Mouse", &ps2_hid_ops) != 0)
@@ -442,7 +442,7 @@ static int ps2_init() {
     /* Set the controller configuration byte */
     x86_outb(0x64, 0x20);
     while (!(x86_inb(0x64) & 1))
-        usleep(0x1000);
+        timer_usleep(0x1000);
     in = x86_inb(0x60);
     x86_outb(0x64, 0x60);
     /* Disabling IRQs for port 1; Enabling clock signal */
@@ -451,7 +451,7 @@ static int ps2_init() {
     /* Perform Controller Self Test */
     x86_outb(0x64, 0xAA);
     while (!(x86_inb(0x64) & 1))
-        usleep(0x1000);
+        timer_usleep(0x1000);
     in = x86_inb(0x60);
     if (in != 0x55) {
         kprintf("ps2: self-test failed.");
@@ -462,7 +462,7 @@ static int ps2_init() {
     x86_outb(0x64, 0xA8);
     x86_outb(0x64, 0x20);
     while (!(x86_inb(0x64) & 1))
-        usleep(0x1000);
+        timer_usleep(0x1000);
     in = x86_inb(0x60);
     if ((ps2_is_dual = !(in & (1 << 5)))) {
         /* Second port available. Disable again */
@@ -470,7 +470,7 @@ static int ps2_init() {
 
         x86_outb(0x64, 0x20);
         while (!(x86_inb(0x64) & 1))
-            usleep(0x1000);
+            timer_usleep(0x1000);
         in = x86_inb(0x60);
         x86_outb(0x64, 0x60);
         /* Disabling IRQs and enabling clock signal */
@@ -480,7 +480,7 @@ static int ps2_init() {
     /* Perform interface tests */
     x86_outb(0x64, 0xAB);
     while (!(x86_inb(0x64) & 1))
-        usleep(0x1000);
+        timer_usleep(0x1000);
     in = x86_inb(0x60);
     if (in != 0)
         return -ENODEV;
@@ -488,7 +488,7 @@ static int ps2_init() {
     if (ps2_is_dual) {
         x86_outb(0x64, 0xA9);
         while (!(x86_inb(0x64) & 1))
-            usleep(0x1000);
+            timer_usleep(0x1000);
         in = x86_inb(0x60);
         if (in != 0)
             return -ENODEV;
@@ -516,7 +516,7 @@ static int ps2_init() {
     /* Enable IRQs back */
     x86_outb(0x64, 0x20);
     while (!(x86_inb(0x64) & 1))
-        usleep(0x1000);
+        timer_usleep(0x1000);
     in = x86_inb(0x60);
 
     ps2_wait_write();

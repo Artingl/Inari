@@ -9,6 +9,7 @@
 #include <kernel/proc/proc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/signals.h>
+#include <kernel/subsys/net.h>
 #include <kernel/sys/syscall.h>
 #include <kernel/sys/vfs.h>
 #include <kernel/timer.h>
@@ -18,7 +19,7 @@
 
 void arch_sched_sigreturn(struct thread *task);
 /* TODO: better pointer validation. Scenario: process calls `read`, passes userspace pointer to buffer, BUT the size
- * exceeds userspace and leaks onto kernelspace. */
+ * exceeds userspace and leaks onto kernelspace. Same with string. */
 
 int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *param3, void *param4) {
     size_t i;
@@ -373,6 +374,15 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             break;
         }
         res = sched_ls((int)param0, (char *)param1, (tid_t *)param2, (time_t *)param3, (uint8_t *)param4);
+        break;
+
+    case SYSCALL_NET:
+        if (!VMM_IS_RANGE_USERSPACE(param0, param0 + sizeof(struct net_sys_command)) || !VMM_IS_PTR_USERSPACE(param1) ||
+            !param1) {
+            res = -EINVAL;
+            break;
+        }
+        res = net_syscall(proc->pid, (struct net_sys_command *)param0, (net_handle_t *)param1);
         break;
 
     default:

@@ -15,6 +15,8 @@ typedef uint64_t tid_t; // Thread ID
 typedef uint64_t pid_t; // Process ID
 typedef unsigned int dev_t;
 
+#define DEV_NAME_SIZE 32
+
 #define MEM_RW      (1 << 0)
 #define MEM_USR     (1 << 1)
 #define MEM_PRESENT (1 << 2)
@@ -108,6 +110,7 @@ int lsthrd(int idx, char *name, tid_t *tid, time_t *usg, uint8_t *state);
 int flush_hndl(handle_t hndl);
 int uname(struct utsname *buf);
 int uptime(time_t *t);
+int net_sys(void *command, void *sock);
 
 /* This will create a new thread under using `handler`, which can listen for upcoming events using `ipc_fetch_next`.
    The events will arrive in a queue style, one-by-one. */

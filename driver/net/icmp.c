@@ -45,8 +45,15 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
     return NET_OK;
 }
 
+// static int icmp_tx_handler() {
+
+// }
+
 static int net_icmp_probe() {
-    return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){.rx = (net_protocol_rx)&icmp_rx_handler});
+    return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){
+        .is_privileged = 1,
+        .rx = (net_protocol_rx)&icmp_rx_handler,
+    });
 }
 
 static void net_icmp_cleanup() { net_free_protocol(NET_IPN_ICMP); }

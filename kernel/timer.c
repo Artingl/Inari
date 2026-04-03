@@ -20,7 +20,7 @@ uint64_t timer_get_resolution() { return timer_resolution; }
 
 uint64_t uptimer_ms() { return (timer_ticks * 1000) / timer_resolution; }
 
-void usleep(time_t us) {
+void timer_usleep(time_t us) {
     tid_t tid;
     if (sched_current_thread(&tid) == 0) {
         /* Called from a task, use scheduler to sleep */

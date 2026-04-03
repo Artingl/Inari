@@ -46,14 +46,14 @@ static int ata_pio_read(struct ata_drive *drive, uint32_t lba, void *buf, size_t
             status = x86_inb(io_port + ATA_STATUS);
             if (status & ATA_SR_ERR || status & ATA_SR_DF)
                 break;
-            usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
+            timer_usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
         } while (status & ATA_SR_BSY && (status & ATA_SR_DRQ) != ATA_SR_DRQ);
 
         /* Receive 256 16-bit values */
         x86_insw(io_port + ATA_DATA, &((uint16_t *)&((uint8_t *)buf)[0])[i * 256], 256);
 
         /* 400ns delay */
-        usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
+        timer_usleep(400); /* If scheduler is active, it will yield to avoid busylooping */
     }
 
     return 0;

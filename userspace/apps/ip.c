@@ -3,9 +3,8 @@
 #include <lib.h>
 #include <string.h>
 #include <sys.h>
+#include <net.h>
 #include <types.h>
-
-#include <kernel/subsys/net.h>
 
 void print_network_device(const char *path, const char *name) {
     handle_t net;

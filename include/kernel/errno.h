@@ -28,6 +28,9 @@
 #define IPCNONE  21 /* IPC endpoint not found */
 #define IPCACCES 22 /* IPC access denied */
 
+#define	ENETDOWN	100	/* Network is down */
+#define	ENETUNREACH	101	/* Network is unreachable */
+
 __attribute__((unused)) static const char *errstr[] = {
     [0] = "OK",
     [ENODEV] = "No such device",
@@ -49,6 +52,8 @@ __attribute__((unused)) static const char *errstr[] = {
     [IPCNONE] = "IPC endpoint not found",
     [IPCACCES] = "IPC access denied",
     [ESUBSYSDIS] = "Subsystem disabled",
+    [ENETDOWN] = "Network is down",
+    [ENETUNREACH] = "Network is unreachable",
 };
 
 #undef errno

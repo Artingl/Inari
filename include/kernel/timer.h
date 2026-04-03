@@ -3,7 +3,9 @@
 
 #include <misc/types.h>
 
+#ifndef time_t
 typedef uint64_t time_t;
+#endif
 
 /* Sets the hardware timer resolution.
  *A value of 1000 would mean the timer ticks 1000 times a second, or every 1 millisecond.
@@ -25,6 +27,6 @@ uint64_t timer_get_resolution();
 uint64_t uptimer_ms();
 
 /* Sleep in microseconds */
-void usleep(time_t us);
+void timer_usleep(time_t us);
 
 #endif
