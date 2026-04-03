@@ -373,8 +373,7 @@ void sched_enter_core() {
 
     if (core_id >= CONFIG_MAX_CORES) {
         kprintf("sched: ignoring out-of-bounds core id %u", core_id);
-        /* Just halt it for now */
-        halt();
+        cpu_relax();
     }
 
     kprintf("sched: running on cpu%u", core_id);

@@ -20,12 +20,11 @@ float A, B, C;
 float cubeWidth = CUBE_W;
 int width = (CUBE_W * 2 + 10), height = (CUBE_W * 2 + 10);
 float zBuffer[(CUBE_W * 2 + 10) * (CUBE_W * 2 + 10)];
-uint32_t buffer[(CUBE_W * 2 + 10) * (CUBE_W * 2 + 10)];
 int distanceFromCam = 140;
 float horizontalOffset = 0;
 float K1 = 40;
 
-float incrementSpeed = 0.6;
+float incrementSpeed = 0.5;
 
 float x, y, z;
 float ooz;
@@ -48,7 +47,7 @@ float calculateY(int i, int j, int k) {
 
 float calculateZ(int i, int j, int k) { return (k * cosA * cosB - j * sinA * cosB + i * sinB); }
 
-void calculateForSurface(float cubeX, float cubeY, float cubeZ, uint32_t ch) {
+void calculateForSurface(uint32_t *window_buffer, int w, int h, float cubeX, float cubeY, float cubeZ, uint32_t ch) {
     x = calculateX(cubeX, cubeY, cubeZ);
     y = calculateY(cubeX, cubeY, cubeZ);
     z = calculateZ(cubeX, cubeY, cubeZ) + distanceFromCam;
@@ -62,13 +61,16 @@ void calculateForSurface(float cubeX, float cubeY, float cubeZ, uint32_t ch) {
     if (idx >= 0 && idx < width * height) {
         if (ooz > zBuffer[idx]) {
             zBuffer[idx] = ooz;
-            buffer[idx] = ch;
+
+            for (int sx = 0; sx < (1<<PX_SCALE); sx++)
+                for (int sy = 0; sy < (1<<PX_SCALE); sy++) {
+                    window_buffer[(sy + (yp << PX_SCALE)) * w + (sx + (xp << PX_SCALE))] = 0xff000000 | ch;
+                }
         }
     }
 }
 
 void render_cube(uint32_t *window_buffer, int w, int h) {
-    memset(buffer, 0x00, width * height * 4);
     memset(zBuffer, 0, width * height * 4);
 
     sinA = sin(A), cosA = cos(A);
@@ -77,22 +79,14 @@ void render_cube(uint32_t *window_buffer, int w, int h) {
 
     for (float cubeX = -cubeWidth; cubeX < cubeWidth; cubeX += incrementSpeed) {
         for (float cubeY = -cubeWidth; cubeY < cubeWidth; cubeY += incrementSpeed) {
-            calculateForSurface(cubeX, cubeY, -cubeWidth, 0xFFFFFF);
-            calculateForSurface(cubeWidth, cubeY, cubeX, 0xCCCCCC);
-            calculateForSurface(-cubeWidth, cubeY, -cubeX, 0xAAAAAA);
-            calculateForSurface(-cubeX, cubeY, cubeWidth, 0x888888);
-            calculateForSurface(cubeX, -cubeWidth, -cubeY, 0x666666);
-            calculateForSurface(cubeX, cubeWidth, cubeY, 0x555555);
+            calculateForSurface(window_buffer, w, h, cubeX, cubeY, -cubeWidth, 0xFFFFFF);
+            calculateForSurface(window_buffer, w, h, cubeWidth, cubeY, cubeX, 0xCCCCCC);
+            calculateForSurface(window_buffer, w, h, -cubeWidth, cubeY, -cubeX, 0xAAAAAA);
+            calculateForSurface(window_buffer, w, h, -cubeX, cubeY, cubeWidth, 0x888888);
+            calculateForSurface(window_buffer, w, h, cubeX, -cubeWidth, -cubeY, 0x666666);
+            calculateForSurface(window_buffer, w, h, cubeX, cubeWidth, cubeY, 0x555555);
         }
     }
-
-    for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++) {
-            for (int sx = 0; sx < 4; sx++)
-                for (int sy = 0; sy < 4; sy++) {
-                    window_buffer[(sy + (y << PX_SCALE)) * w + (sx + (x << PX_SCALE))] = 0xff000000 | buffer[y * width + x];
-                }
-        }
 
     A += 0.05;
     B += 0.05;
@@ -135,16 +129,16 @@ int main(int argc, char *argv[]) {
     draw_window->x = 0;
     draw_window->y = 0;
 
-    for (int x = 0; x < window.width; x++)
-        for (int y = 0; y < window.height; y++) {
-            ((uint32_t *)draw_window->buffer)[y * window.width + x] = 0xff000000;
-        }
-
     time_t start = 0, end = 0, last_print = 0;
     size_t cnt_ftime = 0;
     time_t total_ftime = 0;
     do {
         uptime(&start);
+        for (int x = 0; x < window.width; x++)
+            for (int y = 0; y < window.height; y++) {
+                ((uint32_t *)draw_window->buffer)[y * window.width + x] = 0xff000000;
+            }
+
         render_cube((uint32_t *)draw_window->buffer, window.width, window.height);
 
         if (ipc_send(ism_ipc, ISM_IPC_DRAW_WINDOW, draw_window, draw_size) != 0 || ipc_wait(ism_ipc, 1) != 0) {
@@ -152,7 +146,7 @@ int main(int argc, char *argv[]) {
         }
 
         uptime(&end);
-        // usleep(16000 - ((end - start) > 16000 ? 0 : (end - start)));
+        usleep(16000 - ((end - start) > 16000 ? 0 : (end - start)));
 
         total_ftime += (end - start);
         cnt_ftime++;

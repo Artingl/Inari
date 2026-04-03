@@ -25,8 +25,8 @@ int main(int argc, char const *argv[])
 {
     pid_t ism_pid;
 
-    // execp(&ism_pid, "/programs/cmd.exe");
-    // waitpid(ism_pid);
+    execp(&ism_pid, "/programs/cmd.exe");
+    waitpid(ism_pid);
 
     do {
         /* Load video drivers */
