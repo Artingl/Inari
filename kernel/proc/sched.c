@@ -116,8 +116,10 @@ static void sched_update_tasks(struct sched_core *core) {
         if (!entry)
             continue;
 
-        if (entry->state == SCHED_TASK_SLEEPING && entry->sleep_timeout <= sleep_timeout)
+        if (entry->state == SCHED_TASK_SLEEPING && entry->sleep_timeout <= sleep_timeout) {
+            entry->sleep_timeout = 0;
             entry->state = SCHED_TASK_ACTIVE;
+        }
         /* Note: When we'll have SMP, the deallocation below will break.
                     Such thing can happen: core0 uses kern stack of below process,
                     unlocks lock, core1 immediately gains lock and deallocates the stack
@@ -233,6 +235,7 @@ int sched_usleep(tid_t tid, time_t us) {
     task->sleep_timeout = ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution) + us;
     task->state = SCHED_TASK_SLEEPING;
     spin_unlock_irqrestore(&sched_lock, flags);
+    sched_yield();
     return 0;
 }
 
@@ -259,8 +262,8 @@ void sched_call() {
     spin_unlock_irqrestore(&sched_lock, flags);
 }
 
-int sched_create_thread(const char *name, tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem, thread_cleanup_t cleanup_handler,
-                        struct process *proc_data) {
+int sched_create_thread(const char *name, tid_t *tid, thread_entrypoint_t entrypoint, pagedir_t *vmem,
+                        thread_cleanup_t cleanup_handler, struct process *proc_data) {
     uint32_t flags;
     struct thread *node = kmalloc(sizeof(*node));
     uint64_t ticks = timer_get_ticks();

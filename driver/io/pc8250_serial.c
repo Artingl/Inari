@@ -57,6 +57,14 @@ static int serial_irq_handler(uint32_t irq, void *driver_data) {
     return IRQ_HANDLED;
 }
 
+void serial_debug(const char *s) {
+    while (is_transmit_empty(console_port) == 0)
+        ;
+    while (*s)
+        x86_outb(console_port, *s++);
+    x86_outb(console_port, '\n');
+}
+
 static void serial_puts(int port, const char *s, uint32_t count) {
     if (!serial_is_initialized || port != console_port || count <= 0)
         return;

@@ -37,8 +37,9 @@ int main(int argc, char *argv[])
     assert(r == 0, "socksend failed: %d", r);
 
     printf("sent!\n");
-    assert(sockrecv(sock_handle, &icmp_header, sizeof(icmp_header), addr, sizeof(addr)) == 0, "sockrecv failed!");
-    printf("received!\n");
+    r = sockrecv(sock_handle, &icmp_header, sizeof(icmp_header), addr, sizeof(addr), 0, 0);
+    assert(r >= 0, "sockrecv failed!");
+    printf("received %d bytes!\n", r);
 
     assert(sockclose(sock_handle) == 0, "sockclose failed!");
     return 0;

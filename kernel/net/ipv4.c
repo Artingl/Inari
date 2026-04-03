@@ -44,8 +44,8 @@ static int ipv4_req_buf(void *layer_info, void **result, uint32_t ln) {
 
 static struct net_layer_ops ipv4_network_layer_ops = {.tx = &ipv4_tx_layer, .req_buf = &ipv4_req_buf};
 
-int ipv4_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
-                  uint8_t ipn, void *packet, uint32_t ln) {
+int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr,
+                  size_t addr_sz, uint8_t ipn, void *packet, uint32_t ln) {
     if (addr_sz != 4)
         return NET_DROPPED;
 
@@ -71,7 +71,7 @@ int ipv4_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, 
     struct net_protocol *protocol = net_invoke_protocol(ipn);
 
     if (protocol && protocol->tx)
-        return protocol->tx(&network_layer, packet, ln);
+        return protocol->tx(sock, &network_layer, packet, ln);
     return NET_DROPPED;
 }
 

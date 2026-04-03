@@ -21,7 +21,8 @@ struct arp_resolv_ipv4_packet {
 int arp_resolve_ipv4(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *ipv4, uint8_t *result_mac);
 
 int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln);
-int arp_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
+
+int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
                  uint8_t ipn, void *packet, uint32_t ln);
 
 #endif

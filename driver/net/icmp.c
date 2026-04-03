@@ -14,18 +14,22 @@ struct icmp_header {
     uint8_t type;
     uint8_t code;
     uint16_t checksum;
-    uint32_t data;
+
+    union {
+        struct {
+            uint16_t identifier;
+            uint16_t seq;
+        } ping_pong;
+    } as;
 } __attribute__((packed));
 
 int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *packet, uint32_t ln) {
     struct icmp_header *icmp;
 
-    // kprintf("icmp: packet %u %u %u %d %d", icmp->type, icmp->code, icmp->checksum, packet.ln,
-    //         sizeof(struct icmp_header));
-
     switch ((packet->type << 8 | packet->code)) {
     /* ICMP echo request (type 8, code 0) */
     case 0x0800:
+
         /* Allocate buffer for answer back */
         if (layer->ops->req_buf(layer, (void **)&icmp, ln) != 0)
             /* Unable to allocate buffer for answer */
@@ -38,20 +42,28 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
         icmp->checksum = bigend16(net_checksum(icmp, ln));
         return layer->ops->tx(layer, icmp, ln);
 
+    /* Any other send to the socket if any */
     default:
-        return NET_DROPPED;
+        return net_sock_fill_ring(bigend16(packet->as.ping_pong.identifier), packet, ln);
     }
 
     return NET_OK;
 }
 
-static int icmp_tx_handler(struct net_network_layer_info *layer, void *packet, uint32_t ln) {
+static int icmp_tx_handler(struct net_socket *sock, struct net_network_layer_info *layer, void *packet, uint32_t ln) {
     void *tx_data;
 
     /* Allocate buffer for data layering */
     if (layer->ops->req_buf(layer, (void **)&tx_data, ln) != 0)
         /* Unable to allocate buffer for answer */
         return NET_DROPPED;
+
+    /* Set the identifier so we later dont lose the packet */
+    struct icmp_header *header = packet;
+    sock->identifier = sock->owner;
+    header->as.ping_pong.identifier = bigend16((uint16_t)sock->owner);
+    header->checksum = 0;
+    header->checksum = bigend16(net_checksum(packet, ln));
 
     /* Transmit data */
     memcpy(tx_data, packet, ln);
@@ -61,8 +73,8 @@ static int icmp_tx_handler(struct net_network_layer_info *layer, void *packet, u
 static int net_icmp_probe() {
     return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){
         .is_privileged = 0,
-        .rx = (net_protocol_flow)&icmp_rx_handler,
-        .tx = (net_protocol_flow)&icmp_tx_handler
+        .rx = (net_protocol_rx)&icmp_rx_handler,
+        .tx = (net_protocol_tx)&icmp_tx_handler
     });
 }
 

@@ -138,14 +138,18 @@ struct net_network_layer_info {
 };
 
 /* TX/RX flow */
-typedef int (*net_protocol_flow)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+typedef int (*net_protocol_rx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+
+/* Identifier is the unique ID to know where the answer from this TX (if any) should go (e.g. specific socket) */
+struct net_socket;
+typedef int (*net_protocol_tx)(struct net_socket *sock, struct net_network_layer_info *layer, void *packet, uint32_t ln);
 
 struct net_protocol {
     uint8_t is_privileged; /* Does it require to be privileged to use this protocol (e.g. in future something like root)
                             */
 
-    net_protocol_flow rx;
-    net_protocol_flow tx;
+    net_protocol_rx rx;
+    net_protocol_tx tx;
 };
 
 typedef int64_t net_handle_t;
@@ -169,6 +173,10 @@ struct net_sys_command {
             size_t buffer_sz;
             uint8_t *addr;
             size_t addr_sz;
+
+            /* For recv */
+            uint32_t timeout_us;
+            uint16_t flags;
         } flow;
     } as;
 } __attribute__((packed));
@@ -177,6 +185,14 @@ struct net_socket {
     net_handle_t handle;
     uint8_t ipn;
     uint16_t ethtype;
+    uint16_t identifier;    // Could be a port, ICMP identifier, anything
+    struct {
+        uint8_t awaiting;
+
+        uint16_t head;
+        uint16_t tail;
+        uint8_t ring_buffer[65535];
+    } rx;
     pid_t owner;
     struct list_head list;
 } __attribute__((packed));
@@ -185,6 +201,9 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
 /* Used by proc.c to cleanup net handles for a given process */
 void net_proc_cleanup(struct process *proc);
+
+/* Fills socket ring buffer with received data */
+int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln);
 
 struct net_protocol *net_invoke_protocol(uint8_t ipn);
 int net_init(void);

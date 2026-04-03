@@ -25,8 +25,8 @@ static struct {
     uint8_t mac[6];
 } arp_table[CONFIG_ARP_MAX_TABLE_ENTRIES] = {0};
 
-int arp_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
-                 uint8_t ipn, void *packet, uint32_t ln) {
+int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr,
+                 size_t addr_sz, uint8_t ipn, void *packet, uint32_t ln) {
     return NET_DROPPED;
 }
 
@@ -133,33 +133,29 @@ try_again:
 int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
     struct arp_resolv_ipv4_packet *resolv = packet;
     struct arp_resolv_ipv4_packet *response;
-    uint16_t protocol_type = resolv->protocol_type;
     uint32_t flags;
     int i;
 
-    protocol_type = bigend16(protocol_type);
-
-    if (protocol_type != NET_ETHTYPE_IPV4)
+    if (bigend16(resolv->protocol_type) != NET_ETHTYPE_IPV4)
         return NET_DROPPED;
 
     switch (bigend16(resolv->operation)) {
     case ARP_REQ:
         /* Allocate memory for response */
-        if (layer->ops->req_buf(layer, (void **)&response, ln) != 0)
-            /* Unable to allocate buffer for answer */
-            return NET_DROPPED;
-
         struct list_head *pos;
         struct net_ifaddr *entry;
         list_for_each(pos, &layer->dev->ifaddrs) {
             entry = list_entry(pos, struct net_ifaddr, list);
-            if (memcmp(entry->address.ipv4, (uint8_t *)&resolv->destination_ipv4, 4) == 0)
+            if (memcmp(entry->address.ipv4, &resolv->destination_ipv4, 4) == 0)
                 goto match;
         }
 
         /* Didn't match the IPv4 address */
         return NET_DROPPED;
     match:
+        if (layer->ops->req_buf(layer, (void **)&response, ln) != 0)
+            /* Unable to allocate buffer for answer */
+            return NET_DROPPED;
 
         response->hardware_type = resolv->hardware_type;
         response->protocol_type = resolv->protocol_type;
@@ -173,7 +169,7 @@ int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln) {
 
         /* Now set the source hardware/protocol addresses */
         memcpy(response->source_hardware_addr, layer->device_mac, 6);
-        memcpy((uint8_t *)&response->source_ipv4, entry->address.ipv4, 4);
+        memcpy(&response->source_ipv4, entry->address.ipv4, 4);
 
         return layer->ops->tx(layer, response, ln);
     case ARP_REPLY:

@@ -20,6 +20,10 @@ struct net_sys_command {
             size_t buffer_sz;
             uint8_t *addr;
             size_t addr_sz;
+
+            /* For recv */
+            uint32_t timeout_us;
+            uint16_t flags;
         } flow;
     } as;
 } __attribute__((packed));
@@ -40,13 +44,16 @@ int socksend(handle_t sock_handle, void *data, size_t data_size, uint8_t *addr, 
     return net_sys(&cmd, &sock_handle);
 }
 
-int sockrecv(handle_t sock_handle, void *result_buffer, size_t result_size, uint8_t *addr, size_t addr_size) {
+int sockrecv(handle_t sock_handle, void *result_buffer, size_t result_size, uint8_t *addr, size_t addr_size,
+             uint32_t timeout_us, uint16_t flags) {
     struct net_sys_command cmd = {.id = NET_SYS_RX,
                                   .as.flow = {
                                       .buffer = result_buffer,
                                       .buffer_sz = result_size,
                                       .addr = addr,
                                       .addr_sz = addr_size,
+                                      .timeout_us = timeout_us,
+                                      .flags = flags,
                                   }};
     return net_sys(&cmd, &sock_handle);
 }

@@ -1,9 +1,9 @@
 #ifndef _LIBC_NET_H
 #define _LIBC_NET_H
 
+#include <list.h>
 #include <sys.h>
 #include <types.h>
-#include <list.h>
 
 #define NET_IOCTL_INFO          0
 #define NET_IOCTL_IFADDR_NEXT   1
@@ -53,9 +53,10 @@ struct net_ifaddr {
 
 int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype);
 int socksend(handle_t sock_handle, void *data, size_t data_size, uint8_t *addr, size_t addr_size);
-int sockrecv(handle_t sock_handle, void *result_buffer, size_t result_size, uint8_t *addr, size_t addr_size);
+/* Timeout of 0 will mean it is blocking until any response */
+int sockrecv(handle_t sock_handle, void *result_buffer, size_t result_size, uint8_t *addr, size_t addr_size,
+             uint32_t timeout_us, uint16_t flags);
 int sockclose(handle_t sock_handle);
-
 
 __attribute__((unused)) static inline uint16_t net_checksum(void *data, uint32_t ln) {
     uint32_t checksum = 0;

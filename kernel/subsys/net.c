@@ -139,6 +139,19 @@ static struct net_socket *get_sock_handle(net_handle_t handle) {
     return NULL;
 }
 
+static struct net_socket *get_sock_identifier(uint32_t identifier) {
+    struct list_head *pos;
+    struct net_socket *entry;
+
+    list_for_each(pos, &net_handles) {
+        entry = list_entry(pos, struct net_socket, list);
+        if (entry->identifier == identifier)
+            return entry;
+    }
+
+    return NULL;
+}
+
 static int cleanup_sock(struct net_socket *sock) {
     list_del(&sock->list);
 
@@ -365,6 +378,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
      * The `command` and `sock_handle` structure pointers are already checked by the syscall handler.
      */
     int ret = -ENOSYS;
+    uint16_t ln;
+    uint64_t timeout;
     uint32_t flags;
     uint16_t ethtype;
     uint8_t dest_mac[6];
@@ -451,27 +466,125 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         memcpy(link.src_mac, dest_mac, 6);
         memcpy(link.dest_mac, dest_mac, 6);
 
+        /* Lock again and check that socket is still alive while we were waiting for ARP resolve */
+        spin_lock_irqsave(&net_handles_lock, flags);
+        if (!(sock = get_sock_handle(*sock_handle))) {
+            ret = -ENETDOWN;
+            goto end;
+        }
+
         switch (ethtype) {
         case NET_ETHTYPE_IPV4:
-            ret = ipv4_tx_stack(&link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
+            ret = ipv4_tx_stack(sock, &link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
                                 command->as.flow.buffer, command->as.flow.buffer_sz);
             break;
         case NET_ETHTYPE_ARP:
-            ret = arp_tx_stack(&link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
+            ret = arp_tx_stack(sock, &link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
                                command->as.flow.buffer, command->as.flow.buffer_sz);
             break;
         default:
             ret = NET_DROPPED;
         }
 
-
+        ret = 0;
         break;
     case NET_SYS_RX:
-        /* TODO: How i see it: we put the thread to sleep (blocking), mark this socket as one that
-         *       awaits for data and simple wait for the net queue to handle data for us */
-        ret = -ENOSYS;
+        /* Ensure data */
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.addr, command->as.flow.addr_sz) ||
+            !VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        if (!(sock = get_sock_handle(*sock_handle))) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Ensure we're the owner */
+        if (sock->owner != caller) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* We dont need a lock anymore. Also we need to unlock here to avoid hard-locks. */
+        spin_unlock_irqrestore(&net_handles_lock, flags);
+
+        sock->rx.awaiting = 1;
+
+        /* Process packet immediately if ring buffer is not empty */
+        if (sock->rx.head != sock->rx.tail)
+            goto process_packet;
+
+        /* TODO: semaphore */
+        if (command->as.flow.timeout_us > 0) {
+            timeout = uptime_us() + command->as.flow.timeout_us;
+            while (sock->rx.awaiting && timeout > uptime_us())
+                sched_yield();
+        } else {
+            while (sock->rx.awaiting)
+                sched_yield();
+        }
+    process_packet:
+        ln = (sock->rx.tail - sock->rx.head + 65535) % 65535;
+        if (command->as.flow.buffer_sz < ln)
+            ln = command->as.flow.buffer_sz;
+
+        /* Fill the full buffer */
+        if ((uint32_t)(65535 - sock->rx.tail) > ln) {
+            memcpy(command->as.flow.buffer, &sock->rx.ring_buffer[sock->rx.tail], ln);
+            sock->rx.tail += ln;
+        }
+        /* Fill in chinks */
+        else {
+            memcpy(command->as.flow.buffer, &sock->rx.ring_buffer[sock->rx.tail], sock->rx.tail - ln);
+            memcpy(command->as.flow.buffer + (sock->rx.tail - ln), &sock->rx.ring_buffer[0], ln - (sock->rx.tail - ln));
+            sock->rx.tail = ln - (sock->rx.tail - ln);
+        }
+
+        ret = ln;
         break;
     }
+
+end:
+    spin_unlock_irqrestore(&net_handles_lock, flags);
+    return ret;
+}
+
+int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln) {
+    int ret = 0;
+    uint32_t flags;
+    uint16_t ring_space;
+    struct net_socket *sock;
+    spin_lock_irqsave(&net_handles_lock, flags);
+
+    if (!(sock = get_sock_identifier(identifier))) {
+        ret = -EINVAL;
+        goto end;
+    }
+
+    /* Fill the ring buffer */
+    ring_space = 65535 - ((sock->rx.tail - sock->rx.head + 65535) % 65535);
+
+    /* Packet doesn't fit */
+    if (ring_space < ln) {
+        ret = NET_DROPPED;
+        goto end;
+    }
+
+    /* Fill the full buffer */
+    if ((uint32_t)(65535 - sock->rx.head) > ln) {
+        memcpy(&sock->rx.ring_buffer[sock->rx.head], packet, ln);
+        sock->rx.head += ln;
+    }
+    /* Fill in chinks */
+    else {
+        memcpy(&sock->rx.ring_buffer[sock->rx.head], packet, sock->rx.head - ln);
+        memcpy(&sock->rx.ring_buffer[0], packet + (sock->rx.head - ln), ln - (sock->rx.head - ln));
+        sock->rx.head = ln - (sock->rx.head - ln);
+    }
+
+    sock->rx.awaiting = 0;
 
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
@@ -611,7 +724,6 @@ int net_rx_packet(dev_t dev, void *data, uint32_t length) {
     static size_t ring_off = 0;
     struct net_frame *frame = NULL;
     int timeout = RING_LN * 2;
-
     /* Find free frame to save the packet into */
     do {
         if (spin_try_lock(&net_ring_buffer[ring_off].frame_lock)) {
