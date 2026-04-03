@@ -57,6 +57,7 @@ struct net_route_entry {
     uint8_t dest_network[4];
     uint8_t netmask[4];
     uint8_t gateway[4];
+    uint8_t is_default;
     struct net_ifaddr *ifaddr;
     struct list_head list;
 };
@@ -187,8 +188,6 @@ struct net_socket {
     uint16_t ethtype;
     uint16_t identifier;    // Could be a port, ICMP identifier, anything
     struct {
-        uint8_t awaiting;
-
         uint16_t head;
         uint16_t tail;
         uint8_t ring_buffer[65535];

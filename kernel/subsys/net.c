@@ -46,7 +46,7 @@ static struct net_device *get_device(dev_t dev) {
     return NULL;
 }
 
-static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz) {
+static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is_default) {
     struct list_head *pos;
     struct net_route_entry *route_entry;
     uint32_t in_addr = *((uint32_t *)addr), subnet_mask, dest_network;
@@ -60,6 +60,8 @@ static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz) {
         subnet_mask = *((uint32_t *)route_entry->netmask);
         dest_network = *((uint32_t *)route_entry->dest_network);
         if ((in_addr & subnet_mask) == dest_network) {
+            if (is_default)
+                *is_default = route_entry->is_default;
             return route_entry->ifaddr;
         }
     }
@@ -107,6 +109,7 @@ static void update_routing(struct net_device *dev) {
         memcpy(route_entry->netmask, entry->netmask.ipv4, 4);
         memset(route_entry->gateway, 0, 4);
         route_entry->ifaddr = entry;
+        route_entry->is_default = 0;
         list_add(&route_entry->list, &net_routing_table);
 
         /* Add default gateway if ifaddr has one */
@@ -121,6 +124,7 @@ static void update_routing(struct net_device *dev) {
             memset(route_entry->netmask, 0, 4);
             memcpy(route_entry->gateway, entry->gateway.ipv4, 4);
             route_entry->ifaddr = entry;
+            route_entry->is_default = 1;
             list_add(&route_entry->list, &net_routing_table);
         }
     }
@@ -382,6 +386,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     uint64_t timeout;
     uint32_t flags;
     uint16_t ethtype;
+    uint8_t is_default;
     uint8_t dest_mac[6];
     struct net_socket *sock;
     struct net_ifaddr *ifaddr;
@@ -436,7 +441,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         }
 
         /* Find required ifaddr for our destination. */
-        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr, command->as.flow.addr_sz))) {
+        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr, command->as.flow.addr_sz, &is_default))) {
             ret = -ENETUNREACH;
             goto end;
         }
@@ -454,9 +459,16 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         memcpy(link.device_mac, ifaddr->device->info.mac_addr, 6);
 
         /* Note: we know for sure that it is IPv4 in flow.addr because of condition above. */
-        if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr, dest_mac) != 0) {
-            ret = -ENETUNREACH;
-            goto end;
+        if (is_default) {
+            if (arp_resolve_ipv4(&link, ifaddr, ifaddr->gateway.ipv4, dest_mac) != 0) {
+                ret = -ENETUNREACH;
+                goto end;
+            }
+        } else {
+            if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr, dest_mac) != 0) {
+                ret = -ENETUNREACH;
+                goto end;
+            }
         }
 
         /* Construct correct frame */
@@ -510,22 +522,16 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         /* We dont need a lock anymore. Also we need to unlock here to avoid hard-locks. */
         spin_unlock_irqrestore(&net_handles_lock, flags);
 
-        sock->rx.awaiting = 1;
-
-        /* Process packet immediately if ring buffer is not empty */
-        if (sock->rx.head != sock->rx.tail)
-            goto process_packet;
-
         /* TODO: semaphore */
         if (command->as.flow.timeout_us > 0) {
             timeout = uptime_us() + command->as.flow.timeout_us;
-            while (sock->rx.awaiting && timeout > uptime_us())
+            while (sock->rx.head == sock->rx.tail && timeout > uptime_us())
                 sched_yield();
         } else {
-            while (sock->rx.awaiting)
+            while (sock->rx.head == sock->rx.tail)
                 sched_yield();
         }
-    process_packet:
+
         ln = (sock->rx.tail - sock->rx.head + 65535) % 65535;
         if (command->as.flow.buffer_sz < ln)
             ln = command->as.flow.buffer_sz;
@@ -583,8 +589,6 @@ int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln) {
         memcpy(&sock->rx.ring_buffer[0], packet + (sock->rx.head - ln), ln - (sock->rx.head - ln));
         sock->rx.head = ln - (sock->rx.head - ln);
     }
-
-    sock->rx.awaiting = 0;
 
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
