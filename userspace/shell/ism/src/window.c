@@ -427,6 +427,12 @@ int ism_window_update(void) {
             window->controls_state[0] = 0;
         }
 
+        /* TEST */
+        if (window->controls_state[1] && !mouse.buttons[MOUSE_BTN1]) {
+            execp(NULL, "/programs/cube.exe");
+            window->controls_state[1] = 0;
+        }
+
         /* Check if mouse hovers window controls */
         if (mouse.pos_y >= window->y + 1 && mouse.pos_y < window->y + 17) {
             /* Close button */
