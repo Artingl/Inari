@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
     icmp_header.checksum = net_checksum(&icmp_header, sizeof(icmp_header));
 
     assert(sockcreate(&sock_handle, NET_IPN_ICMP, NET_ETHTYPE_IPV4) == 0, "sockcreate failed!");
-    assert(socksend(sock_handle, &icmp_header, sizeof(icmp_header), addr, sizeof(addr)) == 0, "socksend failed!");
+    int r = socksend(sock_handle, &icmp_header, sizeof(icmp_header), addr, sizeof(addr));
+    assert(r == 0, "socksend failed: %d", r);
 
     printf("sent!\n");
     assert(sockrecv(sock_handle, &icmp_header, sizeof(icmp_header), addr, sizeof(addr)) == 0, "sockrecv failed!");

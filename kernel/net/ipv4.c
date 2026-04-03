@@ -44,6 +44,37 @@ static int ipv4_req_buf(void *layer_info, void **result, uint32_t ln) {
 
 static struct net_layer_ops ipv4_network_layer_ops = {.tx = &ipv4_tx_layer, .req_buf = &ipv4_req_buf};
 
+int ipv4_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
+                  uint8_t ipn, void *packet, uint32_t ln) {
+    if (addr_sz != 4)
+        return NET_DROPPED;
+
+    struct ipv4_packet i_packet = {
+/* TODO: reaaally dirty */
+#ifdef CONFIG_LITTLE_ENDIAN
+        .version = 5,
+        .ihl = 4,
+#else
+        .version = 4,
+        .ihl = 5,
+#endif
+        .protocol = ipn,
+    };
+
+    memcpy(&i_packet.src_address, ifaddr->address.ipv4, 4);
+    memcpy(&i_packet.dest_address, dest_addr, addr_sz);
+
+    struct net_network_layer_info network_layer = {
+        .link_layer = layer, .layer = &i_packet, .ops = &ipv4_network_layer_ops, .ifaddr = ifaddr};
+
+    struct net_protocol *protocol = net_invoke_protocol(ipn);
+
+    kprintf("ipv4 tx");
+    if (protocol && protocol->tx)
+        return protocol->tx(&network_layer, packet, ln);
+    return NET_DROPPED;
+}
+
 int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet, uint32_t ln) {
     /* Minimum size is 20 bytes for IPv4 packet */
     if (ln < 20) {
@@ -95,7 +126,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
     struct net_protocol *protocol = net_invoke_protocol(packet->protocol);
 
     /* Send the packet to correct protocol handler */
-    if (protocol)
+    if (protocol && protocol->rx)
         return protocol->rx(&network_layer, ((uint8_t *)packet) + header_size, protocol_ln);
     return NET_DROPPED;
 }

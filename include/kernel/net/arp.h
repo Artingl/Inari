@@ -15,5 +15,7 @@ struct arp_resolv_ipv4_packet {
 } __attribute__((packed));
 
 int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln);
+int arp_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr, size_t addr_sz,
+                 uint8_t ipn, void *packet, uint32_t ln);
 
 #endif

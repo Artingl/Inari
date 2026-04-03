@@ -45,14 +45,24 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
     return NET_OK;
 }
 
-// static int icmp_tx_handler() {
+static int icmp_tx_handler(struct net_network_layer_info *layer, void *packet, uint32_t ln) {
+    void *tx_data;
 
-// }
+    /* Allocate buffer for answer back */
+    if (layer->ops->req_buf(layer, (void **)&tx_data, ln) != 0)
+        /* Unable to allocate buffer for answer */
+        return NET_DROPPED;
+
+    /* Transmit data */
+    memcpy(tx_data, packet, ln);
+    return layer->ops->tx(layer, tx_data, ln);
+}
 
 static int net_icmp_probe() {
     return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){
-        .is_privileged = 1,
-        .rx = (net_protocol_rx)&icmp_rx_handler,
+        .is_privileged = 0,
+        .rx = (net_protocol_flow)&icmp_rx_handler,
+        .tx = (net_protocol_flow)&icmp_tx_handler
     });
 }
 

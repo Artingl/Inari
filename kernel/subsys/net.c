@@ -46,7 +46,7 @@ static struct net_device *get_device(dev_t dev) {
     return NULL;
 }
 
-static struct net_device *get_device_route(uint8_t *addr, size_t sz) {
+static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz) {
     struct list_head *pos;
     struct net_route_entry *route_entry;
     uint32_t in_addr = *((uint32_t *)addr), subnet_mask, dest_network;
@@ -55,13 +55,12 @@ static struct net_device *get_device_route(uint8_t *addr, size_t sz) {
     if (sz != 4)
         return NULL;
 
-    /* TODO: routing table based on active net_devices */
     list_for_each(pos, &net_routing_table) {
         route_entry = list_entry(pos, struct net_route_entry, list);
         subnet_mask = *((uint32_t *)route_entry->netmask);
         dest_network = *((uint32_t *)route_entry->dest_network);
         if ((in_addr & subnet_mask) == dest_network) {
-            return route_entry->device;
+            return route_entry->ifaddr;
         }
     }
 
@@ -74,7 +73,7 @@ static void cleanup_routing(struct net_device *dev) {
 
     list_for_each_safe(pos, n, &net_routing_table) {
         entry = list_entry(pos, struct net_route_entry, list);
-        if (entry->device == dev) {
+        if (entry->ifaddr->device == dev) {
             list_del(pos);
             kfree(entry);
         }
@@ -107,7 +106,7 @@ static void update_routing(struct net_device *dev) {
         memcpy(route_entry->dest_network, &res, 4);
         memcpy(route_entry->netmask, entry->netmask.ipv4, 4);
         memset(route_entry->gateway, 0, 4);
-        route_entry->device = dev;
+        route_entry->ifaddr = entry;
         list_add(&route_entry->list, &net_routing_table);
 
         /* Add default gateway if ifaddr has one */
@@ -121,7 +120,7 @@ static void update_routing(struct net_device *dev) {
             memset(route_entry->dest_network, 0, 4);
             memset(route_entry->netmask, 0, 4);
             memcpy(route_entry->gateway, entry->gateway.ipv4, 4);
-            route_entry->device = dev;
+            route_entry->ifaddr = entry;
             list_add(&route_entry->list, &net_routing_table);
         }
     }
@@ -368,18 +367,10 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     int ret = -ENOSYS;
     uint32_t flags;
     struct net_socket *sock;
-    // struct net_protocol *protocol;
-    struct net_device *device;
-    // struct net_link_layer_info *layer;
+    struct net_ifaddr *ifaddr;
+    struct ethernet_frame frame;
+    struct net_link_layer_info link;
     spin_lock_irqsave(&net_handles_lock, flags);
-    // get_sock_handle
-
-    // memcpy(link.src_mac, frame->src_mac, 6);
-    // memcpy(link.dest_mac, frame->dest_mac, 6);
-    // memcpy(link.device_mac, device->info.mac_addr, 6);
-    // link.layer = frame;
-    // link.dev = device;
-    // link.ops = &net_link_layer_ops;
 
     switch (command->id) {
     case NET_SYS_CREATE:
@@ -426,38 +417,40 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             goto end;
         }
 
-        /* Find required device for our destination. */
-        if (!(device = get_device_route(command->as.flow.addr, command->as.flow.addr_sz))) {
+        /* Find required ifaddr for our destination. */
+        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr, command->as.flow.addr_sz))) {
             ret = -ENETUNREACH;
             goto end;
         }
 
+        memcpy(link.src_mac, ifaddr->device->info.mac_addr, 6);
+        /* TODO: arp resolve dest mac */
+        // memcpy(link.dest_mac, frame->dest_mac, 6);
+        memset(link.dest_mac, 0, 6);
+        memcpy(link.device_mac, ifaddr->device->info.mac_addr, 6);
+        link.dev = ifaddr->device;
+        link.ops = &net_link_layer_ops;
 
-        // switch (sock->ethtype) {
-        // case NET_ETHTYPE_IPV4:
-        //     res = ipv4_rx_stack(&link, (struct ipv4_packet *)frame->data,
-        //                         net_frame->length - sizeof(struct ethernet_frame));
-        //     break;
-        // case NET_ETHTYPE_ARP:
-        //     res = arp_rx_stack(&link, frame->data, net_frame->length - sizeof(struct ethernet_frame));
-        //     break;
-        // default:
-        //     res = NET_DROPPED;
-        // }
+        /* Construct frame */
+        /* TODO: arp resolve dest mac */
+        memset(frame.dest_mac, 0, 6);
+        memcpy(frame.src_mac, ifaddr->device->info.mac_addr, 6);
+        frame.ether_type = bigend16(sock->ethtype);
+        link.layer = &frame;
 
-        // ret = net_tx_stack(sock, struct net_frame * net_frame, struct net_link_layer_info * link,
-        //                    struct ethernet_frame * frame)
+        switch (sock->ethtype) {
+        case NET_ETHTYPE_IPV4:
+            ret = ipv4_tx_stack(&link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
+                                command->as.flow.buffer, command->as.flow.buffer_sz);
+            break;
+        case NET_ETHTYPE_ARP:
+            ret = arp_tx_stack(&link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
+                               command->as.flow.buffer, command->as.flow.buffer_sz);
+            break;
+        default:
+            ret = NET_DROPPED;
+        }
 
-        /* Get the required protocol.
-         * Note: we don't store it in net_socket, because protocols are usually modular (loaded via kernel modules),
-         * so one might be unavailable during some time. */
-        // if (!(protocol = net_invoke_protocol(sock->ipn))) {
-        //     ret = -ENOSYS;
-        //     goto end;
-        // }
-
-        /* Finally TX! */
-        // if (protocol->tx)
 
         break;
     case NET_SYS_RX:
@@ -467,8 +460,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         break;
     }
 
-end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
+end:
     return ret;
 }
 

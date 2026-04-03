@@ -57,7 +57,7 @@ struct net_route_entry {
     uint8_t dest_network[4];
     uint8_t netmask[4];
     uint8_t gateway[4];
-    struct net_device *device;
+    struct net_ifaddr *ifaddr;
     struct list_head list;
 };
 
@@ -137,15 +137,15 @@ struct net_network_layer_info {
     struct net_layer_ops *ops;
 };
 
-typedef int (*net_protocol_rx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
-// typedef int (*net_protocol_tx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+/* TX/RX flow */
+typedef int (*net_protocol_flow)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
 
 struct net_protocol {
     uint8_t is_privileged; /* Does it require to be privileged to use this protocol (e.g. in future something like root)
                             */
 
-    net_protocol_rx rx;
-    // net_protocol_tx tx;
+    net_protocol_flow rx;
+    net_protocol_flow tx;
 };
 
 typedef int64_t net_handle_t;
