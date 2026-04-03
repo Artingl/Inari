@@ -48,7 +48,7 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
 static int icmp_tx_handler(struct net_network_layer_info *layer, void *packet, uint32_t ln) {
     void *tx_data;
 
-    /* Allocate buffer for answer back */
+    /* Allocate buffer for data layering */
     if (layer->ops->req_buf(layer, (void **)&tx_data, ln) != 0)
         /* Unable to allocate buffer for answer */
         return NET_DROPPED;

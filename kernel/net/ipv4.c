@@ -61,15 +61,15 @@ int ipv4_tx_stack(struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, 
         .protocol = ipn,
     };
 
-    memcpy(&i_packet.src_address, ifaddr->address.ipv4, 4);
-    memcpy(&i_packet.dest_address, dest_addr, addr_sz);
+    /* Note: here we set the dest addr to the src addr value, because
+     * later ipv4_tx_layer function will shift them around */
+    memcpy(&i_packet.src_address, dest_addr, 4);
 
     struct net_network_layer_info network_layer = {
         .link_layer = layer, .layer = &i_packet, .ops = &ipv4_network_layer_ops, .ifaddr = ifaddr};
 
     struct net_protocol *protocol = net_invoke_protocol(ipn);
 
-    kprintf("ipv4 tx");
     if (protocol && protocol->tx)
         return protocol->tx(&network_layer, packet, ln);
     return NET_DROPPED;

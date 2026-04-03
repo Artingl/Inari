@@ -23,8 +23,8 @@ uint64_t timer_get_ticks();
 /* Returns current timer resolution (ticks per second) */
 uint64_t timer_get_resolution();
 
-/* Returns current kernel uptime in miliseconds */
-uint64_t uptimer_ms();
+/* Returns current kernel uptime in microseconds */
+uint64_t uptime_us();
 
 /* Sleep in microseconds */
 void timer_usleep(time_t us);

@@ -1,5 +1,7 @@
 // #define CONFIG_DEBUG
 
+#define CONFIG_ARP_MAX_TABLE_ENTRIES    64
+
 #define CONFIG_NET_ICMP
 #define CONFIG_NET_UDP
 #define CONFIG_NET_TCP

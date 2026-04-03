@@ -16,14 +16,14 @@ int main(int argc, char *argv[])
 {
     int ret;
     pid_t pid;
-    char *args[] = { "net0", "attach", "192.168.1.155", "255.255.255.0", "192.168.1.1", NULL };
+    char *args[] = { "net0", "attach", "192.168.99.155", "255.255.255.0", "192.168.99.1", NULL };
     if ((ret = execpv(&pid, "/programs/ip.exe", 5, args)) != 0) {
         printf("ip: failed: %s\n", errno(ret));
     }
     waitpid(pid);
 
     /* Test icmp */
-    uint8_t addr[] = { 192, 168, 1, 132 };
+    uint8_t addr[] = { 192, 168, 99, 10 };
     handle_t sock_handle;
 
     struct icmp_header icmp_header;

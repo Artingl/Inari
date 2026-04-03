@@ -366,6 +366,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
      */
     int ret = -ENOSYS;
     uint32_t flags;
+    uint16_t ethtype;
+    uint8_t dest_mac[6];
     struct net_socket *sock;
     struct net_ifaddr *ifaddr;
     struct ethernet_frame frame;
@@ -404,6 +406,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             ret = -EINVAL;
             goto end;
         }
+        ethtype = sock->ethtype;
 
         /* Ensure we're the owner */
         if (sock->owner != caller) {
@@ -423,22 +426,32 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             goto end;
         }
 
-        memcpy(link.src_mac, ifaddr->device->info.mac_addr, 6);
-        /* TODO: arp resolve dest mac */
-        // memcpy(link.dest_mac, frame->dest_mac, 6);
-        memset(link.dest_mac, 0, 6);
-        memcpy(link.device_mac, ifaddr->device->info.mac_addr, 6);
+        /* We dont need a lock anymore. Also we need to unlock here to avoid hard-locks. */
+        spin_unlock_irqrestore(&net_handles_lock, flags);
+
+        /* Construct ARP frame */
         link.dev = ifaddr->device;
         link.ops = &net_link_layer_ops;
-
-        /* Construct frame */
-        /* TODO: arp resolve dest mac */
-        memset(frame.dest_mac, 0, 6);
-        memcpy(frame.src_mac, ifaddr->device->info.mac_addr, 6);
-        frame.ether_type = bigend16(sock->ethtype);
         link.layer = &frame;
+        frame.ether_type = bigend16(NET_ETHTYPE_ARP);
+        memset(link.src_mac, 0xff, 6);
+        memset(link.dest_mac, 0xff, 6);
+        memcpy(link.device_mac, ifaddr->device->info.mac_addr, 6);
 
-        switch (sock->ethtype) {
+        /* Note: we know for sure that it is IPv4 in flow.addr because of condition above. */
+        if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr, dest_mac) != 0) {
+            ret = -ENETUNREACH;
+            goto end;
+        }
+
+        /* Construct correct frame */
+        /* Note: here we set both values to the dest MAC address, the net TX
+         * will handle all MAC addresses on its own */
+        frame.ether_type = bigend16(ethtype);
+        memcpy(link.src_mac, dest_mac, 6);
+        memcpy(link.dest_mac, dest_mac, 6);
+
+        switch (ethtype) {
         case NET_ETHTYPE_IPV4:
             ret = ipv4_tx_stack(&link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
                                 command->as.flow.buffer, command->as.flow.buffer_sz);
@@ -460,8 +473,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         break;
     }
 
-    spin_unlock_irqrestore(&net_handles_lock, flags);
 end:
+    spin_unlock_irqrestore(&net_handles_lock, flags);
     return ret;
 }
 

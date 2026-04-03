@@ -18,7 +18,11 @@ uint64_t timer_get_ticks() { return timer_ticks; }
 
 uint64_t timer_get_resolution() { return timer_resolution; }
 
-uint64_t uptimer_ms() { return (timer_ticks * 1000) / timer_resolution; }
+uint64_t uptime_us() {
+    uint64_t ticks = timer_get_ticks();
+    uint64_t resolution = timer_get_resolution();
+    return ((ticks / resolution) * 1000000) + (((ticks % resolution) * 1000000) / resolution);
+}
 
 void timer_usleep(time_t us) {
     tid_t tid;
