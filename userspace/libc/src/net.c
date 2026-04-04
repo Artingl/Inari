@@ -1,19 +1,27 @@
 #include <net.h>
+#include <string.h>
 #include <sys.h>
 
-#define NET_SYS_CREATE   0x0
-#define NET_SYS_FREE     0x1
-#define NET_SYS_SENDTO   0x2
-#define NET_SYS_RECVFROM 0x3
-#define NET_SYS_BIND     0x4
-#define NET_SYS_CONNECT  0x5
+#define NET_SYS_CREATE       0x0
+#define NET_SYS_FREE         0x1
+#define NET_SYS_SENDTO       0x2
+#define NET_SYS_RECVFROM     0x3
+#define NET_SYS_BIND         0x4
+#define NET_SYS_CONNECT      0x5
+#define NET_SYS_REQ_NIC_INFO 0x6
 
 struct net_sys_command {
     uint8_t id;
     union {
         struct {
+            char net_device[48];
+            struct net_device_info *result;
+        } nic_info;
+
+        struct {
             uint8_t ipn;
             uint16_t ethtype;
+            char net_device[48];
         } create;
 
         struct {
@@ -34,6 +42,17 @@ struct net_sys_command {
     } as;
 } __attribute__((packed));
 
+int net_info(const char *name, struct net_device_info *result) {
+    struct net_sys_command cmd = {.id = NET_SYS_REQ_NIC_INFO, .as.nic_info = {.result = result}};
+    cmd.as.nic_info.net_device[0] = 0;
+    if (name)
+        memcpy(cmd.as.nic_info.net_device, name,
+               strlen(name) + 1 > sizeof(cmd.as.nic_info.net_device) ? sizeof(cmd.as.nic_info.net_device)
+                                                                   : strlen(name) + 1);
+    cmd.as.nic_info.net_device[sizeof(cmd.as.nic_info.net_device) - 1] = 0;
+    return net_sys(&cmd, NULL);
+}
+
 int sockbind(handle_t sock_handle, struct net_sock_addr addr) {
     struct net_sys_command cmd = {.id = NET_SYS_BIND, .as.transport = {.addr = addr}};
     return net_sys(&cmd, &sock_handle);
@@ -44,8 +63,14 @@ int sockconnect(handle_t sock_handle, struct net_sock_addr addr) {
     return net_sys(&cmd, &sock_handle);
 }
 
-int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype) {
+int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype, const char *net_device) {
     struct net_sys_command cmd = {.id = NET_SYS_CREATE, .as.create = {.ipn = ip_number, .ethtype = ethtype}};
+    cmd.as.create.net_device[0] = 0;
+    if (net_device)
+        memcpy(cmd.as.create.net_device, net_device,
+               strlen(net_device) + 1 > sizeof(cmd.as.create.net_device) ? sizeof(cmd.as.create.net_device)
+                                                                         : strlen(net_device) + 1);
+    cmd.as.create.net_device[sizeof(cmd.as.create.net_device) - 1] = 0;
     return net_sys(&cmd, sock_handle);
 }
 

@@ -34,6 +34,7 @@ struct udp_header_checksum {
 static pid_t ports[65535] = {0};
 
 int udp_rx_handler(struct net_network_layer_info *layer, struct udp_header *packet, uint32_t ln) {
+    struct net_sock_addr origin;
     // uint16_t checksum = bigend16(packet->checksum);
     // packet->checksum = 0;
     /* I dont care for now */
@@ -43,12 +44,18 @@ int udp_rx_handler(struct net_network_layer_info *layer, struct udp_header *pack
     // }
 
     /* TODO: UDP is datagram protocol, packets must not leak */
-    return -1;//net_sock_fill_datagram(bigend16(packet->dest_port), packet->data, ln - sizeof(struct udp_header));
+    origin.addr_ln = layer->origin_addr_ln;
+    origin.identifier = bigend16(packet->src_port);
+    memcpy(origin.address, layer->origin, origin.addr_ln);
+    return net_sock_fill_datagram(origin, bigend16(packet->dest_port), packet, ln);
 }
 
-static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, struct net_network_layer_info *layer,
+static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr dest_addr, struct net_network_layer_info *layer,
                           void *packet, uint32_t ln) {
     struct udp_header_checksum *udp;
+
+    if (!sock->identifier)
+        return NET_INV_STATE;
 
     /* Allocate buffer for data layering */
     if (layer->ops->req_buf(layer, (void **)&udp, ln + sizeof(struct udp_header_checksum)) != 0)
@@ -56,15 +63,15 @@ static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, st
         return NET_DROPPED;
 
     /* Setup pseudo IPv4 header */
-    memcpy(&udp->ipv4_pseudo.dest_address, addr.address, 4);
-    memcpy(&udp->ipv4_pseudo.src_address, layer->ifaddr->address.ipv4, 4);
+    memcpy(&udp->ipv4_pseudo.dest_address, dest_addr.address, 4);
+    memcpy(&udp->ipv4_pseudo.src_address, layer->origin, 4);
     udp->ipv4_pseudo.zeroes = 0;
     udp->ipv4_pseudo.protocol = NET_IPN_UDP;
     udp->ipv4_pseudo.udp_ln = bigend16(ln + sizeof(struct udp_header));
 
     /* Set the identifier so we later dont lose the packet */
     memcpy(udp->actual.data, packet, ln);
-    udp->actual.dest_port = bigend16(addr.identifier);
+    udp->actual.dest_port = bigend16(dest_addr.identifier);
     udp->actual.src_port = bigend16(sock->identifier);
     udp->actual.ln = bigend16(ln + sizeof(struct udp_header));
     udp->actual.checksum = 0;
@@ -79,7 +86,7 @@ static int udp_connect(struct net_socket *sock, struct net_sock_addr addr) {
     /* Allocate port that will listen for packets.
      * TODO: again, dumb;
      * TODOx2: connect in UDP is strange, we can move this logic to TX */
-    for (size_t i = 65535; i > 0; i--) {
+    for (size_t i = 65535; i > 1; i--) {
         if (!ports[i]) {
             ports[i] = sock->owner;
             sock->identifier = i;

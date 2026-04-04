@@ -22,7 +22,7 @@ int arp_resolve_ipv4(struct net_link_layer_info *layer, struct net_ifaddr *ifadd
 
 int arp_rx_stack(struct net_link_layer_info *layer, void *packet, uint32_t ln);
 
-int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr,
-                 struct net_sock_addr addr, uint8_t ipn, void *packet, uint32_t ln);
+int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, uint8_t *origin_addr,
+                 struct net_sock_addr dest_addr, uint8_t ipn, void *packet, uint32_t ln);
 
 #endif

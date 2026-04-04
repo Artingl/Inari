@@ -377,8 +377,7 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
         break;
 
     case SYSCALL_NET:
-        if (!VMM_IS_RANGE_USERSPACE(param0, param0 + sizeof(struct net_sys_command)) || !VMM_IS_PTR_USERSPACE(param1) ||
-            !param1) {
+        if (!VMM_IS_RANGE_USERSPACE(param0, param0 + sizeof(struct net_sys_command)) || !VMM_IS_PTR_USERSPACE(param1)) {
             res = -EINVAL;
             break;
         }

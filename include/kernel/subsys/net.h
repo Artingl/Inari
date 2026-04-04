@@ -20,12 +20,13 @@ struct net_ops {
 
 struct net_device_info {
     char name[DEV_NAME_SIZE + 1];
+    char hardware[DEV_NAME_SIZE + 1];
     uint8_t mac_addr[6];
     uint16_t mtu;
 
     uint32_t flags;
     uint8_t link_state; // 1 = Cable plugged in, 0 = Cable unplugged
-};
+} __attribute__((packed));
 
 struct net_ifaddr {
 #define NET_IF_INET  0 // IPv4
@@ -50,7 +51,7 @@ struct net_ifaddr {
 
     struct net_device *device;
     struct list_head list;
-};
+} __attribute__((packed));
 
 struct net_route_entry {
     /* TODO: only ipv4 for now. Look at ifaddr for reference for future */
@@ -60,7 +61,7 @@ struct net_route_entry {
     uint8_t is_default;
     struct net_ifaddr *ifaddr;
     struct list_head list;
-};
+} __attribute__((packed));
 
 struct net_device {
     struct net_device_info info;
@@ -74,9 +75,10 @@ struct net_device {
 #define NET_ETHTYPE_IPV4 0x0800
 #define NET_ETHTYPE_ARP  0x0806
 
-#define NET_OK      0
-#define NET_DROPPED -1
-#define NET_ERR     -2
+#define NET_OK        0
+#define NET_DROPPED   -1
+#define NET_ERR       -2
+#define NET_INV_STATE -3 // E.g. when doing send/recv without bind/connect
 
 #define NET_IPN_ICMP 0x01
 #define NET_IPN_TCP  0x06
@@ -140,7 +142,6 @@ struct net_sock_addr {
 struct net_network_layer_info {
     void *layer;                            // ipv4/ipv6 packet
     struct net_link_layer_info *link_layer; // underlying link layer
-    struct net_ifaddr *ifaddr;
 
     uint8_t origin_addr_ln;
     uint8_t origin[16];
@@ -155,7 +156,7 @@ typedef int (*net_protocol_rx_t)(struct net_network_layer_info *layer, void *pac
 /* Identifier is the unique ID to know where the answer from this TX (if any) should go (e.g. specific socket) */
 struct net_socket;
 struct net_sock_addr;
-typedef int (*net_protocol_tx_t)(struct net_socket *sock, struct net_sock_addr addr,
+typedef int (*net_protocol_tx_t)(struct net_socket *sock, struct net_sock_addr dest_addr,
                                  struct net_network_layer_info *layer, void *packet, uint32_t ln);
 
 /* Identifier could be a port, or similar in different protocols */
@@ -176,18 +177,25 @@ struct net_protocol {
 typedef int64_t net_handle_t;
 
 /* Used in syscalls */
-#define NET_SYS_CREATE   0x0
-#define NET_SYS_FREE     0x1
-#define NET_SYS_SENDTO   0x2
-#define NET_SYS_RECVFROM 0x3
-#define NET_SYS_BIND     0x4
-#define NET_SYS_CONNECT  0x5
+#define NET_SYS_CREATE       0x0
+#define NET_SYS_FREE         0x1
+#define NET_SYS_SENDTO       0x2
+#define NET_SYS_RECVFROM     0x3
+#define NET_SYS_BIND         0x4
+#define NET_SYS_CONNECT      0x5
+#define NET_SYS_REQ_NIC_INFO 0x6
 struct net_sys_command {
     uint8_t id;
     union {
         struct {
+            char net_device[48];
+            struct net_device_info *result;
+        } nic_info;
+
+        struct {
             uint8_t ipn;
             uint16_t ethtype;
+            char net_device[48];
         } create;
 
         struct {
@@ -220,8 +228,9 @@ int net_buf_alloc(struct net_buf **result);
 
 struct net_socket {
     net_handle_t handle;
+    struct net_device *dev; // the device this socket can only operate on. NULL means any device
     uint8_t protocol_data[32];
-    uint8_t ipn; // ICMP, UDP, TCP, ...
+    uint8_t ipn;       // ICMP, UDP, TCP, ...
     uint8_t is_stream; // stream/datagram
     uint16_t ethtype;
     uint16_t identifier; // Could be a port, ICMP identifier, anything

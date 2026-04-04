@@ -12,7 +12,9 @@
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
+#include <kernel/sys/vfs.h>
 
+#include <misc/format.h>
 #include <misc/list.h>
 #include <misc/ring.h>
 #include <misc/string.h>
@@ -29,6 +31,7 @@ static LIST_HEAD(net_handles);
 static LIST_HEAD(net_routing_table);
 static LIST_HEAD(net_devices);
 
+static int device_id = 0;
 static int is_initialized = 0;
 static tid_t queue_thread;
 static struct net_protocol protocols[0xff];
@@ -50,6 +53,19 @@ static struct net_device *get_device(dev_t dev) {
     return NULL;
 }
 
+static struct net_device *get_device_name(const char *name) {
+    struct list_head *pos;
+    struct net_device *entry;
+
+    list_for_each(pos, &net_devices) {
+        entry = list_entry(pos, struct net_device, list);
+        if (strcmp(entry->info.name, name) == 0)
+            return entry;
+    }
+
+    return NULL;
+}
+
 static int count_bits(unsigned int n) {
     int count = 0;
     while (n > 0) {
@@ -59,7 +75,7 @@ static int count_bits(unsigned int n) {
     return count;
 }
 
-static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is_default) {
+static struct net_ifaddr *get_ifaddr_route(struct net_device *target, uint8_t *addr, size_t sz, uint8_t *is_default) {
     struct list_head *pos;
     struct net_route_entry *route_entry;
     uint32_t in_addr = *((uint32_t *)addr), subnet_mask, dest_network;
@@ -76,7 +92,7 @@ static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is
         route_entry = list_entry(pos, struct net_route_entry, list);
         subnet_mask = *((uint32_t *)route_entry->netmask);
         dest_network = *((uint32_t *)route_entry->dest_network);
-        if ((in_addr & subnet_mask) == dest_network) {
+        if ((in_addr & subnet_mask) == dest_network && ((target && route_entry->ifaddr->device == target) || !target)) {
             if (best_mask <= count_bits(bigend32(subnet_mask))) {
                 best_mask = count_bits(bigend32(subnet_mask));
                 best_default = route_entry->is_default;
@@ -234,7 +250,7 @@ int net_link_layer_tx(void *layer_info, void *packet, uint32_t ln) {
 }
 
 int net_link_layer_req_buf(void *layer_info, void **result, uint32_t ln) {
-    if (!result && !*result)
+    if (!result && !*result) // struct net_buf
         return -EINVAL;
     if ((*result = kmalloc((ln + sizeof(struct ethernet_frame)))) == NULL)
         return -ENOMEM;
@@ -454,9 +470,11 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     uint16_t ethtype;
     uint8_t is_default;
     uint8_t dest_mac[6];
+    uint8_t origin_ipv4[4];
     struct net_buf *next_buf;
     struct net_socket *sock;
     struct net_ifaddr *ifaddr;
+    struct net_device *device = NULL;
     struct ethernet_frame frame;
     struct net_link_layer_info link;
     struct net_protocol *protocol;
@@ -464,10 +482,24 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
     switch (command->id) {
     case NET_SYS_CREATE:
+        /* Ensure data */
+        if (!sock_handle) {
+            ret = -EINVAL;
+            goto end;
+        }
+
         /* Check that the request IPN exists (and in future that we have sufficient permissions) */
         if (!net_invoke_protocol(command->as.create.ipn)) {
             ret = -ENOSYS;
             goto end;
+        }
+
+        /* Check that a valid device is provided */
+        if (command->as.create.net_device[0]) {
+            if (!(device = get_device_name(command->as.create.net_device))) {
+                ret = -ENODEV;
+                goto end;
+            }
         }
 
         /* Finally, create the socket */
@@ -476,15 +508,23 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         sock->ethtype = command->as.create.ethtype;
         sock->ipn = command->as.create.ipn;
         sock->owner = caller;
+        sock->dev = device;
         ret = 0;
         break;
 
     case NET_SYS_FREE:
+        /* Ensure data */
+        if (!sock_handle) {
+            ret = -EINVAL;
+            goto end;
+        }
+
         ret = cleanup_sock_handle(*sock_handle);
         break;
     case NET_SYS_SENDTO:
         /* Ensure data */
-        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz)) {
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz) ||
+            !sock_handle) {
             ret = -EINVAL;
             goto end;
         }
@@ -508,10 +548,13 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         }
 
         /* Find required ifaddr for our destination. */
-        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr.address, command->as.flow.addr.addr_ln, &is_default))) {
+        if (!(ifaddr = get_ifaddr_route(sock->dev, command->as.flow.addr.address, command->as.flow.addr.addr_ln,
+                                        &is_default))) {
             ret = -ENETUNREACH;
             goto end;
         }
+
+        memcpy(origin_ipv4, ifaddr->address.ipv4, 4);
 
         /* We dont need a lock anymore. Also we need to unlock here to avoid hard-locks. */
         spin_unlock_irqrestore(&net_handles_lock, flags);
@@ -526,7 +569,13 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         memcpy(link.device_mac, ifaddr->device->info.mac_addr, 6);
 
         /* Note: we know for sure that it is IPv4 in flow.addr because of condition above. */
-        if (is_default) {
+        /* Note: we will force MAC ff:ff:ff:ff:ff:ff for destination address 255.255.255.255 */
+        if ((ifaddr->gateway.ipv4[0] == 0xff && ifaddr->gateway.ipv4[1] == 0xff && ifaddr->gateway.ipv4[2] == 0xff &&
+             ifaddr->gateway.ipv4[3] == 0xff) ||
+            (command->as.flow.addr.address[0] == 0xff && command->as.flow.addr.address[1] == 0xff &&
+             command->as.flow.addr.address[2] == 0xff && command->as.flow.addr.address[3] == 0xff)) {
+            memset(dest_mac, 0xff, 6);
+        } else if (is_default) {
             if (arp_resolve_ipv4(&link, ifaddr, ifaddr->gateway.ipv4, dest_mac) != 0) {
                 ret = -ENETUNREACH;
                 goto end;
@@ -554,11 +603,11 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         switch (ethtype) {
         case NET_ETHTYPE_IPV4:
-            ret = ipv4_tx_stack(sock, &link, ifaddr, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
+            ret = ipv4_tx_stack(sock, &link, origin_ipv4, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
                                 command->as.flow.buffer_sz);
             break;
         case NET_ETHTYPE_ARP:
-            ret = arp_tx_stack(sock, &link, ifaddr, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
+            ret = arp_tx_stack(sock, &link, origin_ipv4, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
                                command->as.flow.buffer_sz);
             break;
         default:
@@ -570,7 +619,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     case NET_SYS_RECVFROM:
         /* Ensure data */
         if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz) ||
-            !VMM_IS_RANGE_USERSPACE(command->as.flow.from, command->as.flow.from + sizeof(struct net_sock_addr))) {
+            !VMM_IS_RANGE_USERSPACE(command->as.flow.from, command->as.flow.from + sizeof(struct net_sock_addr)) ||
+            !sock_handle) {
             ret = -EINVAL;
             goto end;
         }
@@ -643,6 +693,10 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             ln = MIN(sock->rx.datagram.buf->ln, MIN(command->as.flow.buffer_sz, 1500));
             memcpy(command->as.flow.buffer, sock->rx.datagram.buf->payload, ln);
 
+            /* Save the origin address */
+            if (command->as.flow.from)
+                *command->as.flow.from = sock->rx.datagram.buf->origin;
+
             next_buf = list_entry(sock->rx.datagram.buf->list.next, struct net_buf, list);
             list_del(&sock->rx.datagram.buf->list);
 
@@ -651,12 +705,17 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
                 sock->rx.datagram.buf = 0;
             else
                 sock->rx.datagram.buf = next_buf;
-
             ret = ln;
         }
 
         break;
     case NET_SYS_BIND:
+        /* Ensure data */
+        if (!sock_handle) {
+            ret = -EINVAL;
+            goto end;
+        }
+
         if (!(sock = get_sock_handle(*sock_handle))) {
             ret = -EINVAL;
             goto end;
@@ -675,6 +734,12 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         break;
     case NET_SYS_CONNECT:
+        /* Ensure data */
+        if (!sock_handle) {
+            ret = -EINVAL;
+            goto end;
+        }
+
         if (!(sock = get_sock_handle(*sock_handle))) {
             ret = -EINVAL;
             goto end;
@@ -690,6 +755,26 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         ret = -ENOSYS;
         if (protocol && protocol->connect)
             ret = protocol->connect(sock, command->as.transport.addr);
+        break;
+    case NET_SYS_REQ_NIC_INFO:
+        /* Ensure data */
+        if (!VMM_IS_RANGE_USERSPACE(command->as.nic_info.result,
+                                    command->as.nic_info.result + sizeof(struct net_device_info))) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Retrieve the device */
+        if (!(device = get_device_name(command->as.nic_info.net_device))) {
+            ret = -ENODEV;
+            goto end;
+        }
+
+        if (command->as.nic_info.result) {
+            memcpy(command->as.nic_info.result, &device->info, sizeof(device->info));
+        }
+
+        ret = 0;
         break;
     }
 
@@ -782,7 +867,8 @@ int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t m
     if (!device)
         return -ENOMEM;
 
-    strcpy(device->info.name, name);
+    sprintf(device->info.name, "net%d", device_id++);
+    strcpy(device->info.hardware, name);
     memcpy(device->info.mac_addr, mac, sizeof(device->info.mac_addr));
     device->info.name[DEV_NAME_SIZE] = '\0';
     device->info.mtu = mtu;

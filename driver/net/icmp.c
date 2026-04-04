@@ -54,8 +54,8 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
     return NET_OK;
 }
 
-static int icmp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, struct net_network_layer_info *layer,
-                           void *packet, uint32_t ln) {
+static int icmp_tx_handler(struct net_socket *sock, struct net_sock_addr dest_addr,
+                           struct net_network_layer_info *layer, void *packet, uint32_t ln) {
     void *tx_data;
 
     /* Allocate buffer for data layering */

@@ -12,12 +12,13 @@
 
 struct net_device_info {
     char name[DEV_NAME_SIZE + 1];
+    char hardware[DEV_NAME_SIZE + 1];
     uint8_t mac_addr[6];
     uint16_t mtu;
 
     uint32_t flags;
     uint8_t link_state; // 1 = Cable plugged in, 0 = Cable unplugged
-};
+} __attribute__((packed));
 
 struct net_sock_addr {
     size_t addr_ln; // always 4
@@ -58,9 +59,12 @@ struct net_ifaddr {
 #define NET_IPN_TCP  0x06
 #define NET_IPN_UDP  0x11
 
+int net_info(const char *name, struct net_device_info *result);
+
 int sockconnect(handle_t sock_handle, struct net_sock_addr addr);
 int sockbind(handle_t sock_handle, struct net_sock_addr addr);
-int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype);
+/* net_device is the device to be used for socket. NULL means any device. */
+int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype, const char *net_device);
 int socksendto(handle_t sock_handle, void *data, size_t data_size, struct net_sock_addr addr);
 /* Timeout of 0 will mean it is blocking until any response */
 int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr *from,

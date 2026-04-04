@@ -8,7 +8,7 @@
 int main(int argc, char *argv[]) {
     int ret;
     pid_t pid;
-    char *args[] = {"net0", "attach", "192.168.99.155", "255.255.255.0", "192.168.99.1", NULL};
+    char *args[] = {"net0", "attach", "192.168.1.155", "255.255.255.0", "192.168.1.1", NULL};
     if ((ret = execpv(&pid, "/programs/ip.exe", 5, args)) != 0) {
         printf("ip: failed: %s\n", errno(ret));
     }
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 
     char buf[14];
 
-    // assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4) == 0, "sockcreate failed!");
+    // assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4, NULL) == 0, "sockcreate failed!");
     // assert(sockbind(sock_handle, addr) == 0, "sockbind failed!");
 
     // int r = sockrecvfrom(sock_handle, buf, 14, addr, 0, 0);
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
     if (0) {
         const char *hello = "hello world!";
-        assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4) == 0, "sockcreate failed!");
+        assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4, NULL) == 0, "sockcreate failed!");
         assert(sockconnect(sock_handle, addr) == 0, "sockconnect failed!");
 
         int r = socksendto(sock_handle, (void *)hello, strlen(hello), addr);

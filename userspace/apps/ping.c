@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     time_t current_time, start_time;
     size_t total_packets = 0, success = 0;
     time_t icmp_seq_time[256] = {0};
-    uint32_t current_seq = 0;
+    int retries = 4;
     uint16_t checksum;
     uint8_t icmp_data[40] = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
     size_t recv_off, sent_size;
@@ -54,8 +54,12 @@ int main(int argc, char *argv[]) {
     uptime(&start_time);
 
     if (argc < 2) {
-        printf("usage: %s ip\n", argv[0]);
+        printf("usage: %s ip [retries]\n", argv[0]);
         return -1;
+    }
+
+    if (argc >= 3) {
+        retries = atoi(argv[2]);
     }
 
     sock_addr.addr_ln = 4;
@@ -64,30 +68,34 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if ((ret = sockcreate(&sock_handle, NET_IPN_ICMP, NET_ETHTYPE_IPV4)) != 0) {
+    if ((ret = sockcreate(&sock_handle, NET_IPN_ICMP, NET_ETHTYPE_IPV4, NULL)) != 0) {
         printf("%s: Unable to create socket: %s\n", argv[0], errno(ret));
         return ret;
     }
 
     sent_size = sizeof(icmp_header);
-    printf("PING %s: %d bytes of data.\n", argv[1], sent_size);
+    printf("PING %s: %d bytes of data", argv[1], sent_size);
+
+    if (retries == 4) {
+        printf(".\n");
+    }
+    else
+        printf(" (%d retries).\n", retries);
 
     /* Send pings */
-    for (int i = 0; i < 4; i++) {
-        uptime(&icmp_seq_time[current_seq % 256]);
+    for (int i = 0; i < retries; i++) {
         memset(&icmp_header, 0, sizeof(icmp_header));
         memcpy(&icmp_header.data[0], icmp_data, sizeof(icmp_data));
         icmp_header.type = 8;
         icmp_header.code = 0;
-        icmp_header.seq = bigend16(current_seq);
+        icmp_header.seq = bigend16(total_packets);
         icmp_header.checksum = bigend16(net_checksum(&icmp_header, sizeof(icmp_header)));
-        current_seq++;
-
+        uptime(&icmp_seq_time[total_packets % 256]);
+        total_packets++;
         if ((ret = socksendto(sock_handle, &icmp_header, sent_size, sock_addr)) != 0) {
             printf("%s: Unable to send ping: %s\n", argv[0], errno(ret));
             return ret;
         }
-        total_packets++;
 
         /* Wait for packets */
         recv_off = 0;

@@ -25,8 +25,8 @@ static struct {
     uint8_t mac[6];
 } arp_table[CONFIG_ARP_MAX_TABLE_ENTRIES] = {0};
 
-int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr,
-                 struct net_sock_addr addr, uint8_t ipn, void *packet, uint32_t ln) {
+int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, uint8_t *origin_addr,
+                 struct net_sock_addr dest_addr, uint8_t ipn, void *packet, uint32_t ln) {
     return NET_DROPPED;
 }
 
