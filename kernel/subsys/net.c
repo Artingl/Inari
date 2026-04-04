@@ -46,6 +46,16 @@ static struct net_device *get_device(dev_t dev) {
     return NULL;
 }
 
+static int count_bits(unsigned int n) {
+    int count = 0;
+    while (n > 0) {
+        n &= (n - 1); // Clears the least significant set bit
+        count++;
+    }
+    return count;
+}
+
+
 static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is_default) {
     struct list_head *pos;
     struct net_route_entry *route_entry;
@@ -55,15 +65,27 @@ static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is
     if (sz != 4)
         return NULL;
 
+    uint8_t best_mask = 0;
+    uint8_t best_default = 0;
+    struct net_ifaddr *best_ifaddr = NULL;
+
     list_for_each(pos, &net_routing_table) {
         route_entry = list_entry(pos, struct net_route_entry, list);
         subnet_mask = *((uint32_t *)route_entry->netmask);
         dest_network = *((uint32_t *)route_entry->dest_network);
         if ((in_addr & subnet_mask) == dest_network) {
-            if (is_default)
-                *is_default = route_entry->is_default;
-            return route_entry->ifaddr;
+            if (best_mask <= count_bits(bigend32(subnet_mask))) {
+                best_mask = count_bits(bigend32(subnet_mask));
+                best_default = route_entry->is_default;
+                best_ifaddr = route_entry->ifaddr;
+            }
         }
+    }
+
+    if (best_ifaddr) {
+        if (is_default)
+            *is_default = best_default;
+        return best_ifaddr;
     }
 
     return NULL;
@@ -159,6 +181,9 @@ static struct net_socket *get_sock_identifier(uint32_t identifier) {
 static int cleanup_sock(struct net_socket *sock) {
     list_del(&sock->list);
 
+    struct net_protocol *protocol = net_invoke_protocol(sock->ipn);
+    if (protocol && protocol->close)
+        protocol->close(sock);
     /* TODO: smarter logic here. */
 
     kfree(sock);
@@ -392,6 +417,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     struct net_ifaddr *ifaddr;
     struct ethernet_frame frame;
     struct net_link_layer_info link;
+    struct net_protocol *protocol;
     spin_lock_irqsave(&net_handles_lock, flags);
 
     switch (command->id) {
@@ -414,10 +440,9 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     case NET_SYS_FREE:
         ret = cleanup_sock_handle(*sock_handle);
         break;
-    case NET_SYS_TX:
+    case NET_SYS_SENDTO:
         /* Ensure data */
-        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.addr, command->as.flow.addr_sz) ||
-            !VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
             ret = -EINVAL;
             goto end;
         }
@@ -435,13 +460,13 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         }
 
         /* TODO: only ipv4 support for now */
-        if (command->as.flow.addr_sz != 4) {
+        if (command->as.flow.addr.addr_ln != 4) {
             ret = -EINVAL;
             goto end;
         }
 
         /* Find required ifaddr for our destination. */
-        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr, command->as.flow.addr_sz, &is_default))) {
+        if (!(ifaddr = get_ifaddr_route(command->as.flow.addr.address, command->as.flow.addr.addr_ln, &is_default))) {
             ret = -ENETUNREACH;
             goto end;
         }
@@ -465,7 +490,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
                 goto end;
             }
         } else {
-            if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr, dest_mac) != 0) {
+            if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr.address, dest_mac) != 0) {
                 ret = -ENETUNREACH;
                 goto end;
             }
@@ -487,12 +512,12 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         switch (ethtype) {
         case NET_ETHTYPE_IPV4:
-            ret = ipv4_tx_stack(sock, &link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
-                                command->as.flow.buffer, command->as.flow.buffer_sz);
+            ret = ipv4_tx_stack(sock, &link, ifaddr, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
+                                command->as.flow.buffer_sz);
             break;
         case NET_ETHTYPE_ARP:
-            ret = arp_tx_stack(sock, &link, ifaddr, command->as.flow.addr, command->as.flow.addr_sz, sock->ipn,
-                               command->as.flow.buffer, command->as.flow.buffer_sz);
+            ret = arp_tx_stack(sock, &link, ifaddr, command->as.flow.addr, sock->ipn, command->as.flow.buffer,
+                               command->as.flow.buffer_sz);
             break;
         default:
             ret = NET_DROPPED;
@@ -500,10 +525,9 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         ret = 0;
         break;
-    case NET_SYS_RX:
+    case NET_SYS_RECVFROM:
         /* Ensure data */
-        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.addr, command->as.flow.addr_sz) ||
-            !VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
             ret = -EINVAL;
             goto end;
         }
@@ -532,6 +556,11 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
                 sched_yield();
         }
 
+        if (timeout <= uptime_us()) {
+            ret = -ETIMEDOUT;
+            goto end;
+        }
+
         ln = (sock->rx.tail - sock->rx.head + 65535) % 65535;
         if (command->as.flow.buffer_sz < ln)
             ln = command->as.flow.buffer_sz;
@@ -549,6 +578,41 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         }
 
         ret = ln;
+        break;
+    case NET_SYS_BIND:
+        if (!(sock = get_sock_handle(*sock_handle))) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Ensure we're the owner */
+        if (sock->owner != caller) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        protocol = net_invoke_protocol(sock->ipn);
+        ret = -ENOSYS;
+        if (protocol && protocol->bind)
+            ret = protocol->bind(sock, command->as.transport.addr);
+
+        break;
+    case NET_SYS_CONNECT:
+        if (!(sock = get_sock_handle(*sock_handle))) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        /* Ensure we're the owner */
+        if (sock->owner != caller) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        protocol = net_invoke_protocol(sock->ipn);
+        ret = -ENOSYS;
+        if (protocol && protocol->connect)
+            ret = protocol->connect(sock, command->as.transport.addr);
         break;
     }
 

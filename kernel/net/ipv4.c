@@ -29,7 +29,7 @@ static int ipv4_tx_layer(void *layer_info, void *packet, uint32_t ln) {
 
     /* Finally, calculate checksum */
     ipv4_packet->checksum = 0;
-    ipv4_packet->checksum = bigend16(net_checksum(ipv4_packet, ln + sizeof(struct ipv4_packet)));
+    ipv4_packet->checksum = bigend16(net_checksum(ipv4_packet, sizeof(struct ipv4_packet)));
 
     return info->link_layer->ops->tx(info->link_layer, ipv4_packet, ln + sizeof(struct ipv4_packet));
 }
@@ -44,9 +44,9 @@ static int ipv4_req_buf(void *layer_info, void **result, uint32_t ln) {
 
 static struct net_layer_ops ipv4_network_layer_ops = {.tx = &ipv4_tx_layer, .req_buf = &ipv4_req_buf};
 
-int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr,
-                  size_t addr_sz, uint8_t ipn, void *packet, uint32_t ln) {
-    if (addr_sz != 4)
+int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr,
+                  struct net_sock_addr addr, uint8_t ipn, void *packet, uint32_t ln) {
+    if (addr.addr_ln != 4)
         return NET_DROPPED;
 
     struct ipv4_packet i_packet = {
@@ -63,7 +63,7 @@ int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, st
 
     /* Note: here we set the dest addr to the src addr value, because
      * later ipv4_tx_layer function will shift them around */
-    memcpy(&i_packet.src_address, dest_addr, 4);
+    memcpy(&i_packet.src_address, addr.address, 4);
 
     struct net_network_layer_info network_layer = {
         .link_layer = layer, .layer = &i_packet, .ops = &ipv4_network_layer_ops, .ifaddr = ifaddr};
@@ -71,7 +71,7 @@ int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, st
     struct net_protocol *protocol = net_invoke_protocol(ipn);
 
     if (protocol && protocol->tx)
-        return protocol->tx(sock, &network_layer, packet, ln);
+        return protocol->tx(sock, addr, &network_layer, packet, ln);
     return NET_DROPPED;
 }
 
@@ -107,7 +107,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         /* Different packet version */
         return NET_DROPPED;
 
-    /* TODO: checksum validation */
+        /* TODO: checksum validation */
 
 #ifdef CONFIG_LITTLE_ENDIAN
     /* Some more dirty work here to get flags on little endian */

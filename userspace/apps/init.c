@@ -7,7 +7,7 @@ static void ism_wait() {
     /* Really dumb way to do so */
 
     printf("init: waiting for ISM.\n");
-    while((res = ipc_open("ism.window", &ipc)) != 0 && timeout-- > 0)
+    while ((res = ipc_open("ism.window", &ipc)) != 0 && timeout-- > 0)
         usleep(10000);
 
     if (timeout <= 0) {
@@ -21,9 +21,15 @@ static void ism_wait() {
     ipc_close(ipc);
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     pid_t ism_pid;
+
+    // execp(&ism_pid, "/programs/nettest.exe");
+    // waitpid(ism_pid);
+
+    // char *a[] = {"87.240.132.78"};
+    // execpv(&ism_pid, "/programs/ping.exe", 1, a);
+    // waitpid(ism_pid);
 
     execp(&ism_pid, "/programs/cmd.exe");
     waitpid(ism_pid);

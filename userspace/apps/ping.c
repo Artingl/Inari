@@ -40,12 +40,12 @@ int parse_ipv4(uint8_t *result, const char *ip) {
 
 int main(int argc, char *argv[]) {
     struct icmp_header icmp_header;
+    struct net_sock_addr sock_addr;
     time_t current_time, start_time;
     size_t total_packets = 0, success = 0;
     time_t icmp_seq_time[256] = {0};
     uint32_t current_seq = 0;
     uint16_t checksum;
-    uint8_t ipv4[4];
     uint8_t icmp_data[40] = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
     size_t recv_off, sent_size;
     handle_t sock_handle;
@@ -58,7 +58,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (parse_ipv4(ipv4, argv[1]) != 0) {
+    sock_addr.addr_ln = 4;
+    if (parse_ipv4(sock_addr.address, argv[1]) != 0) {
         printf("%s: Invalid IP: %s\n", argv[0], argv[1]);
         return -1;
     }
@@ -79,10 +80,10 @@ int main(int argc, char *argv[]) {
         icmp_header.type = 8;
         icmp_header.code = 0;
         icmp_header.seq = bigend16(current_seq);
-        icmp_header.checksum = net_checksum(&icmp_header, sizeof(icmp_header));
+        icmp_header.checksum = bigend16(net_checksum(&icmp_header, sizeof(icmp_header)));
         current_seq++;
 
-        if ((ret = socksend(sock_handle, &icmp_header, sent_size, ipv4, sizeof(ipv4))) != 0) {
+        if ((ret = socksendto(sock_handle, &icmp_header, sent_size, sock_addr)) != 0) {
             printf("%s: Unable to send ping: %s\n", argv[0], errno(ret));
             return ret;
         }
@@ -91,7 +92,12 @@ int main(int argc, char *argv[]) {
         /* Wait for packets */
         recv_off = 0;
         while (recv_off < sent_size) {
-            if ((ret = sockrecv(sock_handle, &icmp_header + recv_off, sent_size, ipv4, sizeof(ipv4), 0, 0)) < 0) {
+            if ((ret = sockrecvfrom(sock_handle, &icmp_header + recv_off, sent_size, sock_addr, 5000000, 0)) < 0) {
+                if (ret == -ETIMEDOUT) {
+                    printf("request timeout\n");
+                    break;
+                }
+
                 printf("%s: Unable to receive pong: %s\n", argv[0], errno(ret));
                 return ret;
             }
@@ -110,7 +116,7 @@ int main(int argc, char *argv[]) {
             printf("%d bytes from %s: icmp_seq=%u time=%2f ms\n", recv_off, argv[1], icmp_header.seq,
                    ((double)current_time - (double)icmp_seq_time[icmp_header.seq % 256]) / 1000.0f);
             success++;
-        } else {
+        } else if (ret != -ETIMEDOUT) {
             printf("%d bytes bad packet\n", recv_off);
         }
 

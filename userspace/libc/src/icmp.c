@@ -50,8 +50,7 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
     return NET_OK;
 }
 
-static int icmp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, struct net_network_layer_info *layer,
-                           void *packet, uint32_t ln) {
+static int icmp_tx_handler(struct net_socket *sock, struct net_network_layer_info *layer, void *packet, uint32_t ln) {
     void *tx_data;
 
     /* Allocate buffer for data layering */
@@ -72,9 +71,11 @@ static int icmp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, s
 }
 
 static int net_icmp_probe() {
-    return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){.is_privileged = 0,
-                                                                   .rx = (net_protocol_rx_t)&icmp_rx_handler,
-                                                                   .tx = (net_protocol_tx_t)&icmp_tx_handler});
+    return net_define_protocol(NET_IPN_ICMP, (struct net_protocol){
+        .is_privileged = 0,
+        .rx = (net_protocol_rx_t)&icmp_rx_handler,
+        .tx = (net_protocol_tx_t)&icmp_tx_handler
+    });
 }
 
 static void net_icmp_cleanup() { net_free_protocol(NET_IPN_ICMP); }

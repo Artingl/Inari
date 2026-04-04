@@ -523,7 +523,8 @@ static struct video_ops ops = {.mode_info = &video_mode_info,
                                .map_video = &vesa_map_video};
 
 module_t vesa_module = {
-    .probe = vesa_probe, .cleanup = vesa_cleanup,
+    .probe = vesa_probe,
+    .cleanup = vesa_cleanup,
     .flags = MODULE_FLAG_LAZY_LOAD,
 };
 

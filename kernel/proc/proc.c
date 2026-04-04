@@ -3,12 +3,12 @@
 #include <kernel/mm/kmalloc.h>
 #include <kernel/mm/pmm.h>
 #include <kernel/mm/vmm.h>
-#include <kernel/subsys/net.h>
 #include <kernel/proc/ipc.h>
 #include <kernel/proc/pe.h>
 #include <kernel/proc/proc.h>
 #include <kernel/proc/sched.h>
 #include <kernel/proc/signals.h>
+#include <kernel/subsys/net.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sys/vfs.h>
 
@@ -534,7 +534,8 @@ int spawn_thread(tid_t *tid, pid_t pid, thread_entrypoint_t entrypoint) {
         return -EINVAL;
     }
 
-    if ((res = sched_create_thread("proc_thread", &i_tid, entrypoint, proc->descriptor.vmem, (void *)&thread_cleanup, proc)) != 0)
+    if ((res = sched_create_thread("proc_thread", &i_tid, entrypoint, proc->descriptor.vmem, (void *)&thread_cleanup,
+                                   proc)) != 0)
         goto end;
     if (pid == 1)
         sched_thread_set_flags(i_tid, SCHED_FLAG_SYSTEM);

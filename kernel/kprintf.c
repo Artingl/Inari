@@ -22,10 +22,10 @@ int kprintf(const char *fmt, ...) {
     va_start(args, fmt);
     int c = 0;
 
-//    if (is_cpu_initialized()) /* TODO: Doing division crashes the kernel on bare metal i686 */
-  //      c += print("[  %f ] ", (double)timer_get_ticks() / (double)timer_get_resolution());
-    //else
-        c += print("[  0.000000 ] ");
+    //    if (is_cpu_initialized()) /* TODO: Doing division crashes the kernel on bare metal i686 */
+    //      c += print("[  %f ] ", (double)timer_get_ticks() / (double)timer_get_resolution());
+    // else
+    c += print("[  0.000000 ] ");
     c += do_kprintfn(fmt, args, &do_printf_handler, NULL);
     c += print("\n");
 

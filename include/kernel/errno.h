@@ -13,7 +13,7 @@
 #define EINVFS     7  /* Invalid file-system */
 #define EIO        8  /* I/O error */
 #define ETIMEDOUT  9  /* Connection timed out */
-#define ENOENT     10  /* No such file or directory */
+#define ENOENT     10 /* No such file or directory */
 #define EBADHNDL   11 /* Bad handle */
 #define ENOSYS     12 /* Function not implemented */
 #define ESRCH      13 /* No such process */
@@ -28,8 +28,8 @@
 #define IPCNONE  21 /* IPC endpoint not found */
 #define IPCACCES 22 /* IPC access denied */
 
-#define	ENETDOWN	100	/* Network is down */
-#define	ENETUNREACH	101	/* Network is unreachable */
+#define ENETDOWN    100 /* Network is down */
+#define ENETUNREACH 101 /* Network is unreachable */
 
 __attribute__((unused)) static const char *errstr[] = {
     [0] = "OK",

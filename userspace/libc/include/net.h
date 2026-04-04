@@ -19,6 +19,13 @@ struct net_device_info {
     uint8_t link_state; // 1 = Cable plugged in, 0 = Cable unplugged
 };
 
+struct net_sock_addr {
+    size_t addr_ln; // always 4
+
+    uint8_t address[4]; // ipv4
+    uint16_t identifier;
+} __attribute__((packed));
+
 struct net_ifaddr {
 #define NET_IF_INET  0 // IPv4
 #define NET_IF_INET6 1 // IPv6
@@ -51,11 +58,13 @@ struct net_ifaddr {
 #define NET_IPN_TCP  0x06
 #define NET_IPN_UDP  0x11
 
+int sockconnect(handle_t sock_handle, struct net_sock_addr addr);
+int sockbind(handle_t sock_handle, struct net_sock_addr addr);
 int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype);
-int socksend(handle_t sock_handle, void *data, size_t data_size, uint8_t *addr, size_t addr_size);
+int socksendto(handle_t sock_handle, void *data, size_t data_size, struct net_sock_addr addr);
 /* Timeout of 0 will mean it is blocking until any response */
-int sockrecv(handle_t sock_handle, void *result_buffer, size_t result_size, uint8_t *addr, size_t addr_size,
-             uint32_t timeout_us, uint16_t flags);
+int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr addr,
+                 uint32_t timeout_us, uint16_t flags);
 int sockclose(handle_t sock_handle);
 
 __attribute__((unused)) static inline uint16_t net_checksum(void *data, uint32_t ln) {

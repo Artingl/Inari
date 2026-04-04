@@ -76,6 +76,7 @@ struct net_device {
 
 #define NET_OK      0
 #define NET_DROPPED -1
+#define NET_ERR     -2
 
 #define NET_IPN_ICMP 0x01
 #define NET_IPN_TCP  0x06
@@ -139,27 +140,45 @@ struct net_network_layer_info {
 };
 
 /* TX/RX flow */
-typedef int (*net_protocol_rx)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
+typedef int (*net_protocol_rx_t)(struct net_network_layer_info *layer, void *packet, uint32_t ln);
 
 /* Identifier is the unique ID to know where the answer from this TX (if any) should go (e.g. specific socket) */
 struct net_socket;
-typedef int (*net_protocol_tx)(struct net_socket *sock, struct net_network_layer_info *layer, void *packet, uint32_t ln);
+struct net_sock_addr;
+typedef int (*net_protocol_tx_t)(struct net_socket *sock, struct net_sock_addr addr,
+                                 struct net_network_layer_info *layer, void *packet, uint32_t ln);
+
+/* Identifier could be a port, or similar in different protocols */
+typedef int (*net_protocol_transport_t)(struct net_socket *sock, struct net_sock_addr addr);
+typedef int (*net_protocol_close_t)(struct net_socket *sock);
 
 struct net_protocol {
     uint8_t is_privileged; /* Does it require to be privileged to use this protocol (e.g. in future something like root)
                             */
 
-    net_protocol_rx rx;
-    net_protocol_tx tx;
+    net_protocol_rx_t rx;
+    net_protocol_tx_t tx;
+    net_protocol_transport_t bind;
+    net_protocol_transport_t connect;
+    net_protocol_close_t close;
 };
 
 typedef int64_t net_handle_t;
 
+struct net_sock_addr {
+    size_t addr_ln; // always 4
+
+    uint8_t address[4]; // ipv4
+    uint16_t identifier;
+} __attribute__((packed));
+
 /* Used in syscalls */
-#define NET_SYS_CREATE 0x0
-#define NET_SYS_FREE   0x1
-#define NET_SYS_TX     0x2
-#define NET_SYS_RX     0x3
+#define NET_SYS_CREATE   0x0
+#define NET_SYS_FREE     0x1
+#define NET_SYS_SENDTO   0x2
+#define NET_SYS_RECVFROM 0x3
+#define NET_SYS_BIND     0x4
+#define NET_SYS_CONNECT  0x5
 struct net_sys_command {
     uint8_t id;
     union {
@@ -168,12 +187,15 @@ struct net_sys_command {
             uint16_t ethtype;
         } create;
 
+        struct {
+            struct net_sock_addr addr;
+        } transport;
+
         /* Data flow (recv/send) */
         struct {
             void *buffer;
             size_t buffer_sz;
-            uint8_t *addr;
-            size_t addr_sz;
+            struct net_sock_addr addr;
 
             /* For recv */
             uint32_t timeout_us;
@@ -186,7 +208,8 @@ struct net_socket {
     net_handle_t handle;
     uint8_t ipn;
     uint16_t ethtype;
-    uint16_t identifier;    // Could be a port, ICMP identifier, anything
+    uint16_t identifier; // Could be a port, ICMP identifier, anything
+    uint8_t protocol_data[32];
     struct {
         uint16_t head;
         uint16_t tail;

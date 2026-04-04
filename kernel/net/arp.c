@@ -25,8 +25,8 @@ static struct {
     uint8_t mac[6];
 } arp_table[CONFIG_ARP_MAX_TABLE_ENTRIES] = {0};
 
-int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr, uint8_t *dest_addr,
-                 size_t addr_sz, uint8_t ipn, void *packet, uint32_t ln) {
+int arp_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, struct net_ifaddr *ifaddr,
+                 struct net_sock_addr addr, uint8_t ipn, void *packet, uint32_t ln) {
     return NET_DROPPED;
 }
 
@@ -38,6 +38,12 @@ int arp_resolve_ipv4(struct net_link_layer_info *layer, struct net_ifaddr *ifadd
     uint32_t flags;
     int i, req = -1;
     uint64_t timeout, tries = 15;
+
+    /* Maybe that's us? */
+    if (memcmp(ifaddr->address.ipv4, ipv4, 4) == 0) {
+        memcpy(result_mac, ifaddr->device->info.mac_addr, 6);
+        return 0;
+    }
 
     /* Firstly check if we cached this entry */
     for (i = 0; i < CONFIG_ARP_MAX_TABLE_ENTRIES; i++) {

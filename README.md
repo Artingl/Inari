@@ -34,5 +34,5 @@ Unlike many hobby OS projects, Inari focuses on a robust internal architecture a
 * **Loadable Kernel Modules:** Dynamic module loading.
 * **Storage & File Systems:** Virtual File System, `devfs`, MBR/GPT partition parsing, and FAT filesystem support.
 * **Custom GUI & Compositor:** A fully custom windowing system with a GUI compositor, rendering multiple overlapping windows and handling PS/2 mouse/keyboard inputs.
-* **Network Stack:** Custom implementation of Ethernet, IPv4, ARP, and ICMP directly over the RTL8139 driver.
+* **Network Stack:** Custom implementation of Ethernet, IPv4, ARP, UDP, and ICMP, with routing tables and such. With clear separation from hardware drivers.
 * **Userland:** A custom `libc` implementation and a set of basic core utilities.
