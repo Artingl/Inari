@@ -44,7 +44,7 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
 
     /* Any other send to the socket if any */
     default:
-        return net_sock_fill_ring(bigend16(packet->as.ping_pong.identifier), packet, ln);
+        return net_sock_fill_ring(bigend16(packet->as.ping_pong.identifier), packet, ln - sizeof(struct icmp_header));
     }
 
     return NET_OK;

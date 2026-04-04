@@ -42,7 +42,8 @@ int udp_rx_handler(struct net_network_layer_info *layer, struct udp_header *pack
     //     return NET_DROPPED;
     // }
 
-    return net_sock_fill_ring(bigend16(packet->dest_port), packet->data, ln);
+    /* TODO: UDP is datagram protocol, packets can leak */
+    return net_sock_fill_ring(bigend16(packet->dest_port), packet->data, ln - sizeof(struct udp_header));
 }
 
 static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, struct net_network_layer_info *layer,
@@ -70,7 +71,8 @@ static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, st
     udp->actual.checksum = bigend16(net_checksum(udp, ln + sizeof(struct udp_header_checksum)));
 
     /* Transmit data */
-    return layer->ops->tx(layer, &udp->actual, ln + sizeof(struct udp_header));
+    memmove(udp, &udp->actual, ln + sizeof(struct udp_header));
+    return layer->ops->tx(layer, udp, ln + sizeof(struct udp_header));
 }
 
 static int udp_connect(struct net_socket *sock, struct net_sock_addr addr) {
@@ -89,7 +91,7 @@ static int udp_connect(struct net_socket *sock, struct net_sock_addr addr) {
 static int udp_bind(struct net_socket *sock, struct net_sock_addr addr) {
     if (ports[addr.identifier])
         return -EBUSY;
-    ports[sock->identifier] = sock->owner;
+    ports[addr.identifier] = sock->owner;
     sock->identifier = addr.identifier;
     return 0;
 }

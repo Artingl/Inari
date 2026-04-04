@@ -18,6 +18,14 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
     return dest;
 }
 
+void *memmove(void *restrict dest, const void *restrict src, size_t n) {
+    volatile unsigned char *d = dest;
+    const unsigned char *s = src;
+    while (n--)
+        *d++ = *s++;
+    return dest;
+}
+
 int memcmp(const void *s1, const void *s2, size_t n) {
     volatile const unsigned char *p1 = s1, *p2 = s2;
     while (n--) {
