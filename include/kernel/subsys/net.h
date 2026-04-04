@@ -210,18 +210,8 @@ struct net_sys_command {
 
 struct net_buf {
     struct net_sock_addr origin;
-    uint8_t is_stream;
-
-    union {
-        struct {
-        } datagram;
-        struct {
-            uint16_t head;
-            uint16_t tail;
-            uint8_t ring_buffer[65535];
-        } stream;
-    } as;
-
+    uint16_t ln;
+    uint8_t payload[1500];
     struct list_head list;
 };
 
@@ -230,14 +220,26 @@ int net_buf_alloc(struct net_buf **result);
 
 struct net_socket {
     net_handle_t handle;
+    uint8_t protocol_data[32];
     uint8_t ipn; // ICMP, UDP, TCP, ...
+    uint8_t is_stream; // stream/datagram
     uint16_t ethtype;
     uint16_t identifier; // Could be a port, ICMP identifier, anything
-    uint8_t protocol_data[32];
     pid_t owner;
-    struct net_buf *buf;
+    union {
+        struct {
+            struct net_buf *buf;
+        } datagram;
+
+        struct {
+            struct net_sock_addr origin;
+            uint16_t head;
+            uint16_t tail;
+            uint8_t ring_buffer[65535];
+        } stream;
+    } rx;
     struct list_head list;
-} __attribute__((packed));
+};
 
 int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *sock_handle);
 

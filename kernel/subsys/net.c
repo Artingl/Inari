@@ -59,7 +59,6 @@ static int count_bits(unsigned int n) {
     return count;
 }
 
-
 static struct net_ifaddr *get_ifaddr_route(uint8_t *addr, size_t sz, uint8_t *is_default) {
     struct list_head *pos;
     struct net_route_entry *route_entry;
@@ -199,6 +198,7 @@ static int sock_create(struct net_socket **sock, net_handle_t *handle) {
     *sock = kmalloc(sizeof(struct net_socket));
     if (!*sock)
         return -ENOMEM;
+    memset(*sock, 0, sizeof(**sock));
     (*sock)->handle = *handle;
     list_add(&(*sock)->list, &net_handles);
     return 0;
@@ -397,11 +397,7 @@ int net_buf_free(struct net_buf *buf) {
     }
     /* Clear the buffer */
     memset(&buf->origin, 0, sizeof(buf->origin));
-    buf->is_stream = 0;
-    buf->as.stream.head = 0;
-    buf->as.stream.tail = 0;
-
-    /* TODO: deallocate datagram too */
+    buf->ln = 0;
 
     /* Free it */
     uint16_t index = buf - net_buf_pool;
@@ -458,7 +454,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     uint16_t ethtype;
     uint8_t is_default;
     uint8_t dest_mac[6];
-    struct net_buf *buf, *next_buf;
+    struct net_buf *next_buf;
     struct net_socket *sock;
     struct net_ifaddr *ifaddr;
     struct ethernet_frame frame;
@@ -596,10 +592,13 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         /* TODO: semaphore */
         if (command->as.flow.timeout_us > 0) {
             timeout = uptime_us() + command->as.flow.timeout_us;
-            while (!sock->buf && timeout > uptime_us())
+            while (((sock->is_stream && sock->rx.stream.head == sock->rx.stream.tail) ||
+                    (!sock->is_stream && !sock->rx.datagram.buf)) &&
+                   timeout > uptime_us())
                 sched_yield();
         } else {
-            while (!sock->buf)
+            while (((sock->is_stream && sock->rx.stream.head == sock->rx.stream.tail) ||
+                    (!sock->is_stream && !sock->rx.datagram.buf)))
                 sched_yield();
         }
 
@@ -608,51 +607,55 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             goto end;
         }
 
-        /* Lock again to process the buffer */
-        spin_lock_irqsave(&net_handles_lock, flags);
-        if (!sock->buf) {
-            ret = -EINVAL;
-            goto end;
-        }
-
         /* Now extract the first arrived packet */
-        buf = sock->buf;
-        if (buf->is_stream) {
-            ln = (buf->as.stream.tail - buf->as.stream.head + 65535) % 65535;
+        if (sock->is_stream) {
+            ln = (sock->rx.stream.tail - sock->rx.stream.head + 65535) % 65535;
             if (command->as.flow.buffer_sz < ln)
                 ln = command->as.flow.buffer_sz;
 
             /* Fill the full buffer */
-            if ((uint32_t)(65535 - buf->as.stream.tail) > ln) {
-                memcpy(command->as.flow.buffer, &buf->as.stream.ring_buffer[buf->as.stream.tail], ln);
-                buf->as.stream.tail += ln;
+            if ((uint32_t)(65535 - sock->rx.stream.tail) > ln) {
+                memcpy(command->as.flow.buffer, &sock->rx.stream.ring_buffer[sock->rx.stream.tail], ln);
+                sock->rx.stream.tail += ln;
             }
-            /* Fill in chinks */
+            /* Fill in chunks */
             else {
-                memcpy(command->as.flow.buffer, &buf->as.stream.ring_buffer[buf->as.stream.tail], buf->as.stream.tail - ln);
-                memcpy(command->as.flow.buffer + (buf->as.stream.tail - ln), &buf->as.stream.ring_buffer[0], ln - (buf->as.stream.tail - ln));
-                buf->as.stream.tail = ln - (buf->as.stream.tail - ln);
+                memcpy(command->as.flow.buffer, &sock->rx.stream.ring_buffer[sock->rx.stream.tail],
+                       sock->rx.stream.tail - ln);
+                memcpy(command->as.flow.buffer + (sock->rx.stream.tail - ln), &sock->rx.stream.ring_buffer[0],
+                       ln - (sock->rx.stream.tail - ln));
+                sock->rx.stream.tail = ln - (sock->rx.stream.tail - ln);
             }
 
+            /* Save the origin address */
+            if (command->as.flow.from)
+                *command->as.flow.from = sock->rx.stream.origin;
+            ret = ln;
+        } else {
+            /* Lock so we are safely working with the buf */
+            spin_lock_irqsave(&net_handles_lock, flags);
+            if (!sock->rx.datagram.buf) {
+                ret = -EINVAL;
+                goto end;
+            }
+
+            /* TODO: Allow packets to be larger than single MTU */
+            ln = command->as.flow.buffer_sz;
+            ln = MIN(ln, 1500);
+            memcpy(command->as.flow.buffer, sock->rx.datagram.buf->payload, ln);
+
+            next_buf = list_entry(sock->rx.datagram.buf->list.next, struct net_buf, list);
+            list_del(&sock->rx.datagram.buf->list);
+
+            net_buf_free(sock->rx.datagram.buf);
+            if (sock->rx.datagram.buf == next_buf)
+                sock->rx.datagram.buf = 0;
+            else
+                sock->rx.datagram.buf = next_buf;
+
+            ret = ln;
         }
-        else {
-            kprintf("todo datagram");
-        }
 
-        /* Save the origin address */
-        if (command->as.flow.from)
-            memcpy(command->as.flow.from, &buf->origin, sizeof(buf->origin));
-
-        next_buf = list_entry(buf->list.next, struct net_buf, list);
-        next_buf->list.prev = &next_buf->list;
-
-        if (sock->buf == next_buf)
-            sock->buf = 0;
-        else
-            sock->buf = next_buf;
-        net_buf_free(buf);
-
-        ret = ln;
         break;
     case NET_SYS_BIND:
         if (!(sock = get_sock_handle(*sock_handle))) {
@@ -701,6 +704,46 @@ int net_sock_fill_stream(struct net_sock_addr origin, uint16_t dest_identifier, 
     uint32_t flags;
     uint16_t ring_space;
     struct net_socket *sock;
+    spin_lock_irqsave(&net_handles_lock, flags);
+
+    if (!(sock = get_sock_identifier(dest_identifier))) {
+        ret = -EINVAL;
+        goto end;
+    }
+
+    /* Fill the ring buffer */
+    ring_space = 65535 - ((sock->rx.stream.tail - sock->rx.stream.head + 65535) % 65535);
+
+    /* Packet doesn't fit */
+    if (ring_space < ln) {
+        ret = NET_DROPPED;
+        goto end;
+    }
+
+    sock->rx.stream.origin = origin;
+    sock->is_stream = 1;
+
+    /* Fill the full buffer */
+    if ((uint32_t)(65535 - sock->rx.stream.head) > ln) {
+        memcpy(&sock->rx.stream.ring_buffer[sock->rx.stream.head], packet, ln);
+        sock->rx.stream.head += ln;
+    }
+    /* Fill in chunks */
+    else {
+        memcpy(&sock->rx.stream.ring_buffer[sock->rx.stream.head], packet, sock->rx.stream.head - ln);
+        memcpy(&sock->rx.stream.ring_buffer[0], packet + (sock->rx.stream.head - ln), ln - (sock->rx.stream.head - ln));
+        sock->rx.stream.head = ln - (sock->rx.stream.head - ln);
+    }
+
+end:
+    spin_unlock_irqrestore(&net_handles_lock, flags);
+    return ret;
+}
+
+int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln) {
+    int ret = 0;
+    uint32_t flags;
+    struct net_socket *sock;
     struct net_buf *buf;
     spin_lock_irqsave(&net_handles_lock, flags);
 
@@ -712,46 +755,22 @@ int net_sock_fill_stream(struct net_sock_addr origin, uint16_t dest_identifier, 
     if ((ret = net_buf_alloc(&buf)) != 0)
         goto end;
 
-    if (!sock->buf) {
-        sock->buf = buf;
-        INIT_LIST_HEAD(&sock->buf->list);
-    }
-    else {
-        list_add(&buf->list, &sock->buf->list);
-    }
-
-    buf->origin = origin;
-    buf->is_stream = 1;
-
-    /* Fill the ring buffer */
-    ring_space = 65535 - ((buf->as.stream.tail - buf->as.stream.head + 65535) % 65535);
-
-    /* Packet doesn't fit */
-    if (ring_space < ln) {
-        ret = NET_DROPPED;
-        goto end;
+    if (!sock->rx.datagram.buf) {
+        sock->rx.datagram.buf = buf;
+        INIT_LIST_HEAD(&sock->rx.datagram.buf->list);
+    } else {
+        list_add(&buf->list, &sock->rx.datagram.buf->list);
     }
 
-    /* Fill the full buffer */
-    if ((uint32_t)(65535 - buf->as.stream.head) > ln) {
-        memcpy(&buf->as.stream.ring_buffer[buf->as.stream.head], packet, ln);
-        buf->as.stream.head += ln;
-    }
-    /* Fill in chinks */
-    else {
-        memcpy(&buf->as.stream.ring_buffer[buf->as.stream.head], packet, buf->as.stream.head - ln);
-        memcpy(&buf->as.stream.ring_buffer[0], packet + (buf->as.stream.head - ln), ln - (buf->as.stream.head - ln));
-        buf->as.stream.head = ln - (buf->as.stream.head - ln);
-    }
+    sock->rx.datagram.buf->origin = origin;
+    sock->is_stream = 0;
 
+    /* TODO: split packet if larger than MTU */
+    ln = MIN(ln, 1500);
+    memcpy(sock->rx.datagram.buf->payload, packet, ln);
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
     return ret;
-}
-
-int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln) {
-    kprintf("todo fill datagram");
-    return -1;
 }
 
 int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t mtu, const char *name) {

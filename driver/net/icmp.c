@@ -48,7 +48,7 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
         origin.addr_ln = layer->origin_addr_ln;
         origin.identifier = bigend16(packet->as.ping_pong.identifier);
         memcpy(origin.address, layer->origin, origin.addr_ln);
-        return net_sock_fill_stream(origin, origin.identifier, packet, ln - sizeof(struct icmp_header));
+        return net_sock_fill_datagram(origin, origin.identifier, packet, ln);
     }
 
     return NET_OK;
