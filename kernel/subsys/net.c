@@ -640,8 +640,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             }
 
             /* TODO: Allow packets to be larger than single MTU */
-            ln = command->as.flow.buffer_sz;
-            ln = MIN(ln, 1500);
+            ln = MIN(sock->rx.datagram.buf->ln, MIN(command->as.flow.buffer_sz, 1500));
             memcpy(command->as.flow.buffer, sock->rx.datagram.buf->payload, ln);
 
             next_buf = list_entry(sock->rx.datagram.buf->list.next, struct net_buf, list);
@@ -759,7 +758,7 @@ int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier
         sock->rx.datagram.buf = buf;
         INIT_LIST_HEAD(&sock->rx.datagram.buf->list);
     } else {
-        list_add(&buf->list, &sock->rx.datagram.buf->list);
+        list_add_tail(&buf->list, &sock->rx.datagram.buf->list);
     }
 
     sock->rx.datagram.buf->origin = origin;
@@ -767,6 +766,7 @@ int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier
 
     /* TODO: split packet if larger than MTU */
     ln = MIN(ln, 1500);
+    sock->rx.datagram.buf->ln = ln;
     memcpy(sock->rx.datagram.buf->payload, packet, ln);
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
