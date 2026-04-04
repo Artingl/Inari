@@ -66,7 +66,14 @@ int ipv4_tx_stack(struct net_socket *sock, struct net_link_layer_info *layer, st
     memcpy(&i_packet.src_address, addr.address, 4);
 
     struct net_network_layer_info network_layer = {
-        .link_layer = layer, .layer = &i_packet, .ops = &ipv4_network_layer_ops, .ifaddr = ifaddr};
+        .link_layer = layer,
+        .layer = &i_packet,
+        .ops = &ipv4_network_layer_ops,
+        .ifaddr = ifaddr,
+    };
+
+    network_layer.origin_addr_ln = 4;
+    memcpy(network_layer.origin, ifaddr->address.ipv4, 4);
 
     struct net_protocol *protocol = net_invoke_protocol(ipn);
 
@@ -107,7 +114,7 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
         /* Different packet version */
         return NET_DROPPED;
 
-        /* TODO: checksum validation */
+    /* TODO: checksum validation */
 
 #ifdef CONFIG_LITTLE_ENDIAN
     /* Some more dirty work here to get flags on little endian */
@@ -120,6 +127,8 @@ int ipv4_rx_stack(struct net_link_layer_info *layer, struct ipv4_packet *packet,
 
     struct net_network_layer_info network_layer = {
         .link_layer = layer, .layer = packet, .ops = &ipv4_network_layer_ops, .ifaddr = entry};
+    network_layer.origin_addr_ln = 4;
+    memcpy(network_layer.origin, (uint8_t *)&packet->src_address, 4);
 
     uint32_t protocol_ln = bigend16(packet->length) - header_size;
 

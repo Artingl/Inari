@@ -127,7 +127,9 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
         }
 
         ipc_proc_cleanup(proc);
+#ifdef CONFIG_SUBSYS_NET
         net_proc_cleanup(proc);
+#endif
         list_del(&proc->list);
 
         spin_unlock_irqrestore(&lock, flags);

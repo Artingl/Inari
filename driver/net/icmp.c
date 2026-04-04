@@ -25,6 +25,7 @@ struct icmp_header {
 
 int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *packet, uint32_t ln) {
     struct icmp_header *icmp;
+    struct net_sock_addr origin;
 
     switch ((packet->type << 8 | packet->code)) {
     /* ICMP echo request (type 8, code 0) */
@@ -44,7 +45,10 @@ int icmp_rx_handler(struct net_network_layer_info *layer, struct icmp_header *pa
 
     /* Any other send to the socket if any */
     default:
-        return net_sock_fill_ring(bigend16(packet->as.ping_pong.identifier), packet, ln);
+        origin.addr_ln = layer->origin_addr_ln;
+        origin.identifier = bigend16(packet->as.ping_pong.identifier);
+        memcpy(origin.address, layer->origin, origin.addr_ln);
+        return net_sock_fill_stream(origin, origin.identifier, packet, ln - sizeof(struct icmp_header));
     }
 
     return NET_OK;

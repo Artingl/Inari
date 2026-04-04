@@ -382,7 +382,11 @@ int syscall_handle(uint32_t id, void *param0, void *param1, void *param2, void *
             res = -EINVAL;
             break;
         }
+#ifdef CONFIG_SUBSYS_NET
         res = net_syscall(proc->pid, (struct net_sys_command *)param0, (net_handle_t *)param1);
+#else
+        res = -ENOSYS;
+#endif
         break;
 
     default:

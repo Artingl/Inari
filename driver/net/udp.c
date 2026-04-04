@@ -31,7 +31,7 @@ struct udp_header_checksum {
 } __attribute__((packed));
 
 /* TODO: ??? MVP */
-pid_t ports[65535] = {0};
+static pid_t ports[65535] = {0};
 
 int udp_rx_handler(struct net_network_layer_info *layer, struct udp_header *packet, uint32_t ln) {
     // uint16_t checksum = bigend16(packet->checksum);
@@ -42,8 +42,8 @@ int udp_rx_handler(struct net_network_layer_info *layer, struct udp_header *pack
     //     return NET_DROPPED;
     // }
 
-    /* TODO: UDP is datagram protocol, packets can leak */
-    return net_sock_fill_ring(bigend16(packet->dest_port), packet->data, ln - sizeof(struct udp_header));
+    /* TODO: UDP is datagram protocol, packets must not leak */
+    return -1;//net_sock_fill_datagram(bigend16(packet->dest_port), packet->data, ln - sizeof(struct udp_header));
 }
 
 static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, struct net_network_layer_info *layer,
@@ -76,7 +76,9 @@ static int udp_tx_handler(struct net_socket *sock, struct net_sock_addr addr, st
 }
 
 static int udp_connect(struct net_socket *sock, struct net_sock_addr addr) {
-    /* Allocate port that will listen for packets. TODO: again, dumb */
+    /* Allocate port that will listen for packets.
+     * TODO: again, dumb;
+     * TODOx2: connect in UDP is strange, we can move this logic to TX */
     for (size_t i = 65535; i > 0; i--) {
         if (!ports[i]) {
             ports[i] = sock->owner;

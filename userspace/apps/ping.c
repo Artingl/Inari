@@ -40,7 +40,7 @@ int parse_ipv4(uint8_t *result, const char *ip) {
 
 int main(int argc, char *argv[]) {
     struct icmp_header icmp_header;
-    struct net_sock_addr sock_addr;
+    struct net_sock_addr sock_addr, sock_from;
     time_t current_time, start_time;
     size_t total_packets = 0, success = 0;
     time_t icmp_seq_time[256] = {0};
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         /* Wait for packets */
         recv_off = 0;
         while (recv_off < sent_size) {
-            if ((ret = sockrecvfrom(sock_handle, &icmp_header + recv_off, sent_size, sock_addr, 5000000, 0)) < 0) {
+            if ((ret = sockrecvfrom(sock_handle, &icmp_header + recv_off, sent_size, &sock_from, 5000000, 0)) < 0) {
                 if (ret == -ETIMEDOUT) {
                     printf("request timeout\n");
                     break;
@@ -113,7 +113,8 @@ int main(int argc, char *argv[]) {
         if (icmp_header.type == 0 && icmp_header.code == 0 &&
             memcmp(&icmp_header.data[0], icmp_data, sizeof(icmp_data)) == 0 &&
             net_checksum(&icmp_header, sent_size) == checksum) {
-            printf("%d bytes from %s: icmp_seq=%u time=%2f ms\n", recv_off, argv[1], icmp_header.seq,
+            printf("%d bytes from %u.%u.%u.%u: icmp_seq=%u time=%2f ms\n", recv_off, sock_from.address[0],
+                   sock_from.address[1], sock_from.address[2], sock_from.address[3], icmp_header.seq,
                    ((double)current_time - (double)icmp_seq_time[icmp_header.seq % 256]) / 1000.0f);
             success++;
         } else if (ret != -ETIMEDOUT) {

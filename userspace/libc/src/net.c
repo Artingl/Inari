@@ -25,6 +25,7 @@ struct net_sys_command {
             void *buffer;
             size_t buffer_sz;
             struct net_sock_addr addr;
+            struct net_sock_addr *from;
 
             /* For recv */
             uint32_t timeout_us;
@@ -58,13 +59,13 @@ int socksendto(handle_t sock_handle, void *data, size_t data_size, struct net_so
     return net_sys(&cmd, &sock_handle);
 }
 
-int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr addr,
+int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr *from,
                  uint32_t timeout_us, uint16_t flags) {
     struct net_sys_command cmd = {.id = NET_SYS_RECVFROM,
                                   .as.flow = {
                                       .buffer = result_buffer,
                                       .buffer_sz = result_size,
-                                      .addr = addr,
+                                      .from = from,
                                       .timeout_us = timeout_us,
                                       .flags = flags,
                                   }};

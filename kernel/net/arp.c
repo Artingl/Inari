@@ -108,31 +108,31 @@ try_again:
      * TODO: polling is dumb, but sufficient for now
      */
     timeout = uptime_us() + 500000; // 0.5 seconds timeout
-    while (timeout > uptime_us() && !arp_req_list[i].delivered)
+    while (timeout > uptime_us() && !arp_req_list[req].delivered)
         sched_yield();
 
     /* If we got result, save it */
-    if (arp_req_list[i].delivered) {
-        memcpy(result_mac, arp_req_list[i].result.source_hardware_addr, 6);
+    if (arp_req_list[req].delivered) {
+        memcpy(result_mac, arp_req_list[req].result.source_hardware_addr, 6);
 
         /* Store in any available table entry */
         for (i = 0; i < CONFIG_ARP_MAX_TABLE_ENTRIES; i++) {
             if (!arp_table[i].available) {
                 arp_table[i].timeout = uptime_us() + 30000000; // 30 seconds expiry
                 arp_table[i].available = 1;
-                memcpy(arp_table[i].ipv4, ipv4, 6);
+                memcpy(arp_table[i].ipv4, ipv4, 4);
                 memcpy(arp_table[i].mac, result_mac, 6);
                 break;
             }
         }
 
-        arp_req_list[i].acquired = 0;
+        arp_req_list[req].acquired = 0;
         return 0;
     } else if (tries-- > 0) {
         goto try_again;
     }
 
-    arp_req_list[i].acquired = 0;
+    arp_req_list[req].acquired = 0;
     return -1;
 }
 

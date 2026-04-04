@@ -130,10 +130,20 @@ struct net_link_layer_info {
     struct net_layer_ops *ops;
 };
 
+struct net_sock_addr {
+    size_t addr_ln; // always 4
+
+    uint8_t address[4]; // ipv4
+    uint16_t identifier;
+} __attribute__((packed));
+
 struct net_network_layer_info {
     void *layer;                            // ipv4/ipv6 packet
     struct net_link_layer_info *link_layer; // underlying link layer
     struct net_ifaddr *ifaddr;
+
+    uint8_t origin_addr_ln;
+    uint8_t origin[16];
 
     /* Layer specific ops */
     struct net_layer_ops *ops;
@@ -165,13 +175,6 @@ struct net_protocol {
 
 typedef int64_t net_handle_t;
 
-struct net_sock_addr {
-    size_t addr_ln; // always 4
-
-    uint8_t address[4]; // ipv4
-    uint16_t identifier;
-} __attribute__((packed));
-
 /* Used in syscalls */
 #define NET_SYS_CREATE   0x0
 #define NET_SYS_FREE     0x1
@@ -196,6 +199,7 @@ struct net_sys_command {
             void *buffer;
             size_t buffer_sz;
             struct net_sock_addr addr;
+            struct net_sock_addr *from;
 
             /* For recv */
             uint32_t timeout_us;
@@ -204,18 +208,34 @@ struct net_sys_command {
     } as;
 } __attribute__((packed));
 
+struct net_buf {
+    struct net_sock_addr origin;
+    uint8_t is_stream;
+
+    union {
+        struct {
+        } datagram;
+        struct {
+            uint16_t head;
+            uint16_t tail;
+            uint8_t ring_buffer[65535];
+        } stream;
+    } as;
+
+    struct list_head list;
+};
+
+int net_buf_free(struct net_buf *buf);
+int net_buf_alloc(struct net_buf **result);
+
 struct net_socket {
     net_handle_t handle;
-    uint8_t ipn;
+    uint8_t ipn; // ICMP, UDP, TCP, ...
     uint16_t ethtype;
     uint16_t identifier; // Could be a port, ICMP identifier, anything
     uint8_t protocol_data[32];
-    struct {
-        uint16_t head;
-        uint16_t tail;
-        uint8_t ring_buffer[65535];
-    } rx;
     pid_t owner;
+    struct net_buf *buf;
     struct list_head list;
 } __attribute__((packed));
 
@@ -224,8 +244,9 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 /* Used by proc.c to cleanup net handles for a given process */
 void net_proc_cleanup(struct process *proc);
 
-/* Fills socket ring buffer with received data */
-int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln);
+/* Allocates new net_buf in socket and either fills the stream of datagram part of it */
+int net_sock_fill_stream(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln);
+int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln);
 
 struct net_protocol *net_invoke_protocol(uint8_t ipn);
 int net_init(void);

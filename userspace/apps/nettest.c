@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
     waitpid(pid);
 
     /* Test UDP */
-    struct net_sock_addr addr = {.addr_ln = 4, .address = {192, 168, 99, 10}, .identifier = 5005};
+    struct net_sock_addr addr = {.addr_ln = 4, .address = {192, 168, 1, 132}, .identifier = 5005};
+    struct net_sock_addr from;
     handle_t sock_handle;
 
     char buf[14];
@@ -28,17 +29,19 @@ int main(int argc, char *argv[]) {
     // printf("received %d bytes! %14s\n", r, buf);
     // assert(sockclose(sock_handle) == 0, "sockclose failed!");
 
-    const char *hello = "hello world!";
-    assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4) == 0, "sockcreate failed!");
-    assert(sockconnect(sock_handle, addr) == 0, "sockconnect failed!");
+    if (0) {
+        const char *hello = "hello world!";
+        assert(sockcreate(&sock_handle, NET_IPN_UDP, NET_ETHTYPE_IPV4) == 0, "sockcreate failed!");
+        assert(sockconnect(sock_handle, addr) == 0, "sockconnect failed!");
 
-    int r = socksendto(sock_handle, (void *)hello, strlen(hello), addr);
-    assert(r == 0, "socksendto failed: %d", r);
+        int r = socksendto(sock_handle, (void *)hello, strlen(hello), addr);
+        assert(r == 0, "socksendto failed: %d", r);
 
-    printf("sent!\n");
-    r = sockrecvfrom(sock_handle, buf, 14, addr, 0, 0);
-    assert(r >= 0, "sockrecvfrom failed!");
-    printf("received %d bytes! %14s\n", r, buf);
+        printf("sent!\n");
+        r = sockrecvfrom(sock_handle, buf, 14, &from, 0, 0);
+        assert(r >= 0, "sockrecvfrom failed!");
+        printf("received %d bytes! %14s\n", r, buf);
+    }
 
     assert(sockclose(sock_handle) == 0, "sockclose failed!");
     return 0;

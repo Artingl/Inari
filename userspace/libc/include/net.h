@@ -63,7 +63,7 @@ int sockbind(handle_t sock_handle, struct net_sock_addr addr);
 int sockcreate(handle_t *sock_handle, uint8_t ip_number, uint16_t ethtype);
 int socksendto(handle_t sock_handle, void *data, size_t data_size, struct net_sock_addr addr);
 /* Timeout of 0 will mean it is blocking until any response */
-int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr addr,
+int sockrecvfrom(handle_t sock_handle, void *result_buffer, size_t result_size, struct net_sock_addr *from,
                  uint32_t timeout_us, uint16_t flags);
 int sockclose(handle_t sock_handle);
 

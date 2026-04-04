@@ -33,6 +33,10 @@ static int is_initialized = 0;
 static tid_t queue_thread;
 static struct net_protocol protocols[0xff];
 
+static struct net_buf net_buf_pool[CONFIG_MAX_NET_BUFFERS];
+static uint16_t free_pool_entries[CONFIG_MAX_NET_BUFFERS];
+static uint16_t free_pool_index = 0;
+
 static struct net_device *get_device(dev_t dev) {
     struct list_head *pos;
     struct net_device *entry;
@@ -370,7 +374,48 @@ struct net_protocol *net_invoke_protocol(uint8_t ipn) {
     return &protocols[ipn];
 }
 
+int net_buf_alloc(struct net_buf **result) {
+    if (!result)
+        return -EINVAL;
+    if (free_pool_index == 0)
+        return -ENOMEM;
+
+    free_pool_index--;
+    uint16_t index = free_pool_entries[free_pool_index];
+    *result = &net_buf_pool[index];
+
+    return 0;
+}
+
+int net_buf_free(struct net_buf *buf) {
+    if (!buf)
+        return -EINVAL;
+
+    if (free_pool_index >= CONFIG_MAX_NET_BUFFERS) {
+        kprintf("net: invalid net_buf stack entry.");
+        return -EINVAL;
+    }
+    /* Clear the buffer */
+    memset(&buf->origin, 0, sizeof(buf->origin));
+    buf->is_stream = 0;
+    buf->as.stream.head = 0;
+    buf->as.stream.tail = 0;
+
+    /* TODO: deallocate datagram too */
+
+    /* Free it */
+    uint16_t index = buf - net_buf_pool;
+    free_pool_entries[free_pool_index] = index;
+    free_pool_index++;
+    return 0;
+}
+
 int net_init(void) {
+    for (size_t i = 0; i < CONFIG_MAX_NET_BUFFERS; i++) {
+        free_pool_entries[i] = i;
+    }
+    free_pool_index = CONFIG_MAX_NET_BUFFERS;
+
     memset(&protocols, 0, sizeof(protocols));
     register_chardev_group(NET_DRIVER, "net");
     is_initialized = 1;
@@ -413,6 +458,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
     uint16_t ethtype;
     uint8_t is_default;
     uint8_t dest_mac[6];
+    struct net_buf *buf, *next_buf;
     struct net_socket *sock;
     struct net_ifaddr *ifaddr;
     struct ethernet_frame frame;
@@ -442,7 +488,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         break;
     case NET_SYS_SENDTO:
         /* Ensure data */
-        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz)) {
             ret = -EINVAL;
             goto end;
         }
@@ -527,7 +573,8 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         break;
     case NET_SYS_RECVFROM:
         /* Ensure data */
-        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer_sz)) {
+        if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz) ||
+            !VMM_IS_RANGE_USERSPACE(command->as.flow.from, command->as.flow.from + sizeof(struct net_sock_addr))) {
             ret = -EINVAL;
             goto end;
         }
@@ -549,10 +596,10 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         /* TODO: semaphore */
         if (command->as.flow.timeout_us > 0) {
             timeout = uptime_us() + command->as.flow.timeout_us;
-            while (sock->rx.head == sock->rx.tail && timeout > uptime_us())
+            while (!sock->buf && timeout > uptime_us())
                 sched_yield();
         } else {
-            while (sock->rx.head == sock->rx.tail)
+            while (!sock->buf)
                 sched_yield();
         }
 
@@ -561,21 +608,49 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
             goto end;
         }
 
-        ln = (sock->rx.tail - sock->rx.head + 65535) % 65535;
-        if (command->as.flow.buffer_sz < ln)
-            ln = command->as.flow.buffer_sz;
+        /* Lock again to process the buffer */
+        spin_lock_irqsave(&net_handles_lock, flags);
+        if (!sock->buf) {
+            ret = -EINVAL;
+            goto end;
+        }
 
-        /* Fill the full buffer */
-        if ((uint32_t)(65535 - sock->rx.tail) > ln) {
-            memcpy(command->as.flow.buffer, &sock->rx.ring_buffer[sock->rx.tail], ln);
-            sock->rx.tail += ln;
+        /* Now extract the first arrived packet */
+        buf = sock->buf;
+        if (buf->is_stream) {
+            ln = (buf->as.stream.tail - buf->as.stream.head + 65535) % 65535;
+            if (command->as.flow.buffer_sz < ln)
+                ln = command->as.flow.buffer_sz;
+
+            /* Fill the full buffer */
+            if ((uint32_t)(65535 - buf->as.stream.tail) > ln) {
+                memcpy(command->as.flow.buffer, &buf->as.stream.ring_buffer[buf->as.stream.tail], ln);
+                buf->as.stream.tail += ln;
+            }
+            /* Fill in chinks */
+            else {
+                memcpy(command->as.flow.buffer, &buf->as.stream.ring_buffer[buf->as.stream.tail], buf->as.stream.tail - ln);
+                memcpy(command->as.flow.buffer + (buf->as.stream.tail - ln), &buf->as.stream.ring_buffer[0], ln - (buf->as.stream.tail - ln));
+                buf->as.stream.tail = ln - (buf->as.stream.tail - ln);
+            }
+
         }
-        /* Fill in chinks */
         else {
-            memcpy(command->as.flow.buffer, &sock->rx.ring_buffer[sock->rx.tail], sock->rx.tail - ln);
-            memcpy(command->as.flow.buffer + (sock->rx.tail - ln), &sock->rx.ring_buffer[0], ln - (sock->rx.tail - ln));
-            sock->rx.tail = ln - (sock->rx.tail - ln);
+            kprintf("todo datagram");
         }
+
+        /* Save the origin address */
+        if (command->as.flow.from)
+            memcpy(command->as.flow.from, &buf->origin, sizeof(buf->origin));
+
+        next_buf = list_entry(buf->list.next, struct net_buf, list);
+        next_buf->list.prev = &next_buf->list;
+
+        if (sock->buf == next_buf)
+            sock->buf = 0;
+        else
+            sock->buf = next_buf;
+        net_buf_free(buf);
 
         ret = ln;
         break;
@@ -621,20 +696,35 @@ end:
     return ret;
 }
 
-int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln) {
+int net_sock_fill_stream(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln) {
     int ret = 0;
     uint32_t flags;
     uint16_t ring_space;
     struct net_socket *sock;
+    struct net_buf *buf;
     spin_lock_irqsave(&net_handles_lock, flags);
 
-    if (!(sock = get_sock_identifier(identifier))) {
+    if (!(sock = get_sock_identifier(dest_identifier))) {
         ret = -EINVAL;
         goto end;
     }
 
+    if ((ret = net_buf_alloc(&buf)) != 0)
+        goto end;
+
+    if (!sock->buf) {
+        sock->buf = buf;
+        INIT_LIST_HEAD(&sock->buf->list);
+    }
+    else {
+        list_add(&buf->list, &sock->buf->list);
+    }
+
+    buf->origin = origin;
+    buf->is_stream = 1;
+
     /* Fill the ring buffer */
-    ring_space = 65535 - ((sock->rx.tail - sock->rx.head + 65535) % 65535);
+    ring_space = 65535 - ((buf->as.stream.tail - buf->as.stream.head + 65535) % 65535);
 
     /* Packet doesn't fit */
     if (ring_space < ln) {
@@ -643,20 +733,25 @@ int net_sock_fill_ring(uint16_t identifier, void *packet, uint32_t ln) {
     }
 
     /* Fill the full buffer */
-    if ((uint32_t)(65535 - sock->rx.head) > ln) {
-        memcpy(&sock->rx.ring_buffer[sock->rx.head], packet, ln);
-        sock->rx.head += ln;
+    if ((uint32_t)(65535 - buf->as.stream.head) > ln) {
+        memcpy(&buf->as.stream.ring_buffer[buf->as.stream.head], packet, ln);
+        buf->as.stream.head += ln;
     }
     /* Fill in chinks */
     else {
-        memcpy(&sock->rx.ring_buffer[sock->rx.head], packet, sock->rx.head - ln);
-        memcpy(&sock->rx.ring_buffer[0], packet + (sock->rx.head - ln), ln - (sock->rx.head - ln));
-        sock->rx.head = ln - (sock->rx.head - ln);
+        memcpy(&buf->as.stream.ring_buffer[buf->as.stream.head], packet, buf->as.stream.head - ln);
+        memcpy(&buf->as.stream.ring_buffer[0], packet + (buf->as.stream.head - ln), ln - (buf->as.stream.head - ln));
+        buf->as.stream.head = ln - (buf->as.stream.head - ln);
     }
 
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
     return ret;
+}
+
+int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier, void *packet, uint32_t ln) {
+    kprintf("todo fill datagram");
+    return -1;
 }
 
 int net_add_device(dev_t *dev, struct net_ops *net_ops, uint8_t *mac, uint16_t mtu, const char *name) {
