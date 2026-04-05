@@ -31,6 +31,8 @@ static LIST_HEAD(net_handles);
 static LIST_HEAD(net_routing_table);
 static LIST_HEAD(net_devices);
 
+static char hostname[CONFIG_MAX_HOSTNAME_LN] = "localhost";
+
 static int device_id = 0;
 static int is_initialized = 0;
 static tid_t queue_thread;
@@ -200,10 +202,23 @@ static struct net_socket *get_sock_identifier(uint32_t identifier) {
 static int cleanup_sock(struct net_socket *sock) {
     list_del(&sock->list);
 
+    struct list_head *pos, *n;
+    struct net_buf *buf;
     struct net_protocol *protocol = net_invoke_protocol(sock->ipn);
     if (protocol && protocol->close)
         protocol->close(sock);
-    /* TODO: smarter logic here. */
+
+    /* Cleanup buffers */
+    if (!sock->is_stream && sock->rx.datagram.buf) {
+        list_for_each_safe(pos, n, &sock->rx.datagram.buf->list) {
+            buf = list_entry(pos, struct net_buf, list);
+            list_del(pos);
+            net_buf_free(buf);
+        }
+
+        /* Cleanup the head too! */
+        net_buf_free(sock->rx.datagram.buf);
+    }
 
     kfree(sock);
     return 0;
@@ -250,7 +265,7 @@ int net_link_layer_tx(void *layer_info, void *packet, uint32_t ln) {
 }
 
 int net_link_layer_req_buf(void *layer_info, void **result, uint32_t ln) {
-    if (!result && !*result) // struct net_buf
+    if (!result) // struct net_buf
         return -EINVAL;
     if ((*result = kmalloc((ln + sizeof(struct ethernet_frame)))) == NULL)
         return -ENOMEM;
@@ -578,12 +593,12 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         } else if (is_default) {
             if (arp_resolve_ipv4(&link, ifaddr, ifaddr->gateway.ipv4, dest_mac) != 0) {
                 ret = -ENETUNREACH;
-                goto end;
+                goto end_unlocked;
             }
         } else {
             if (arp_resolve_ipv4(&link, ifaddr, command->as.flow.addr.address, dest_mac) != 0) {
                 ret = -ENETUNREACH;
-                goto end;
+                goto end_unlocked;
             }
         }
 
@@ -613,13 +628,12 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
         default:
             ret = NET_DROPPED;
         }
-
-        ret = 0;
         break;
     case NET_SYS_RECVFROM:
         /* Ensure data */
         if (!VMM_IS_RANGE_USERSPACE(command->as.flow.buffer, command->as.flow.buffer + command->as.flow.buffer_sz) ||
-            !VMM_IS_RANGE_USERSPACE(command->as.flow.from, command->as.flow.from + sizeof(struct net_sock_addr)) ||
+            (!VMM_IS_RANGE_USERSPACE(command->as.flow.from, command->as.flow.from + sizeof(struct net_sock_addr)) &&
+             command->as.flow.from) ||
             !sock_handle) {
             ret = -EINVAL;
             goto end;
@@ -647,6 +661,7 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
                    timeout > uptime_us())
                 sched_yield();
         } else {
+            timeout = 0;
             while (((sock->is_stream && sock->rx.stream.head == sock->rx.stream.tail) ||
                     (!sock->is_stream && !sock->rx.datagram.buf)))
                 sched_yield();
@@ -654,8 +669,11 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         if (timeout <= uptime_us()) {
             ret = -ETIMEDOUT;
-            goto end;
+            goto end_unlocked;
         }
+
+        /* Lock so we are safely working with the data */
+        spin_lock_irqsave(&net_handles_lock, flags);
 
         /* Now extract the first arrived packet */
         if (sock->is_stream) {
@@ -682,8 +700,6 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
                 *command->as.flow.from = sock->rx.stream.origin;
             ret = ln;
         } else {
-            /* Lock so we are safely working with the buf */
-            spin_lock_irqsave(&net_handles_lock, flags);
             if (!sock->rx.datagram.buf) {
                 ret = -EINVAL;
                 goto end;
@@ -776,10 +792,32 @@ int net_syscall(pid_t caller, struct net_sys_command *command, net_handle_t *soc
 
         ret = 0;
         break;
-    }
+    case NET_SYS_REQ_HOSTNAME:
+        /* Ensure data */
+        if (!VMM_IS_RANGE_USERSPACE(command->as.req_hostname.result,
+                                    command->as.req_hostname.result + CONFIG_MAX_HOSTNAME_LN)) {
+            ret = -EINVAL;
+            goto end;
+        }
 
+        memcpy(command->as.req_hostname.result, hostname, CONFIG_MAX_HOSTNAME_LN);
+        ret = 0;
+        break;
+    case NET_SYS_SET_HOSTNAME:
+        /* Check that hostname is not NULL */
+        if (!command->as.set_hostname.hostname[0]) {
+            ret = -EINVAL;
+            goto end;
+        }
+
+        memcpy(hostname, command->as.set_hostname.hostname, CONFIG_MAX_HOSTNAME_LN);
+        command->as.set_hostname.hostname[CONFIG_MAX_HOSTNAME_LN - 1] = 0;
+        ret = 0;
+        break;
+    }
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
+end_unlocked:
     return ret;
 }
 
@@ -804,8 +842,8 @@ int net_sock_fill_stream(struct net_sock_addr origin, uint16_t dest_identifier, 
         goto end;
     }
 
-    sock->rx.stream.origin = origin;
     sock->is_stream = 1;
+    sock->rx.stream.origin = origin;
 
     /* Fill the full buffer */
     if ((uint32_t)(65535 - sock->rx.stream.head) > ln) {
@@ -846,13 +884,13 @@ int net_sock_fill_datagram(struct net_sock_addr origin, uint16_t dest_identifier
         list_add_tail(&buf->list, &sock->rx.datagram.buf->list);
     }
 
-    sock->rx.datagram.buf->origin = origin;
     sock->is_stream = 0;
+    buf->origin = origin;
 
     /* TODO: split packet if larger than MTU */
     ln = MIN(ln, 1500);
-    sock->rx.datagram.buf->ln = ln;
-    memcpy(sock->rx.datagram.buf->payload, packet, ln);
+    buf->ln = ln;
+    memcpy(buf->payload, packet, ln);
 end:
     spin_unlock_irqrestore(&net_handles_lock, flags);
     return ret;
@@ -935,9 +973,9 @@ int net_detach_ifaddr(dev_t dev, struct net_ifaddr ifaddr) {
         if (memcmp(entry->address.ipv4, ifaddr.address.ipv4, sizeof(ifaddr.address.ipv4)) == 0 ||
             memcmp(entry->address.ipv6, ifaddr.address.ipv6, sizeof(ifaddr.address.ipv6)) == 0) {
             list_del(pos);
-            kfree(entry);
             /* Don't forget to update routing table */
             update_routing(device);
+            kfree(entry);
             return 0;
         }
     }

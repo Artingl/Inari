@@ -3,10 +3,22 @@
 #include <lib.h>
 #include <string.h>
 #include <sys.h>
+#include <net.h>
 #include <types.h>
 
-#include <kernel/console/console.h>
-#include <kernel/subsys/hid.h>
+#define CONSOLE_IOCTL_REWIND     0 // Rewind N chars in the console buffer
+#define CONSOLE_IOCTL_REWIND_CLR 1 // Rewind N chars in the console buffer AND clear them
+#define CONSOLE_IOCTL_CLR        2 // Clear
+#define CONSOLE_IOCTL_FLUSH      3
+
+struct kbd_event {
+    int released;
+    uint8_t code;
+    uint16_t key;
+
+    /* Internal stuff. Used by driver to check if we're not duplicating events */
+    uint32_t event_id;
+} __attribute__((packed));
 
 char command[128] = {0};
 char history[8][128] = {0};
@@ -210,6 +222,7 @@ int main(int argc, char const *argv[]) {
     pid_t pid;
     int res;
     int is_shift_pressed = 0;
+    char hostname[64] = "unknown";
     char *cat_argv[] = {"/system/motd.txt", NULL};
     struct kbd_event kbd;
 
@@ -225,8 +238,9 @@ int main(int argc, char const *argv[]) {
     open(&video_handle, "/devices/video/char_video0", WRITE);
     ioctl(video_handle, 5, NULL); // VIDEO_IOCTL_DISABLE
     close(video_handle);
+    get_hostname(hostname);
 
-    printf("0@%s # ", current_dir);
+    printf("--@%s:%s # ", hostname, current_dir);
     command_offset = 0;
     history_offset = 0;
     history_scroll = 0;
@@ -235,6 +249,8 @@ int main(int argc, char const *argv[]) {
     flush(stdout);
 
     do {
+        get_hostname(hostname);
+
         if ((res = read(kb_hndl, (void *)&kbd, sizeof(kbd), NULL)) != 0) {
             printf("%s: unable to read keyboard: %s.", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
             return -1;
@@ -250,7 +266,12 @@ int main(int argc, char const *argv[]) {
                 exec_cmd();
                 command_offset = 0;
                 memset((void *)&command[0], 0, sizeof(command));
-                printf("%d@%s # ", last_exitcode, current_dir);
+                printf("--@%s:%s", hostname, current_dir);
+
+                if (last_exitcode != 0) {
+                    printf(" [%d] # ", last_exitcode);
+                }
+                else printf(" # ");
             } else if (kbd.key == 0x102 && command_offset > 0) // backspace
             {
                 command_offset--;

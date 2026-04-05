@@ -184,9 +184,19 @@ typedef int64_t net_handle_t;
 #define NET_SYS_BIND         0x4
 #define NET_SYS_CONNECT      0x5
 #define NET_SYS_REQ_NIC_INFO 0x6
+#define NET_SYS_REQ_HOSTNAME 0x7
+#define NET_SYS_SET_HOSTNAME 0x8
 struct net_sys_command {
     uint8_t id;
     union {
+        struct {
+            char *result;
+        } req_hostname;
+
+        struct {
+            char hostname[CONFIG_MAX_HOSTNAME_LN];
+        } set_hostname;
+
         struct {
             char net_device[48];
             struct net_device_info *result;

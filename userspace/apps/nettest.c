@@ -8,7 +8,7 @@
 int main(int argc, char *argv[]) {
     int ret;
     pid_t pid;
-    char *args[] = {"net0", "attach", "192.168.1.155", "255.255.255.0", "192.168.1.1", NULL};
+    char *args[] = {"net0", "attach", "192.168.53.155", "255.255.255.0", "192.168.53.1", NULL};
     if ((ret = execpv(&pid, "/programs/ip.exe", 5, args)) != 0) {
         printf("ip: failed: %s\n", errno(ret));
     }

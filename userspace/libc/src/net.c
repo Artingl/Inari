@@ -9,10 +9,20 @@
 #define NET_SYS_BIND         0x4
 #define NET_SYS_CONNECT      0x5
 #define NET_SYS_REQ_NIC_INFO 0x6
+#define NET_SYS_REQ_HOSTNAME 0x7
+#define NET_SYS_SET_HOSTNAME 0x8
 
 struct net_sys_command {
     uint8_t id;
     union {
+        struct {
+            char *result;
+        } req_hostname;
+
+        struct {
+            char hostname[64];
+        } set_hostname;
+
         struct {
             char net_device[48];
             struct net_device_info *result;
@@ -41,6 +51,22 @@ struct net_sys_command {
         } flow;
     } as;
 } __attribute__((packed));
+
+int set_hostname(char *hostname) {
+    struct net_sys_command cmd = {.id = NET_SYS_SET_HOSTNAME};
+    cmd.as.nic_info.net_device[0] = 0;
+    if (hostname)
+        memcpy(cmd.as.set_hostname.hostname, hostname,
+               strlen(hostname) + 1 > sizeof(cmd.as.set_hostname.hostname) ? sizeof(cmd.as.set_hostname.hostname)
+                                                                   : strlen(hostname) + 1);
+    cmd.as.set_hostname.hostname[sizeof(cmd.as.set_hostname.hostname) - 1] = 0;
+    return net_sys(&cmd, NULL);
+}
+
+int get_hostname(char *result) {
+    struct net_sys_command cmd = {.id = NET_SYS_REQ_HOSTNAME, .as.req_hostname = {.result = result}};
+    return net_sys(&cmd, NULL);
+}
 
 int net_info(const char *name, struct net_device_info *result) {
     struct net_sys_command cmd = {.id = NET_SYS_REQ_NIC_INFO, .as.nic_info = {.result = result}};

@@ -89,7 +89,7 @@ static int rtl8139_irq(uint32_t irq, void *driver_data) {
                (cba_offset = x86_inw(dev->bar[0].base + REG_CBA)) != rx_offset) {
             rx_offset %= RX_BUFFER_SIZE;
             header = (struct rtl8139_packet_header *)&rx_buffer[rx_offset];
-            length = *(uint16_t *)&rx_buffer[rx_offset + sizeof(struct rtl8139_packet_header)];
+            length = *(uint16_t *)&rx_buffer[rx_offset + 2];
 
             if (header->rok) {
                 net_rx_packet(net_dev, &rx_buffer[rx_offset + 4], length);

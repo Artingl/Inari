@@ -86,7 +86,7 @@ static int udp_connect(struct net_socket *sock, struct net_sock_addr addr) {
     /* Allocate port that will listen for packets.
      * TODO: again, dumb;
      * TODOx2: connect in UDP is strange, we can move this logic to TX */
-    for (size_t i = 65535; i > 1; i--) {
+    for (size_t i = 65534; i > 1; i--) {
         if (!ports[i]) {
             ports[i] = sock->owner;
             sock->identifier = i;

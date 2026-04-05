@@ -41,5 +41,8 @@ int main(int argc, char const *argv[]) {
     else if (!found_files && res == 0)
         printf("Directory is empty.\n");
 
+    if (found_files)
+        return 0;
+
     return res;
 }

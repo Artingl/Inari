@@ -59,6 +59,9 @@ struct net_ifaddr {
 #define NET_IPN_TCP  0x06
 #define NET_IPN_UDP  0x11
 
+int set_hostname(char *hostname);
+/* Buffer must be 64 bytes long */
+int get_hostname(char *result);
 int net_info(const char *name, struct net_device_info *result);
 
 int sockconnect(handle_t sock_handle, struct net_sock_addr addr);

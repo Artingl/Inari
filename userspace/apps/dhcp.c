@@ -1,8 +1,8 @@
+#include <errno.h>
 #include <io.h>
 #include <net.h>
-#include <sys.h>
 #include <string.h>
-#include <errno.h>
+#include <sys.h>
 
 struct dhcp_discover {
     uint8_t op;
@@ -17,14 +17,17 @@ struct dhcp_discover {
     uint32_t server_addr;
     uint32_t gateway_addr;
     uint32_t client_hardware_addr[4];
-    uint8_t zeros[192];
+    uint8_t sname[64];
+    uint8_t file[128];
     uint32_t magic_cookie;
+    uint8_t options[60];
 } __attribute__((packed));
 
 int main(int argc, char const *argv[]) {
     int ret = 0;
     handle_t sock_server = 0, sock_client = 0;
     pid_t pid;
+    char hostname[64];
     struct net_device_info info;
     struct dhcp_discover discover;
     struct net_sock_addr dhcp_server = {.addr_ln = 4, .address = {255, 255, 255, 255}, .identifier = 67};
@@ -40,10 +43,16 @@ int main(int argc, char const *argv[]) {
         goto end;
     }
 
+    if ((ret = get_hostname(hostname)) != 0) {
+        printf("%s: Unable fetch hostname: %s\n", argv[0], errno(ret));
+        goto end;
+    }
+
     /* Setup network device */
-    char *ip_args[] = {(char*)argv[1], "attach", "0.0.0.0", "0.0.0.0", "255.255.255.255", NULL};
+    char *ip_args[] = {(char *)argv[1], "attach", "0.0.0.0", "0.0.0.0", "255.255.255.255", NULL};
     if ((ret = execpv(&pid, "/programs/ip.exe", 5, ip_args)) != 0) {
         printf("%s: Failed to call IP.exe: %s\n", errno(ret));
+        goto end;
     }
     waitpid(pid);
 
@@ -61,6 +70,7 @@ int main(int argc, char const *argv[]) {
     }
 
     /* Now transmit discover packet */
+    memset(&discover, 0, sizeof(discover));
     discover.op = 0x1;
     discover.htype = 0x01;
     discover.hlen = 0x06;
@@ -73,18 +83,34 @@ int main(int argc, char const *argv[]) {
     discover.server_addr = 0x00;
     discover.gateway_addr = 0x00;
     memcpy(&discover.client_hardware_addr[0], info.mac_addr, 6);
-    memset(&discover.zeros[0], 0, sizeof(discover.zeros));
+    memcpy(&discover.sname[0], hostname, 64);
     discover.magic_cookie = bigend32(0x63825363);
+    /* Option 53: DHCP Message Type (Length 1, Value 1 = DISCOVER) */
+    discover.options[0] = 53;
+    discover.options[1] = 1;
+    discover.options[2] = 1;
+    /* Option 255: End Mark */
+    discover.options[3] = 255;
     if ((ret = socksendto(sock_server, &discover, sizeof(discover), dhcp_server)) != 0) {
         printf("%s: Unable to send DHCP discover: %s\n", argv[0], errno(ret));
         goto end;
     }
 
     /* Listen for offer */
+    printf("now wait!\n");
+    if ((ret = sockrecvfrom(sock_client, &discover, sizeof(discover), NULL, 3000000, 0)) != 0) {
+        printf("%s: Unable to recv DHCP offer: %s\n", argv[0], errno(ret));
+        goto end;
+    }
+
+    printf("got offer!\n");
 
     /* Send the request */
 
     /* Wait for ack */
+
+    /* TODO: use ICMP Echo to check if the addr is not already in use as
+     * manual requires that (in that case send DHCPDECLINE) */
 
     // assert( == 0, "sockcreate failed!");
     // assert(sockconnect(sock_handle, addr) == 0, "sockconnect failed!");
@@ -101,11 +127,11 @@ int main(int argc, char const *argv[]) {
 
 end:
     /* Cleanup 0.0.0.0 */
-    char *cleanup_ip_args[] = {(char*)argv[1], "detach", "0.0.0.0", NULL};
+    char *cleanup_ip_args[] = {(char *)argv[1], "detach", "0.0.0.0", NULL};
     if ((ret = execpv(&pid, "/programs/ip.exe", 3, cleanup_ip_args)) != 0) {
         printf("%s: Failed to call IP.exe: %s\n", errno(ret));
     }
-    waitpid(pid);
+    else waitpid(pid);
 
     if (sock_server)
         sockclose(sock_server);
