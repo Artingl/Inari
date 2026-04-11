@@ -85,6 +85,8 @@ int video_init(void);
 int video_add_device(dev_t *dev, const char *name, uintptr_t base, struct video_ops *ops);
 int video_remove_device(dev_t dev);
 int video_disable(void);
+/* 0 - disabled (text mode), 1 - enabled (GUI) */
+int video_state(void);
 struct video_device *video_get(dev_t dev);
 
 #endif

@@ -4,8 +4,7 @@
 #include <stdarg.h>
 #include <sys.h>
 
-extern handle_t stdout;
-extern handle_t stdin;
+extern handle_t stdio;
 
 int flush(handle_t handle);
 int vsprintf(char *buf, const char *fmt, va_list args);

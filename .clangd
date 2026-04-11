@@ -19,6 +19,8 @@ CompileFlags:
     - -include
     - /home/artingl/dev/inari/build/config.h
     - -I/home/artingl/dev/inari/include
+    - /Users/artingl/stuff/workspace/local/inari/build/config.h
+    - -I/Users/artingl/stuff/workspace/local/inari/include
 ---
 If:
   PathMatch: userspace/.*
@@ -26,3 +28,5 @@ CompileFlags:
   Add:
     - -I/home/artingl/dev/inari/userspace/libc/include
     - -I/home/artingl/dev/inari/userspace/shell/ism/include
+    - -I/Users/artingl/stuff/workspace/inari/userspace/libc/include
+    - -I/Users/artingl/stuff/workspace/inari/userspace/shell/ism/include

@@ -13,8 +13,7 @@
 #define PR_64     0x60
 #define PR_BUFLEN 32
 
-handle_t stdout = -1;
-handle_t stdin = -1;
+handle_t stdio = -1;
 
 int libc_io_init() {
     int res = 0;
@@ -22,9 +21,7 @@ int libc_io_init() {
     union p_option_value result;
     if (p_option_get("io", &result) == 0)
         io = result.value;
-    if ((res = open(&stdout, io, WRITE)) != 0)
-        return res;
-    if ((res = open(&stdin, io, READ)) != 0)
+    if ((res = open(&stdio, io, WRITE | READ)) != 0)
         return res;
     return 0;
 }
@@ -69,7 +66,7 @@ static int shadow_buffer_off = 0;
 static char shadow_buffer[128];
 static void do_printf_handler(char c, void *) {
     if (shadow_buffer_off >= 128) {
-        write(stdout, (const void *)shadow_buffer, shadow_buffer_off);
+        write(stdio, (const void *)shadow_buffer, shadow_buffer_off);
         shadow_buffer_off = 0;
     }
 
@@ -201,14 +198,14 @@ static inline int do_printf(const char *fmt, va_list args, void (*fn)(char, void
         }
     }
     if (do_flush)
-        flush(stdout);
+        flush(stdio);
     return count;
 }
 
 int flush(handle_t handle) {
-    if (handle == stdout) {
+    if (handle == stdio) {
         if (shadow_buffer_off > 0)
-            write(stdout, (const void *)shadow_buffer, shadow_buffer_off);
+            write(stdio, (const void *)shadow_buffer, shadow_buffer_off);
         shadow_buffer_off = 0;
     }
 

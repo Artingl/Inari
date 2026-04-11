@@ -26,7 +26,7 @@ int main(int argc, char const *argv[])
         printf("%s: %s: %s.\n", argv[0], argv[1], errstr[-res] ? errstr[-res] : "Invalid error");
         goto end;
     }
-    
+
     char *data = malloc(sz + 2);
     if (!data)
     {
@@ -45,8 +45,8 @@ int main(int argc, char const *argv[])
         goto end;
     }
 
-    write(stdout, data, sz);
-    flush(stdout);
+    write(stdio, data, sz);
+    flush(stdio);
     free(data);
 close:
     close(hndl);

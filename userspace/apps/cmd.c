@@ -11,27 +11,11 @@
 #define CONSOLE_IOCTL_CLR        2 // Clear
 #define CONSOLE_IOCTL_FLUSH      3
 
-struct kbd_event {
-    int released;
-    uint8_t code;
-    uint16_t key;
-
-    /* Internal stuff. Used by driver to check if we're not duplicating events */
-    uint32_t event_id;
-} __attribute__((packed));
-
 char command[128] = {0};
 char history[8][128] = {0};
 char current_dir[128] = {'/', 0};
 int history_offset = 0, history_scroll = 0;
 int command_offset = 0, last_exitcode = 0;
-handle_t kb_hndl;
-
-char shift_keys[] = {
-    ['1'] = '!', ['2'] = '@',  ['3'] = '#', ['4'] = '$', ['5'] = '%', ['6'] = '^',
-    ['7'] = '&', ['8'] = '*',  ['9'] = '(', ['0'] = ')', ['-'] = '_', ['='] = '+',
-    [';'] = ':', ['\\'] = '|', [','] = '<', ['.'] = '>', ['/'] = '?',
-};
 
 char **split_into_buffer(void *buffer, const char *input, int *argc, char **first_arg_out) {
     if (!buffer || !input || !argc)
@@ -186,7 +170,7 @@ void exec_cmd() {
         }
         return;
     } else if (strcmp(exec_path, "clear") == 0) {
-        ioctl(stdout, CONSOLE_IOCTL_CLR, NULL);
+        ioctl(stdio, CONSOLE_IOCTL_CLR, NULL);
         return;
     } else if (strcmp(exec_path, "p") == 0) {
         if (argc < 1) {
@@ -221,18 +205,11 @@ void exec_cmd() {
 int main(int argc, char const *argv[]) {
     pid_t pid;
     int res;
-    int is_shift_pressed = 0;
     char hostname[64] = "unknown";
     char *cat_argv[] = {"/system/motd.txt", NULL};
-    struct kbd_event kbd;
 
     if (execpv(&pid, "/programs/cat.exe", 1, cat_argv) == 0)
         waitpid(pid);
-
-    if (open(&kb_hndl, "/devices/input/char_kbd0", READ) != 0) {
-        printf("error: unable to open keyboard.\n");
-        exit(1);
-    }
 
     handle_t video_handle;
     open(&video_handle, "/devices/video/char_video0", WRITE);
@@ -246,21 +223,23 @@ int main(int argc, char const *argv[]) {
     history_scroll = 0;
     last_exitcode = 0;
     memset((void *)&command[0], 0, sizeof(command));
-    flush(stdout);
+    flush(stdio);
+
+    struct console_input {
+        uint8_t pressed;
+        uint8_t modifier;
+        uint16_t key;
+        uint16_t chr;
+    } __attribute__((packed)) in;
 
     do {
+        if ((res = read(stdio, &in, sizeof(in), NULL)) <= 0) {
+            continue;
+        }
         get_hostname(hostname);
 
-        if ((res = read(kb_hndl, (void *)&kbd, sizeof(kbd), NULL)) != 0) {
-            printf("%s: unable to read keyboard: %s.", argv[0], errstr[-res] ? errstr[-res] : "Invalid error");
-            return -1;
-        }
-
-        if (kbd.key == 0x106) // KEY_LSHIFT
-            is_shift_pressed = !kbd.released;
-
-        if (kbd.released) {
-            if (kbd.key == 0x101) // enter
+        if (in.pressed) {
+            if (in.chr == '\n') // enter
             {
                 printf("\n");
                 exec_cmd();
@@ -272,38 +251,34 @@ int main(int argc, char const *argv[]) {
                     printf(" [%d] # ", last_exitcode);
                 }
                 else printf(" # ");
-            } else if (kbd.key == 0x102 && command_offset > 0) // backspace
+            } else if (in.key == 0x102 && command_offset > 0) // backspace
             {
                 command_offset--;
-                ioctl(stdout, CONSOLE_IOCTL_REWIND, (void *)1);
-            } else if (kbd.key == 0x136) // arrow up
+                ioctl(stdio, CONSOLE_IOCTL_REWIND, (void *)1);
+            } else if (in.key == 0x136) // arrow up
             {
                 if (history_scroll >= 0) {
                     memcpy((void *)&command[0], (void *)&history[history_scroll--], 128);
-                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
+                    ioctl(stdio, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
                     printf(command);
                     command_offset = strlen(command);
                 }
-            } else if (kbd.key == 0x13b) // arrow down
+            } else if (in.key == 0x13b) // arrow down
             {
                 if (history_scroll < 8 && history_scroll < history_offset) {
                     memcpy((void *)&command[0], (void *)&history[history_scroll++], 128);
-                    ioctl(stdout, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
+                    ioctl(stdio, CONSOLE_IOCTL_REWIND_CLR, (void *)command_offset);
                     printf(command);
                     command_offset = strlen(command);
                 }
-            } else if (kbd.key >= 0x20 && kbd.key <= 0x7E) { // is ascii
-                char key = kbd.key;
-                if (is_shift_pressed && shift_keys[(int)key] != 0)
-                    key = shift_keys[(int)key];
-
-                command[command_offset++] = key;
+            } else if (in.key >= 0x20 && in.key <= 0x7E) { // is ascii
+                command[command_offset++] = in.chr;
                 command[command_offset] = '\0';
 
                 printf("%c", command[command_offset - 1]);
             }
         }
-        flush(stdout);
+        flush(stdio);
     } while (1);
 
     return 0;

@@ -68,6 +68,21 @@ static int hid_read(struct device *chardev, uint8_t *buf, size_t sz) {
     return res;
 }
 
+static tid_t console_thread;
+static void hid_console_thread(void *_) {
+    do {
+        /* TODO: semaphore */
+        if (video_state() != 0) {
+            /* Currently not in text mode */
+            usleep(1000000);
+        }
+
+        // console_write_queue()
+
+        usleep(20000);
+    } while(1);
+}
+
 static struct char_ops ops = {
     .read = &hid_read,
     .ioctl = &hdi_ioctl,
@@ -76,7 +91,7 @@ static struct char_ops ops = {
 int hid_init(void) {
     register_chardev_group(KBD_DRIVER, "kbd");
     register_chardev_group(MOUSE_DRIVER, "mouse");
-    return 0;
+    return sched_create_thread("hid_console_io", &console_thread, &hid_console_thread, NULL, NULL, NULL);
 }
 
 int hid_add_device(dev_t *dev, uint8_t type, const char *name, struct hid_ops *hid_ops) {

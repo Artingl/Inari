@@ -1,6 +1,9 @@
 #ifndef _INARI_CONSOLE_H
 #define _INARI_CONSOLE_H
 
+#include <kernel/sync/spinlock.h>
+#include <kernel/sys/device.h>
+
 #include <misc/list.h>
 #include <misc/types.h>
 
@@ -16,30 +19,51 @@
 
 typedef void (*console_io)(const char *s, uint32_t count);
 
-typedef struct console_dev {
+struct console_tty {
+    uint16_t id;
+    spinlock_t io_lock;
+    struct {
+        uint8_t head;
+        uint8_t tail;
+        struct console_input in[8];
+    } in_ring;
+
+    uint32_t flags;
+    struct list_head list;
+};
+
+struct console_in {
+    uint8_t pressed;
+    uint8_t modifier;
+    uint16_t key;
+    uint16_t chr;
+} __attribute__((packed));
+
+struct console_dev {
     const char *name;
     void (*write)(const char *s, uint32_t count);
     void (*read)(const char *s, uint32_t count);
     void (*rewind)(uint32_t count, int clear);
     void (*clear)();
     void (*flush)();
+
     uint32_t flags;
-
     struct list_head list;
-} console_dev_t;
+};
 
-int console_init(void);
-int console_register(struct console_dev *dev);
-int console_unregister(struct console_dev *dev);
+// int console_init(void);
+// int console_register(struct console_dev *dev);
+// int console_unregister(struct console_dev *dev);
+// int console_write_queue(struct console_dev *dev, struct console_input in);
 
-/* Switch back to early console */
-void console_switch_early(void);
-void console_switch_normal(void);
+// /* Switch back to early console */
+// void console_switch_early(void);
+// void console_switch_normal(void);
 
-#define CONSOLE_MESSAGE_KPRINTF 0x00
-#define CONSOLE_MESSAGE_DEBUG   0x01
+// #define CONSOLE_MESSAGE_KPRINTF 0x00
+// #define CONSOLE_MESSAGE_DEBUG   0x01
 
-int console_puts(int type, const char *s, uint32_t count);
-void console_flush(void);
+// int console_puts(int type, const char *s, uint32_t count);
+// void console_flush(void);
 
 #endif

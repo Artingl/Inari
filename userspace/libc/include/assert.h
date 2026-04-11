@@ -13,8 +13,8 @@
             printf("assertion failed[%d]: %s: ", res, #c);                                                             \
             printf(__VA_ARGS__);                                                                                       \
             char ch = '\n';                                                                                            \
-            flush(stdout);                                                                                             \
-            write(stdout, &ch, 1);                                                                                     \
+            flush(stdio);                                                                                              \
+            write(stdio, &ch, 1);                                                                                      \
             exit(-1);                                                                                                  \
         }                                                                                                              \
     } while (0)

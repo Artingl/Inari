@@ -121,6 +121,10 @@ int video_disable(void) {
     return 0;
 }
 
+int video_state(void) {
+    return 0;
+}
+
 struct video_device *video_get(dev_t dev) {
     if (!is_initialized || !ISGROUP(DRVID(dev), DRIVER_VIDEO_GROUP))
         return NULL;
