@@ -2,7 +2,7 @@
 #ifdef CONFIG_DRV_PS2
 #ifdef CONFIG_SUBSYS_HID
 
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>

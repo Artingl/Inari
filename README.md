@@ -19,7 +19,6 @@ To build rootfs you can use `./mkimg.sh`, this will bundle all apps, kernel file
 You you can run the kernel via `qemu-system-i386 -serial stdio -cdrom build/boot.iso` if constructing rootfs with `./mkimg.sh`.
 
 You can also specify bootargs, which kernel will parse (e.g. by specifying in `grub.cfg`). Here are supported params:
- - earlycon: The earlycon device to print the early logs. Supported values: vga_text, pc8250.
  - root: The block dev to mount as root. Can be any block device in format %s%d, where %s is name and %d is index.
  - init: Path to the init script which will run as PID 1.
 

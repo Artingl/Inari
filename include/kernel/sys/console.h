@@ -8,17 +8,17 @@
 #include <misc/list.h>
 #include <misc/types.h>
 
+#include <kernel/inari.h>
+#include <misc/types.h>
+
 #define CONSOLE_EARLY 1 << 0
 #define CONSOLE_PRINT 1 << 1
 #define CONSOLE_PANIC 1 << 2
 #define CONSOLE_DEBUG 1 << 3
 
-#define CONSOLE_IOCTL_REWIND         0 // Rewind N chars in the console buffer
-#define CONSOLE_IOCTL_REWIND_CLR     1 // Rewind N chars in the console buffer AND clear them
-#define CONSOLE_IOCTL_CLR            2 // Clear
-#define CONSOLE_IOCTL_FLUSH          3
-#define CONSOLE_IOCTL_TTY_ATTACH_DEV 4 // ioctl arg here is the vfs handle to a device we need to use
-#define CONSOLE_IOCTL_TTY_DETACH_DEV 5 // ioctl arg here is the vfs handle to a device we need to use
+#define CONSOLE_IOCTL_FLUSH          0
+#define CONSOLE_IOCTL_TTY_ATTACH_DEV 1 // ioctl arg here is the vfs handle to a device we need to use
+#define CONSOLE_IOCTL_TTY_DETACH_DEV 2 // ioctl arg here is the vfs handle to a device we need to use
 
 #define CONSOLE_TTY_MAX_DEV 6
 
@@ -28,19 +28,6 @@ struct console_in {
     uint16_t key;
     uint16_t chr;
 } __attribute__((packed));
-
-struct console_dev {
-    const char *name;
-    void (*write)(const char *s, uint32_t count);
-    void (*read)(const char *s, uint32_t count);
-    void (*rewind)(uint32_t count, int clear);
-    void (*clear)();
-    void (*flush)();
-
-    // spinlock_t lock;
-    uint32_t flags;
-    struct list_head list;
-};
 
 struct console_lazy_buffer {
     char buffer[CONFIG_CONSOLE_BUFF_SZ];
@@ -74,16 +61,13 @@ struct console_tty {
 
 int console_init(void);
 
-/* Printk/Panic, goes to earlycon/tty0 */
+/* Printk/Panic, goes to tty0 */
 int console_write_system(const char *s, size_t sz);
 
 /* Tie device (vga/serial/vconsole) with tty */
 int console_add_device(uint16_t tty_id, dev_t dev);
 
 int console_free_device(uint16_t tty_id, dev_t dev);
-
-int console_register(struct console_dev *dev);
-int console_unregister(struct console_dev *dev);
 
 /* Allocates new tty, returns the id, registers chardev */
 int console_alloc_tty(pid_t owner, uint16_t *tty_id);
@@ -103,24 +87,8 @@ int console_read(uint16_t tty_id, const char *s, size_t sz);
 /* Writes input into tty ring, which can later be read from getc ioctl */
 int console_write_in_queue(uint16_t tty_id, struct console_in in);
 
-int console_flush(uint16_t tty_id);
 int console_is_early(void);
 void console_switch_normal(void);
 void console_switch_early(void);
-
-// int console_init(void);
-// int console_register(struct console_dev *dev);
-// int console_unregister(struct console_dev *dev);
-// int console_write_queue(struct console_dev *dev, struct console_input in);
-
-// /* Switch back to early console */
-// void console_switch_early(void);
-// void console_switch_normal(void);
-
-// #define CONSOLE_MESSAGE_KPRINTF 0x00
-// #define CONSOLE_MESSAGE_DEBUG   0x01
-
-// int console_puts(int type, const char *s, uint32_t count);
-// void console_flush(void);
 
 #endif

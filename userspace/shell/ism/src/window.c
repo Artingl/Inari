@@ -433,6 +433,11 @@ int ism_window_update(void) {
             window->controls_state[1] = 0;
         }
 
+        if (window->controls_state[2] && !mouse.buttons[MOUSE_BTN2]) {
+            printf("Test click!\n");
+        }
+        /* --------------- */
+
         /* Check if mouse hovers window controls */
         if (mouse.pos_y >= window->y + 1 && mouse.pos_y < window->y + 17) {
             /* Close button */

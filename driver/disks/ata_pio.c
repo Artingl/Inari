@@ -1,7 +1,7 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_ATA_PIO
 
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>

@@ -8,3 +8,4 @@ docs/
 /fs/
 splash.h
 .DS_Store
+__pycache__

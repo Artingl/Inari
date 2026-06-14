@@ -1,8 +1,7 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_VGA_TEXT
 
-#include <kernel/console/console.h>
-#include <kernel/console/earlycon.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/module.h>
@@ -124,15 +123,7 @@ static void vga_putc(const char *s, uint32_t count) {
     }
 }
 
-static struct console_dev console_dev = {.name = "vga_text",
-                                         .write = vga_putc,
-                                         .rewind = vga_rewind,
-                                         .clear = vga_clear,
-                                         .flush = vga_flush_buffer,
-                                         .read = NULL,
-                                         .flags = CONSOLE_EARLY | CONSOLE_PRINT};
-
-static int pc_vga_text_init() {
+static int pc_vga_text_probe() {
     if (pc_vga_text_is_initialized)
         return 0;
 
@@ -140,29 +131,23 @@ static int pc_vga_text_init() {
     vga_update_cursor(0, 0);
     vga_clear();
 
-    console_register(&console_dev);
+    /* TODO; make chrdev */
+    (void)vga_putc;
+    (void)vga_rewind;
+
+    // console_register(&console_dev);
     pc_vga_text_is_initialized = 1;
     return 0;
 }
 
-static int pc_vga_text_probe() {
-    if (pc_vga_text_init() != 0)
-        return -ENODEV;
-    if (!pc_vga_text_is_initialized)
-        return console_register(&console_dev);
-    return 0;
-}
-
 static void pc_vga_text_cleanup() {
-    console_unregister(&console_dev);
+    // console_unregister(&console_dev);
     uint8_t *base = (uint8_t *)VGA_BASE;
     while ((uintptr_t)base < VGA_BASE + VGA_SIZE * 2)
         *base++ = 0;
     vga_flush_buffer();
     pc_vga_text_is_initialized = 0;
 }
-
-earlycon_device("vga_text", pc_vga_text_probe, pc_vga_text_cleanup);
 
 module_t pc_vga_text_module = {.probe = pc_vga_text_probe, .cleanup = pc_vga_text_cleanup};
 

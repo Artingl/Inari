@@ -1,4 +1,4 @@
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/kprintf.h>

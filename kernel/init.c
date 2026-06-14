@@ -1,5 +1,4 @@
-#include <kernel/console/console.h>
-#include <kernel/console/earlycon.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/event.h>
 #include <kernel/inari.h>

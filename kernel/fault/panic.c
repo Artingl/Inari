@@ -1,5 +1,5 @@
 #include <arch/sys.h>
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 #include <kernel/inari.h>
 #include <kernel/proc/sched.h>
 #include <kernel/subsys/video.h>
@@ -58,7 +58,6 @@ void panic(const char *fmt, ...) {
 
     va_end(args);
 
-    console_flush(0);
     spin_unlock_irqrestore(&panic_lock, flags);
     halt();
 }

@@ -30,7 +30,7 @@ typedef struct reserved_memory {
     uintptr_t end;
 } reserved_memory_t;
 
-/* Performs all early initialization: earlycon device, etc. */
+/* Performs all early initialization */
 void kearly_init();
 
 /* The main kernel entrypoint after the hardware was initialized */

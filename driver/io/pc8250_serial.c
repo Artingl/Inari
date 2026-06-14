@@ -1,8 +1,7 @@
 #ifdef CONFIG_ARCH_X86
 #ifdef CONFIG_DRV_PC8250_SERIAL
 
-#include <kernel/console/console.h>
-#include <kernel/console/earlycon.h>
+#include <kernel/sys/console.h>
 #include <kernel/errno.h>
 #include <kernel/inari.h>
 #include <kernel/interrupts/irq.h>
@@ -35,7 +34,7 @@ static uint8_t buffer[256];
 static RING_HEAD(tx_buff, &buffer, 256);
 
 static int serial_irq_handler(uint32_t irq, void *driver_data) {
-    if (console_is_early() || !serial_is_initialized)
+    if (!serial_is_initialized)
         return IRQ_HANDLED;
 
     int port = console_port;
@@ -94,26 +93,6 @@ static void serial_puts(int port, const char *s, uint32_t count) {
     // }
 }
 
-static void serial_puts_console(const char *s, uint32_t count) {
-    if (!serial_is_initialized)
-        return;
-    serial_puts(console_port, s, count);
-}
-
-static void serial_flush_console() {
-    if (!serial_is_initialized)
-        return;
-    x86_outb(console_port, 0);
-    x86_outb(console_port + 1, 0x03);
-}
-
-static struct console_dev console_dev = {.name = "pc8250_serial",
-                                         .write = serial_puts_console,
-                                         .flush = serial_flush_console,
-                                         .rewind = NULL,
-                                         .read = NULL,
-                                         .flags = CONSOLE_EARLY | CONSOLE_PRINT};
-
 static int pc8250_serial_init() {
     if (serial_is_initialized)
         return 0;
@@ -164,14 +143,15 @@ static int serial_write_chardev(struct device *chardev, const uint8_t *buf, size
     return sz;
 }
 
-static struct char_ops serial_block_ops = {.write = &serial_write_chardev};
+static struct char_ops serial_block_ops = {
+    .write = &serial_write_chardev
+};
 
 static dev_t char_devices[8] = {0};
 
 static int pc8250_serial_probe() {
     if (pc8250_serial_init() != 0)
         return -ENODEV;
-    console_register(&console_dev);
     irq_request(SERIAL_IRQ, &serial_irq_handler, NULL);
 
     if (serial_is_initialized) {
@@ -186,13 +166,8 @@ static int pc8250_serial_probe() {
         // register_chardev(SERIAL_DRIVER, &serial_block_ops, (void*)COM8, &char_devices[7]);
     }
 
-    return 0;
-}
+    console_add_device(0, char_devices[0]);
 
-static int pc8250_serial_early_probe() {
-    if (pc8250_serial_init() != 0)
-        return -ENODEV;
-    console_register(&console_dev);
     return 0;
 }
 
@@ -214,10 +189,6 @@ static void pc8250_serial_cleanup() {
         serial_is_initialized = 0;
     }
 }
-
-static void pc8250_serial_early_cleanup() {}
-
-earlycon_device("pc8250", pc8250_serial_early_probe, pc8250_serial_early_cleanup);
 
 module_t pc8250_module = {
     .probe = pc8250_serial_probe,

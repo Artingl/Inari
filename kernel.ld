@@ -2,11 +2,6 @@
 .rodata ALIGN (4K) : AT (ADDR (.rodata) - 0xC0000000) {
     *(.rodata)
 }
-.earlycon ALIGN (4K) : AT (ADDR (.earlycon) - 0xC0000000) {
-    __start_earlycon = .;
-    KEEP(*(.earlycon))
-    __stop_earlycon = .;
-}
 .modules ALIGN (4K) : AT (ADDR (.modules) - 0xC0000000) {
     __start_modules = .;
     KEEP(*(.modules))

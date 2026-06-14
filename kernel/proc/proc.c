@@ -11,7 +11,7 @@
 #include <kernel/subsys/net.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sys/vfs.h>
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 
 #include <misc/list.h>
 #include <misc/string.h>

@@ -1,4 +1,4 @@
-#include <kernel/console/console.h>
+#include <kernel/sys/console.h>
 #include <kernel/inari.h>
 #include <kernel/interrupts/swi.h>
 #include <kernel/proc/elf.h>
