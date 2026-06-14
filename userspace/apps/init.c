@@ -31,8 +31,17 @@ int main(int argc, char const *argv[]) {
     // execpv(&ism_pid, "/programs/ping.exe", 1, a);
     // waitpid(ism_pid);
 
-    execp(&ism_pid, "/programs/cmd.exe");
+    // execp(&ism_pid, "/programs/cmd.exe");
+    // waitpid(ism_pid);
+    //
+    char *a[] = {"/devices/terminals"};
+    execpv(&ism_pid, "/programs/ls.exe", 1, a);
     waitpid(ism_pid);
+
+    // handle_t tty0, serial; /devices/terminals/char_tty0
+    // open(&tty0, "/devices/terminals/char_tty0", WRITE);
+    // open(&tty0, "/devices/terminals/tty0_char", WRITE);
+    // ioctl(tty0, 4, ); // CONSOLE_IOCTL_TTY_ATTACH_DEV
 
     do {
         /* Load video drivers */

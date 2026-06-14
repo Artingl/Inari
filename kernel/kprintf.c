@@ -7,7 +7,7 @@
 
 #include <arch/sys.h>
 
-static inline void do_printf_handler(char c, void *) { console_puts(CONSOLE_PRINT, &c, 1); }
+static inline void do_printf_handler(char c, void *) { console_write_system(&c, 1); }
 
 static inline int print(const char *fmt, ...) {
     va_list args;
@@ -29,7 +29,6 @@ int kprintf(const char *fmt, ...) {
     c += do_kprintfn(fmt, args, &do_printf_handler, NULL);
     c += print("\n");
 
-    console_flush();
     va_end(args);
     return c;
 }

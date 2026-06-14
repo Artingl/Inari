@@ -28,7 +28,6 @@
 #define SERIAL_IRQ              0x4
 #define is_transmit_empty(port) (x86_inb(port + 5) & 0x20)
 
-extern int console_is_early;
 static int serial_is_initialized = 0;
 static int console_port = COM1;
 
@@ -36,7 +35,7 @@ static uint8_t buffer[256];
 static RING_HEAD(tx_buff, &buffer, 256);
 
 static int serial_irq_handler(uint32_t irq, void *driver_data) {
-    if (console_is_early || !serial_is_initialized)
+    if (console_is_early() || !serial_is_initialized)
         return IRQ_HANDLED;
 
     int port = console_port;
@@ -65,10 +64,17 @@ void serial_debug(const char *s) {
     x86_outb(console_port, '\n');
 }
 
+void serial_debug_sz(const char *s, size_t sz) {
+    while (is_transmit_empty(console_port) == 0)
+        ;
+    while (sz-- > 0)
+        x86_outb(console_port, *s++);
+}
+
 static void serial_puts(int port, const char *s, uint32_t count) {
     if (!serial_is_initialized || port != console_port || count <= 0)
         return;
-    // if (!console_is_early)
+    // if (!console_is_early())
     // {
     //     int was_empty = ring_bbuf_is_empty(&tx_buff);
     //     uint8_t data;

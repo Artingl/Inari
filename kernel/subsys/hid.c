@@ -8,6 +8,7 @@
 #include <kernel/sys/char.h>
 #include <kernel/sys/device.h>
 #include <kernel/sys/driver.h>
+#include <kernel/subsys/video.h>
 
 #include <misc/string.h>
 #include <misc/types.h>
@@ -74,12 +75,12 @@ static void hid_console_thread(void *_) {
         /* TODO: semaphore */
         if (video_state() != 0) {
             /* Currently not in text mode */
-            usleep(1000000);
+            timer_usleep(1000000);
         }
 
         // console_write_queue()
 
-        usleep(20000);
+        timer_usleep(20000);
     } while(1);
 }
 

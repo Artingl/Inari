@@ -38,7 +38,7 @@ struct kernel_symbols {
 static int in_exception = 0;
 static struct kernel_symbols ksyms = {0};
 
-static inline void do_printf_handler(char c, void *) { console_puts(CONSOLE_PANIC, &c, 1); }
+static inline void do_printf_handler(char c, void *) { console_write_system(&c, 1); }
 
 static inline void helper_printf(const char *fmt, ...) {
     va_list args;

@@ -11,6 +11,7 @@
 #include <kernel/subsys/net.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sys/vfs.h>
+#include <kernel/console/console.h>
 
 #include <misc/list.h>
 #include <misc/string.h>
@@ -130,6 +131,7 @@ static void thread_cleanup(struct thread *th, struct process *proc) {
 #ifdef CONFIG_SUBSYS_NET
         net_proc_cleanup(proc);
 #endif
+        console_cleanup_proc(proc);
         list_del(&proc->list);
 
         spin_unlock_irqrestore(&lock, flags);
